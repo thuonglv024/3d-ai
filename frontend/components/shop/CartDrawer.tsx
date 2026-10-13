@@ -62,7 +62,7 @@ export default function CartDrawer() {
                       width="84"
                       height="105"
                       onError={(e) => {
-                        e.currentTarget.src = "/products/ao-thun-essential.jpg";
+                        e.currentTarget.src = "/products/v2/ao-thun-essential.jpg";
                       }}
                     />
                   </Link>

@@ -314,7 +314,7 @@ export default function ProductPickerPopover({
                       height="44"
                       loading="lazy"
                       onError={(e) => {
-                        e.currentTarget.src = "/products/ao-thun-essential.jpg";
+                        e.currentTarget.src = "/products/v2/ao-thun-essential.jpg";
                       }}
                     />
                   </span>
@@ -380,7 +380,7 @@ export default function ProductPickerPopover({
             height="32"
             className="trigger-img"
             onError={(e) => {
-              e.currentTarget.src = "/products/ao-thun-essential.jpg";
+              e.currentTarget.src = "/products/v2/ao-thun-essential.jpg";
             }}
           />
         </span>

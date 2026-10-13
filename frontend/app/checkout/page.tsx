@@ -488,7 +488,7 @@ export default function CheckoutPage() {
                             width="56"
                             height="70"
                             onError={(e) => {
-                              e.currentTarget.src = "/products/ao-thun-essential.jpg";
+                              e.currentTarget.src = "/products/v2/ao-thun-essential.jpg";
                             }}
                           />
                         </div>

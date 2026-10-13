@@ -798,7 +798,7 @@ export default function WishlistDrawer() {
                         width="76"
                         height="96"
                         onError={(e) => {
-                          e.currentTarget.src = "/products/ao-thun-essential.jpg";
+                          e.currentTarget.src = "/products/v2/ao-thun-essential.jpg";
                         }}
                       />
                     </Link>

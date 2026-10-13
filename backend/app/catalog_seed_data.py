@@ -393,8 +393,12 @@ def _build_seed_products() -> tuple[list[dict], list[dict]]:
             p["variants"] = variants
 
         # Ensure gallery and images: [main_photo, detail_photo]
-        image_url = f"/products/{p['slug']}.jpg"
-        gallery = [image_url, f"/products/{p['slug']}-detail.jpg"]
+        if p["slug"] in V2_MAP:
+            image_url, detail_url = V2_MAP[p["slug"]]
+            gallery = [image_url, detail_url]
+        else:
+            image_url = f"/products/v2/{p['slug']}.jpg"
+            gallery = [image_url, f"/products/v2/{p['slug']}-detail.jpg"]
         p["image"] = image_url
         p["gallery"] = gallery
         p["images"] = [
@@ -411,7 +415,7 @@ def _build_seed_products() -> tuple[list[dict], list[dict]]:
                 "id": f"img-{p['slug']}-1",
                 "product_id": p["id"],
                 "url": gallery[1],
-                "alt": f"{p['name']} - Chi tiết chất liệu",
+                "alt": f"{p['name']} - Chi tiết chất liệu (phóng to)" if p["slug"] in V2_MAP else f"{p['name']} - Chi tiết chất liệu",
                 "color_name": p.get("color"),
                 "display_order": 1,
                 "is_primary": 0,
@@ -437,8 +441,8 @@ def _build_seed_products() -> tuple[list[dict], list[dict]]:
                 image_url, detail_url = V2_MAP[slug]
                 gallery = [image_url, detail_url]
             else:
-                image_url = f"/products/{slug}.jpg"
-                gallery = [image_url, f"/products/{slug}-detail.jpg"]
+                image_url = f"/products/v2/{slug}.jpg"
+                gallery = [image_url, f"/products/v2/{slug}-detail.jpg"]
 
             details = [
                 f"Chất liệu {material} cao cấp chuẩn xuất khẩu",

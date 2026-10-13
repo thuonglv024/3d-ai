@@ -12,3 +12,4 @@ backend/models/*
 .runtime/
 .cache/
 *.log
+frontend/public/products_legacy_backup/

@@ -9,11 +9,11 @@ import { useCart } from "../../lib/CartContext";
 
 function getCategoryFallback(cat: string) {
   const c = (cat || "").toLowerCase();
-  if (c.includes("so-mi") || c.includes("sơ mi")) return "/products/so-mi-oxford-classic.jpg";
-  if (c.includes("ao-khoac") || c.includes("áo khoác")) return "/products/ao-khoac-blazer-linen.jpg";
-  if (c.includes("quan") || c.includes("quần")) return "/products/quan-tay-pleated-wide-leg.jpg";
-  if (c.includes("vay") || c.includes("váy") || c.includes("đầm")) return "/products/chan-vay-chu-a-linen.jpg";
-  return "/products/ao-thun-essential.jpg";
+  if (c.includes("so-mi") || c.includes("sơ mi")) return "/products/v2/so-mi-oxford-classic.jpg";
+  if (c.includes("ao-khoac") || c.includes("áo khoác")) return "/products/v2/ao-khoac-blazer-linen.jpg";
+  if (c.includes("quan") || c.includes("quần")) return "/products/v2/quan-tay-pleated-wide-leg.jpg";
+  if (c.includes("vay") || c.includes("váy") || c.includes("đầm")) return "/products/v2/chan-vay-chu-a-linen.jpg";
+  return "/products/v2/ao-thun-essential.jpg";
 }
 
 export default function ProductCard({
