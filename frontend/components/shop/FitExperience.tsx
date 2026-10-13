@@ -1,11 +1,24 @@
-"use client";
 import { useEffect, useState, useCallback } from "react";
-import { ArrowRight, Camera, Check, LoaderCircle, RotateCcw, ScanLine, ShieldCheck, Sun } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowRight,
+  Camera,
+  Check,
+  Laptop,
+  LoaderCircle,
+  RotateCcw,
+  ScanLine,
+  ShieldCheck,
+  Smartphone,
+  Sparkles,
+  Sun,
+} from "lucide-react";
 import { useBodyScan, type Job } from "../../lib/useBodyScan";
 import { money, type Product } from "../../lib/catalog";
 import { useScan, type SizeAdviceResult } from "../../lib/ScanContext";
 import ScanResult from "./ScanResult";
 import CaptureSession from "./CaptureSession";
+import CustomSelect from "./CustomSelect";
 
 export default function FitExperience({
   product,
@@ -20,12 +33,30 @@ export default function FitExperience({
   onOpenSizeChart?: () => void;
   onClose?: () => void;
 }) {
+  const isFullBodyRequired = Boolean(
+    product.chart?.garment === "bottom" ||
+    (product.chart?.garment as string) === "dress" ||
+    ["cat-quan", "cat-vay", "quan", "vay"].includes(product.category) ||
+    product.slug.includes("quan") ||
+    product.slug.includes("dam") ||
+    product.slug.includes("chan-vay")
+  );
+
   const scanContext = useScan();
-  const s = useBodyScan(scanContext.job);
+  const s = useBodyScan(scanContext.job, isFullBodyRequired ? "full_body" : "upper_body");
   const [capturing, setCapturing] = useState(false);
   const [advice, setAdvice] = useState<SizeAdviceResult | null>(null);
   const [adviceError, setAdviceError] = useState("");
   const [retry, setRetry] = useState(0);
+
+  // Set default captureMode based on product requirement
+  useEffect(() => {
+    if (isFullBodyRequired) {
+      s.setCaptureMode("full_body");
+    } else {
+      s.setCaptureMode("upper_body");
+    }
+  }, [product.id, isFullBodyRequired]);
 
   // Sync active job from local hook to shared ScanContext
   useEffect(() => {
@@ -84,14 +115,18 @@ export default function FitExperience({
     return () => {
       aborted = true;
     };
-  }, [currentJob?.id, currentJob?.status, product.id, retry, scanContext, product]);
+  }, [currentJob?.id, currentJob?.status, product.id, retry, scanContext.fetchAdviceForProduct]);
 
   const handleReset = useCallback(async () => {
+    s.setJob(null);
+    scanContext.setJob(null);
     await s.clear();
     await scanContext.clearScanSession();
   }, [s, scanContext]);
 
   const handleResetFullBody = useCallback(async () => {
+    s.setJob(null);
+    scanContext.setJob(null);
     await s.clear();
     await scanContext.clearScanSession();
     s.setCaptureMode("full_body");
@@ -101,7 +136,10 @@ export default function FitExperience({
   const renderProductContextBar = () => {
     if (!product) return null;
     return (
-      <div className="fit-product-context" aria-label={`Sản phẩm đang chọn: ${product.name}`}>
+      <div
+        className={`fit-product-context ${capturing && active ? "is-capturing" : ""}`}
+        aria-label={`Sản phẩm đang chọn: ${product.name}`}
+      >
         <div className="fit-product-thumb">
           <img src={product.image} alt={product.name} />
         </div>
@@ -140,7 +178,7 @@ export default function FitExperience({
 
   if (capturing && active) {
     return (
-      <div className="fit-experience">
+      <div className="fit-experience fit-experience-capturing">
         {renderProductContextBar()}
         <CaptureSession
           mode={s.captureMode}
@@ -244,6 +282,51 @@ export default function FitExperience({
             <h2>Chuẩn bị trước khi quét</h2>
             <span>Hai góc · Một phiên camera</span>
           </div>
+
+          {/* Full Body Requirement Card for Pants / Skirts / Dresses */}
+          {isFullBodyRequired && (
+            <div className="scan-fullbody-requirement-card" role="region" aria-label="Yêu cầu chụp toàn thân">
+              <div className="requirement-header">
+                <Sparkles size={18} className="requirement-gold-icon" />
+                <h3>Yêu cầu chụp toàn thân cho quần, chân váy & đầm</h3>
+              </div>
+              <p className="requirement-desc">
+                Để chọn size chuẩn xác, MORPH cần cả số đo vòng eo và vòng mông. Chế độ webcam thân trên chỉ ước lượng từ đầu đến cạp quần và không đo được vòng mông thực tế.
+              </p>
+              <div className="requirement-tips-box">
+                <strong className="requirement-tips-title">Gợi ý góc đặt thiết bị:</strong>
+                <ul className="requirement-tips-list">
+                  <li>
+                    <span className="tip-device"><Laptop size={15} /> Laptop:</span> Đặt laptop trên bàn/ghế cách 2m – 2.5m, nghiêng nhẹ màn hình xuống để camera thấy đủ từ đỉnh đầu đến bàn chân.
+                  </li>
+                  <li>
+                    <span className="tip-device"><Smartphone size={15} /> Điện thoại:</span> Tựa điện thoại hoặc dùng giá đỡ ngang ngực, lùi xa 2m.
+                  </li>
+                </ul>
+              </div>
+            </div>
+          )}
+
+          {/* Amber Warning if User switches to upper_body on full-body products */}
+          {isFullBodyRequired && s.captureMode === "upper_body" && (
+            <div className="scan-upperbody-warning-card" role="alert">
+              <div className="warning-card-head">
+                <AlertCircle size={18} />
+                <strong>Cảnh báo: Không đo được vòng mông ở chế độ thân trên</strong>
+              </div>
+              <p>
+                Sản phẩm này cần số đo vòng mông để gợi ý size. Khi chọn chế độ webcam thân trên, hệ thống sẽ không đo được mông và không thể gợi ý size tự động.
+              </p>
+              <button
+                type="button"
+                className="scan-switch-mode-btn"
+                onClick={() => s.setCaptureMode("full_body")}
+              >
+                Chuyển lại sang Camera toàn thân →
+              </button>
+            </div>
+          )}
+
           <div className="scan-setup-fields">
             <label htmlFor="scan-height">
               Chiều cao của bạn
@@ -263,17 +346,42 @@ export default function FitExperience({
               </div>
               {!validHeight && <small>Nhập chiều cao từ 100 đến 230 cm.</small>}
             </label>
-            <label htmlFor="scan-framing">
-              Khung chụp
-              <select
+            <div className="scan-framing-field">
+              <span className="scan-field-label">Khung chụp</span>
+              <CustomSelect
                 id="scan-framing"
                 value={s.captureMode}
-                onChange={(e) => s.setCaptureMode(e.target.value as "upper_body" | "full_body")}
-              >
-                <option value="upper_body">Webcam · từ đầu đến cạp quần</option>
-                <option value="full_body">Camera · toàn thân</option>
-              </select>
-            </label>
+                onChange={(val) => s.setCaptureMode(val as "upper_body" | "full_body")}
+                ariaLabel="Khung chụp"
+                options={
+                  isFullBodyRequired
+                    ? [
+                        {
+                          value: "full_body",
+                          label: "Camera · toàn thân",
+                          sublabel: "Khuyên dùng cho sản phẩm này",
+                        },
+                        {
+                          value: "upper_body",
+                          label: "Webcam · từ đầu đến cạp quần",
+                          sublabel: "Không đo mông",
+                        },
+                      ]
+                    : [
+                        {
+                          value: "upper_body",
+                          label: "Webcam · từ đầu đến cạp quần",
+                          sublabel: "Đầu, hai vai, eo & cạp quần",
+                        },
+                        {
+                          value: "full_body",
+                          label: "Camera · toàn thân",
+                          sublabel: "Từ đầu đến gót chân",
+                        },
+                      ]
+                }
+              />
+            </div>
           </div>
           <div className="scan-preparation">
             <Sun size={20} />

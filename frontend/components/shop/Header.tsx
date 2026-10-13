@@ -2,11 +2,24 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useState, useRef, Suspense } from "react";
-import { Heart, Search, ShoppingBag, Menu, X, ArrowRight, Sparkles } from "lucide-react";
+import { useState, useRef, useEffect, Suspense } from "react";
+import {
+  Heart,
+  Search,
+  ShoppingBag,
+  Menu,
+  X,
+  ArrowRight,
+  Sparkles,
+  User,
+  LogOut,
+  ChevronDown,
+} from "lucide-react";
 import { useCart } from "../../lib/CartContext";
+import { useAuth } from "../../lib/AuthContext";
 import { CATEGORIES } from "../../lib/catalog";
 import { useDrawerA11y } from "../../lib/useDrawerA11y";
+import { buildAuthUrl } from "../../lib/authNav";
 
 function HeaderFallback() {
   return (
@@ -58,6 +71,13 @@ function HeaderFallback() {
           </button>
 
           <button
+            className="shop-icon header-account-btn"
+            aria-label="Tài khoản"
+          >
+            <User size={20} />
+          </button>
+
+          <button
             className="shop-icon header-wishlist-btn"
             aria-label="Sản phẩm yêu thích"
           >
@@ -83,12 +103,43 @@ function HeaderContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { totalQuantity, wishlist, setIsWishlistOpen } = useCart();
+  const { user, logout } = useAuth();
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+
   const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+  const accountBtnRef = useRef<HTMLButtonElement>(null);
 
   useDrawerA11y(mobileMenuOpen, () => setMobileMenuOpen(false), mobileMenuRef);
+
+  // Close account menu on click outside or Escape key
+  useEffect(() => {
+    if (!userMenuOpen) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setUserMenuOpen(false);
+        accountBtnRef.current?.focus();
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [userMenuOpen]);
 
   const currentCategory = searchParams?.get("category") || "";
 
@@ -98,6 +149,11 @@ function HeaderContent() {
       router.push(`/?q=${encodeURIComponent(searchQuery.trim())}#catalog`);
       setSearchOpen(false);
     }
+  };
+
+  const getShortName = (fullName: string) => {
+    const parts = fullName.trim().split(/\s+/);
+    return parts[parts.length - 1] || fullName;
   };
 
   return (
@@ -182,6 +238,93 @@ function HeaderContent() {
             </button>
           )}
 
+          {/* User Account / Auth Link */}
+          {!user ? (
+            <Link
+              href={buildAuthUrl("login", { returnTo: pathname })}
+              className="shop-icon header-account-btn"
+              aria-label="Đăng nhập / Tạo tài khoản"
+            >
+              <User size={20} />
+            </Link>
+          ) : (
+            <div className="header-account-container" ref={userMenuRef}>
+              <button
+                ref={accountBtnRef}
+                className="header-account-pill"
+                aria-label={`Tài khoản: ${user.display_name}`}
+                aria-expanded={userMenuOpen}
+                onClick={() => setUserMenuOpen(!userMenuOpen)}
+              >
+                <span className="header-user-avatar">
+                  {user.display_name.charAt(0).toUpperCase()}
+                </span>
+                <span className="header-user-name">
+                  {getShortName(user.display_name)}
+                </span>
+                <ChevronDown
+                  size={14}
+                  className={`header-user-chevron ${userMenuOpen ? "is-open" : ""}`}
+                />
+              </button>
+
+              {userMenuOpen && (
+                <div
+                  className="custom-dropdown-menu account-dropdown-menu is-align-right"
+                  role="menu"
+                  aria-label="Menu tài khoản"
+                >
+                  <div className="account-dropdown-profile">
+                    <span className="account-avatar-lg">
+                      {user.display_name.charAt(0).toUpperCase()}
+                    </span>
+                    <div className="account-profile-info">
+                      <strong className="account-display-name">{user.display_name}</strong>
+                      <span className="account-email">{user.email}</span>
+                    </div>
+                  </div>
+
+                  <div className="dropdown-divider" />
+
+                  <Link
+                    href="/account"
+                    className="dropdown-option-item account-menu-link"
+                    role="menuitem"
+                    onClick={() => setUserMenuOpen(false)}
+                  >
+                    <User size={16} />
+                    <span>Hồ sơ của tôi</span>
+                  </Link>
+
+                  <Link
+                    href="/account/body-profile"
+                    className="dropdown-option-item account-menu-link"
+                    role="menuitem"
+                    onClick={() => setUserMenuOpen(false)}
+                  >
+                    <Sparkles size={16} />
+                    <span>Hồ sơ hình thể & Số đo 3D</span>
+                  </Link>
+
+                  <div className="dropdown-divider" />
+
+                  <button
+                    type="button"
+                    className="dropdown-option-item account-menu-link is-logout"
+                    role="menuitem"
+                    onClick={async () => {
+                      setUserMenuOpen(false);
+                      await logout();
+                    }}
+                  >
+                    <LogOut size={16} />
+                    <span>Đăng xuất</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
           <button
             className="shop-icon header-wishlist-btn"
             aria-label={`Sản phẩm yêu thích (${wishlist.length})`}
@@ -230,6 +373,72 @@ function HeaderContent() {
                 <X size={20} />
               </button>
             </div>
+
+            {/* Mobile Account Section */}
+            {user ? (
+              <div className="mobile-account-section">
+                <div className="mobile-account-header">
+                  <span className="mobile-account-avatar">
+                    {user.display_name.charAt(0).toUpperCase()}
+                  </span>
+                  <div className="mobile-account-info">
+                    <strong className="mobile-account-name">{user.display_name}</strong>
+                    <span className="mobile-account-email">{user.email}</span>
+                  </div>
+                </div>
+                <div className="mobile-account-actions">
+                  <Link
+                    href="/account"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="mobile-account-sublink"
+                  >
+                    <User size={16} />
+                    <span>Hồ sơ của tôi</span>
+                  </Link>
+                  <Link
+                    href="/account/body-profile"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="mobile-account-sublink"
+                  >
+                    <Sparkles size={16} />
+                    <span>Hồ sơ hình thể & Số đo 3D</span>
+                  </Link>
+                  <button
+                    type="button"
+                    className="mobile-account-sublink is-logout"
+                    onClick={async () => {
+                      setMobileMenuOpen(false);
+                      await logout();
+                    }}
+                  >
+                    <LogOut size={16} />
+                    <span>Đăng xuất</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="mobile-guest-auth-box">
+                <Link
+                  href={buildAuthUrl("login", { returnTo: pathname })}
+                  className="mobile-guest-auth-btn"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <User size={18} />
+                  <span>Đăng nhập / Đăng ký</span>
+                </Link>
+                <Link
+                  href="/account/body-profile"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="mobile-guest-profile-link"
+                >
+                  <Sparkles size={14} />
+                  <span>Hồ sơ hình thể & Số đo 3D</span>
+                </Link>
+              </div>
+            )}
+
+            <div className="mobile-menu-divider" />
+
             <nav className="mobile-menu-links">
               <Link
                 href="/"

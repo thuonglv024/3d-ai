@@ -56,7 +56,15 @@ export default function CartDrawer() {
                     onClick={() => setIsCartOpen(false)}
                     className="cart-line-img"
                   >
-                    <img src={line.image} alt={line.name} width="84" height="105" />
+                    <img
+                      src={line.image}
+                      alt={line.name}
+                      width="84"
+                      height="105"
+                      onError={(e) => {
+                        e.currentTarget.src = "/products/ao-thun-essential.jpg";
+                      }}
+                    />
                   </Link>
 
                   <div className="cart-line-details">

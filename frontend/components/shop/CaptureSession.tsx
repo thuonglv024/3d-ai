@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { ArrowRight, Camera, Check, LoaderCircle, RotateCcw, ScanLine, X } from "lucide-react";
+import { ArrowRight, Camera, Check, LoaderCircle, Maximize2, Minimize2, RotateCcw, ScanLine, X } from "lucide-react";
+import CustomSelect, { type SelectOption } from "./CustomSelect";
 
 type Feedback = { ready: boolean; message: string; landmarks: number[][] };
 type Pair = { front: File; side: File };
@@ -32,8 +33,26 @@ export default function CaptureSession({
   const [count, setCount] = useState<number | null>(null);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [size, setSize] = useState({ w: 1280, h: 720 });
+  const [expanded, setExpanded] = useState(false);
 
   const upper = mode === "upper_body";
+
+  const toggleExpand = useCallback(() => {
+    setExpanded((prev) => !prev);
+  }, []);
+
+  useEffect(() => {
+    if (!expanded) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        setExpanded(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => window.removeEventListener("keydown", handleKeyDown, true);
+  }, [expanded]);
 
   const stopTracks = useCallback(() => {
     if (activeStream.current) {
@@ -267,114 +286,166 @@ export default function CaptureSession({
   }, [ready, phase, view, mode, upper, onComplete, stopTracks]);
 
   return (
-    <section className="capture-session" aria-label="Quét hai góc liên tục">
+    <section
+      className={`capture-session ${expanded ? "is-expanded" : ""}`}
+      aria-label="Quét hai góc liên tục"
+    >
       <header className="capture-session-head">
-        <div>
+        <div className="capture-session-head-left">
           <strong>Camera trực tiếp</strong>
           <span>{view === "front" ? "01 · Chính diện" : "02 · Góc nghiêng"}</span>
+          <span className="capture-mode-tag">{upper ? "Thân trên" : "Toàn thân"}</span>
         </div>
-        <div>
-          <select
-            aria-label="Chọn camera"
+        <div className="capture-session-head-right">
+          <CustomSelect
+            ariaLabel="Chọn camera"
             value={device}
             disabled={phase !== "ready"}
-            onChange={(e) => setDevice(e.target.value)}
+            onChange={(val) => setDevice(val)}
+            options={[
+              { value: "", label: "Camera mặc định" },
+              ...devices.map((d, i) => ({
+                value: d.deviceId,
+                label: d.label || `Camera ${i + 1}`,
+              })),
+            ]}
+            size="sm"
+            variant="header"
+            className="capture-device-select"
+          />
+          <button
+            type="button"
+            className="capture-expand-btn"
+            onClick={toggleExpand}
+            aria-label={expanded ? "Thu nhỏ camera" : "Mở rộng camera"}
+            title={expanded ? "Thu nhỏ (Esc)" : "Mở rộng camera"}
           >
-            <option value="">Camera mặc định</option>
-            {devices.map((d, i) => (
-              <option value={d.deviceId} key={d.deviceId}>
-                {d.label || `Camera ${i + 1}`}
-              </option>
-            ))}
-          </select>
-          <button type="button" onClick={handleCancel} aria-label="Đóng camera">
+            {expanded ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+          </button>
+          <button
+            type="button"
+            className="capture-close-btn"
+            onClick={handleCancel}
+            aria-label="Đóng camera"
+            title="Đóng camera"
+          >
             <X size={19} />
           </button>
         </div>
       </header>
 
-      <div
-        className={`capture-live ${feedback?.ready ? "pose-ready" : ""}`}
-        style={{ aspectRatio: `${size.w}/${size.h}` }}
-      >
-        <video ref={video} playsInline muted />
-        <div className="capture-frame-mark" aria-hidden="true" />
-        {!ready && !error && (
-          <div className="capture-overlay">
-            <LoaderCircle className="spin" size={28} />
-            <p>Đang mở camera…</p>
-          </div>
-        )}
-        {count !== null && (
-          <div className="capture-count" aria-live="polite">
-            {count}
-          </div>
-        )}
-        {phase === "turn" && (
-          <div className="capture-turn" role="status">
-            <Check size={26} />
-            <strong>Đã chụp chính diện</strong>
-            <RotateCcw size={44} />
-            <h2>Xoay người 90°</h2>
-            <p>Giữ nguyên vị trí. Camera sẽ tự đếm ngược khi bạn đứng đúng góc.</p>
-          </div>
-        )}
-        <div className="capture-instruction">
-          <h2>{view === "front" ? "Hướng hai vai về camera" : "Xoay nghiêng người 90°"}</h2>
-          <p>
-            {upper
-              ? "Thấy đầu, vai, eo và cạp quần · Không cần thấy chân"
-              : "Giữ toàn bộ đầu và bàn chân trong khung"}
-          </p>
-        </div>
-      </div>
-
-      <div className="capture-progress" aria-label="Tiến độ chụp">
-        <span className={view === "front" ? "active" : "done"}>
-          {view === "side" ? <Check size={15} /> : "01"} Chính diện
-        </span>
-        <i />
-        <span className={view === "side" ? "active" : ""}>02 Góc nghiêng</span>
-      </div>
-
-      <div className="capture-status" role="status">
-        {error ||
-          (phase === "ready"
-            ? "Sẵn sàng? Bấm bắt đầu, sau đó đứng vào giữa khung."
-            : phase === "turn"
-            ? "Đang chuyển sang góc nghiêng…"
-            : count !== null
-            ? `Giữ yên · Chụp sau ${count} giây`
-            : feedback?.message || "Đang nhận diện tư thế…")}
-      </div>
-
-      <footer className="capture-session-actions">
-        {!ready && error ? (
-          <button className="capture-primary" type="button" onClick={() => setAttempt((n) => n + 1)}>
-            <RotateCcw size={18} />
-            Thử lại camera
-          </button>
-        ) : phase === "ready" ? (
-          <button
-            className="capture-primary"
-            type="button"
-            disabled={!ready}
-            onClick={() => setPhase("running")}
+      <div className="capture-session-body">
+        <div className="capture-stage-wrapper">
+          <div
+            className={`capture-live ${feedback?.ready ? "pose-ready" : ""}`}
+            style={{ aspectRatio: `${size.w}/${size.h}` }}
           >
-            <Camera size={18} />
-            Bắt đầu quét
-            <ArrowRight size={18} />
-          </button>
-        ) : (
-          <p>
-            <ScanLine size={18} />
-            Tự chụp hai góc · Không cần bấm thêm
-          </p>
-        )}
-        <button className="capture-cancel" type="button" onClick={handleCancel}>
-          Hủy phiên
-        </button>
-      </footer>
+            <video ref={video} playsInline muted />
+            <div className="capture-frame-mark" aria-hidden="true" />
+            <div className="capture-view-pill" aria-hidden="true">
+              <span className="capture-view-pill-dot" />
+              <span>{view === "front" ? "01 · Chính diện" : "02 · Góc nghiêng 90°"}</span>
+            </div>
+            {!ready && !error && (
+              <div className="capture-overlay">
+                <LoaderCircle className="spin" size={28} />
+                <p>Đang mở camera…</p>
+              </div>
+            )}
+            {count !== null && (
+              <div className="capture-count" aria-live="polite">
+                {count}
+              </div>
+            )}
+            {phase === "turn" && (
+              <div className="capture-turn" role="status">
+                <Check size={26} />
+                <strong>Đã chụp chính diện</strong>
+                <RotateCcw size={44} />
+                <h2>Xoay người 90°</h2>
+                <p>Giữ nguyên vị trí. Camera sẽ tự đếm ngược khi bạn đứng đúng góc.</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <aside className="capture-sidebar">
+          <div className="capture-progress" aria-label="Tiến độ chụp">
+            <span className={view === "front" ? "active" : "done"}>
+              {view === "side" ? <Check size={15} /> : "01"} Chính diện
+            </span>
+            <i />
+            <span className={view === "side" ? "active" : ""}>02 Góc nghiêng</span>
+          </div>
+
+          <div className="capture-instruction capture-guide-card">
+            <span className="capture-guide-step">
+              {view === "front" ? "Bước 01 / 02" : "Bước 02 / 02"}
+            </span>
+            <h2>{view === "front" ? "Hướng hai vai về camera" : "Xoay nghiêng người 90°"}</h2>
+            <p>
+              {upper
+                ? "Thấy rõ đầu, hai vai, eo và cạp quần · Khoảng cách 1.5–2m"
+                : "Giữ toàn bộ đầu và bàn chân trong khung · Khoảng cách 2–2.5m"}
+            </p>
+          </div>
+
+          <div className="capture-status capture-status-card" role="status">
+            <span className="capture-status-badge-title">Trạng thái nhận diện AI</span>
+            <div className="capture-status-message">
+              {error ||
+                (phase === "ready"
+                  ? "Sẵn sàng? Bấm bắt đầu, sau đó đứng vào giữa khung."
+                  : phase === "turn"
+                  ? "Đang chuyển sang góc nghiêng…"
+                  : count !== null
+                  ? `Giữ yên · Chụp sau ${count} giây`
+                  : feedback?.message || "Đang nhận diện tư thế…")}
+            </div>
+          </div>
+
+          <div className="capture-posture-tips">
+            <strong>Mẹo nhận diện tối ưu:</strong>
+            <p>
+              {upper
+                ? "Đặt máy cao ngang ngực hoặc eo, đứng thẳng tự nhiên, không để áo dài trùm che mất cạp quần."
+                : "Đứng thẳng tự nhiên, hai tay thả lỏng, đảm bảo đủ ánh sáng phòng."}
+            </p>
+          </div>
+
+          <footer className="capture-session-actions">
+            {!ready && error ? (
+              <button
+                className="capture-primary"
+                type="button"
+                onClick={() => setAttempt((n) => n + 1)}
+              >
+                <RotateCcw size={18} />
+                Thử lại camera
+              </button>
+            ) : phase === "ready" ? (
+              <button
+                className="capture-primary"
+                type="button"
+                disabled={!ready}
+                onClick={() => setPhase("running")}
+              >
+                <Camera size={18} />
+                Bắt đầu quét
+                <ArrowRight size={18} />
+              </button>
+            ) : (
+              <p className="capture-auto-info">
+                <ScanLine size={18} />
+                Tự chụp hai góc · Không cần bấm thêm
+              </p>
+            )}
+            <button className="capture-cancel" type="button" onClick={handleCancel}>
+              Hủy phiên
+            </button>
+          </footer>
+        </aside>
+      </div>
     </section>
   );
 }

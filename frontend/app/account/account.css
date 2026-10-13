@@ -1,0 +1,2092 @@
+/* ==========================================================================
+   MORPH Studio — Account & Body Profile Design System
+   Warm Ivory (#FAF7F0) & Champagne Gold (#C6A15B)
+   Bo góc 24px cho container, 18px cho card, 12px cho controls, 9999px cho pills
+   ========================================================================== */
+
+:root {
+  --account-bg: #FAF7F0;
+  --account-surface: #FFFFFF;
+  --account-surface-subtle: #F5EFE3;
+  --account-surface-warm: #FAF4E8;
+  --account-primary: #C6A15B;
+  --account-primary-hover: #B58F49;
+  --account-primary-light: #FBF6EB;
+  --account-on-primary: #26211A;
+  --account-text: #26211A;
+  --account-text-secondary: #5C564D;
+  --account-text-muted: #8C8479;
+  --account-border: #E5DEC9;
+  --account-border-subtle: #EFE9DB;
+  --account-radius-container: 24px;
+  --account-radius-card: 18px;
+  --account-radius-control: 12px;
+  --account-radius-pill: 9999px;
+  --account-shadow-card: 0 4px 20px -2px rgba(38, 33, 26, 0.05), 0 2px 6px -1px rgba(38, 33, 26, 0.03);
+  --account-shadow-hero: 0 12px 36px -4px rgba(198, 161, 91, 0.12), 0 4px 12px -2px rgba(38, 33, 26, 0.04);
+  --account-shadow-modal: 0 24px 64px rgba(38, 33, 26, 0.18), 0 8px 24px rgba(38, 33, 26, 0.08);
+}
+
+/* Page Layout Wrappers */
+.account-page-layout {
+  min-height: 100vh;
+  background-color: var(--account-bg);
+  display: flex;
+  flex-direction: column;
+}
+
+.account-main-content {
+  flex: 1;
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 36px 24px 72px 24px;
+}
+
+/* Breadcrumbs */
+.account-breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--account-text-muted);
+  margin-bottom: 24px;
+}
+
+.account-breadcrumbs a {
+  color: var(--account-text-secondary);
+  text-decoration: none;
+  transition: color 150ms ease;
+}
+
+.account-breadcrumbs a:hover {
+  color: var(--account-primary-hover);
+  text-decoration: underline;
+}
+
+.account-breadcrumbs .bc-separator {
+  color: var(--account-border);
+}
+
+.account-breadcrumbs .bc-current {
+  color: var(--account-text);
+  font-weight: 600;
+}
+
+/* Page Top Header */
+.account-header-area {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 32px;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.account-header-title-box h1 {
+  font-size: clamp(26px, 3vw, 36px);
+  font-weight: 600;
+  color: var(--account-text);
+  margin: 0 0 6px 0;
+  letter-spacing: -0.025em;
+}
+
+.account-header-subtitle {
+  font-size: 15px;
+  color: var(--account-text-secondary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.account-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Primary and Secondary Action Buttons */
+.btn-gold-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background-color: var(--account-primary);
+  color: var(--account-on-primary);
+  font-weight: 600;
+  font-size: 14px;
+  padding: 12px 22px;
+  border-radius: var(--account-radius-control);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px 8px rgba(198, 161, 91, 0.25);
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 180ms ease;
+}
+
+.btn-gold-primary:hover {
+  background-color: var(--account-primary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(198, 161, 91, 0.35);
+}
+
+.btn-gold-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background-color: var(--account-surface);
+  color: var(--account-text);
+  font-weight: 600;
+  font-size: 14px;
+  padding: 11px 20px;
+  border-radius: var(--account-radius-control);
+  border: 1px solid var(--account-border);
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 180ms ease;
+}
+
+.btn-gold-secondary:hover {
+  background-color: var(--account-surface-warm);
+  border-color: var(--account-primary);
+}
+
+.btn-gold-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background-color: transparent;
+  color: var(--account-primary-hover);
+  font-weight: 600;
+  font-size: 13px;
+  padding: 8px 16px;
+  border-radius: var(--account-radius-control);
+  border: 1.5px solid var(--account-primary);
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 160ms ease;
+}
+
+.btn-gold-outline:hover {
+  background-color: var(--account-primary-light);
+}
+
+.btn-danger-outline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: transparent;
+  color: #9E2A2B;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 8px 14px;
+  border-radius: var(--account-radius-control);
+  border: 1px solid #F5C6C6;
+  cursor: pointer;
+  transition: all 160ms ease;
+}
+
+.btn-danger-outline:hover {
+  background-color: #FBEFED;
+  border-color: #9E2A2B;
+}
+
+/* Auth Guard Prompt Box */
+.account-auth-guard-box {
+  background: var(--account-surface);
+  border: 1px solid var(--account-border);
+  border-radius: var(--account-radius-container);
+  padding: 48px 32px;
+  text-align: center;
+  box-shadow: var(--account-shadow-card);
+  max-width: 600px;
+  margin: 40px auto;
+}
+
+.guard-icon-circle {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--account-surface-warm);
+  color: var(--account-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px auto;
+  border: 1px solid var(--account-border-subtle);
+}
+
+.account-auth-guard-box h2 {
+  font-size: 24px;
+  color: var(--account-text);
+  margin: 0 0 12px 0;
+  font-weight: 600;
+}
+
+.account-auth-guard-box p {
+  color: var(--account-text-secondary);
+  font-size: 15px;
+  line-height: 1.6;
+  margin: 0 0 28px 0;
+}
+
+.guard-actions-row {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* ==========================================================================
+   PAGE: /account (Overview)
+   ========================================================================== */
+
+.account-overview-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+@media (max-width: 860px) {
+  .account-overview-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.account-card-panel {
+  background: var(--account-surface);
+  border: 1px solid var(--account-border);
+  border-radius: var(--account-radius-container);
+  padding: 28px;
+  box-shadow: var(--account-shadow-card);
+}
+
+.panel-header-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--account-text);
+  margin-bottom: 20px;
+}
+
+.panel-header-title svg {
+  color: var(--account-primary);
+}
+
+/* User Info Form */
+.user-profile-info-row {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 24px;
+}
+
+.user-avatar-badge {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #C6A15B 0%, #B58F49 100%);
+  color: #FFFFFF;
+  font-size: 22px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(198, 161, 91, 0.3);
+}
+
+.user-info-text {
+  flex: 1;
+}
+
+.user-display-name-view {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--account-text);
+  margin-bottom: 4px;
+}
+
+.user-email-text {
+  font-size: 13px;
+  color: var(--account-text-secondary);
+}
+
+.btn-inline-edit {
+  background: none;
+  border: none;
+  color: var(--account-primary);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  transition: background 150ms ease;
+}
+
+.btn-inline-edit:hover {
+  background: var(--account-surface-warm);
+}
+
+/* Edit Name Input Area */
+.edit-name-form {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.edit-name-input {
+  font-family: inherit;
+  font-size: 14px;
+  padding: 8px 12px;
+  border: 1px solid var(--account-border);
+  border-radius: var(--account-radius-control);
+  background: #FFFFFF;
+  color: var(--account-text);
+  outline: none;
+  flex: 1;
+  min-width: 160px;
+}
+
+.edit-name-input:focus {
+  border-color: var(--account-primary);
+  box-shadow: 0 0 0 3px rgba(198, 161, 91, 0.15);
+}
+
+/* Auto-Save Toggle Row */
+.setting-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px;
+  background: var(--account-surface-warm);
+  border-radius: var(--account-radius-card);
+  border: 1px solid var(--account-border-subtle);
+  margin-top: 16px;
+}
+
+.toggle-info-col h4 {
+  margin: 0 0 4px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--account-text);
+}
+
+.toggle-info-col p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--account-text-secondary);
+  line-height: 1.4;
+}
+
+/* Toggle Switch Control */
+.toggle-switch-wrapper {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 26px;
+  flex-shrink: 0;
+}
+
+.toggle-switch-wrapper input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #D1C9B8;
+  transition: 200ms ease;
+  border-radius: 34px;
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 20px;
+  width: 20px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 200ms ease;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+input:checked + .toggle-slider {
+  background-color: var(--account-primary);
+}
+
+input:checked + .toggle-slider:before {
+  transform: translateX(22px);
+}
+
+/* Navigation Card to Body Profile */
+.body-profile-nav-card {
+  background: linear-gradient(135deg, #FFFFFF 0%, #FAF6EE 100%);
+  border: 1.5px solid var(--account-primary);
+  border-radius: var(--account-radius-container);
+  padding: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 32px;
+  box-shadow: var(--account-shadow-hero);
+  text-decoration: none;
+  transition: all 200ms ease;
+  cursor: pointer;
+}
+
+.body-profile-nav-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 42px -4px rgba(198, 161, 91, 0.2);
+}
+
+.nav-card-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.nav-card-icon-box {
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  background: var(--account-primary);
+  color: var(--account-on-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 14px rgba(198, 161, 91, 0.35);
+}
+
+.nav-card-info h3 {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--account-text);
+  margin: 0 0 6px 0;
+}
+
+.nav-card-info p {
+  font-size: 14px;
+  color: var(--account-text-secondary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.nav-card-stats-pills {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.stat-pill {
+  font-size: 12px;
+  font-weight: 600;
+  background: #FFFFFF;
+  border: 1px solid var(--account-border);
+  padding: 4px 10px;
+  border-radius: var(--account-radius-pill);
+  color: var(--account-text);
+}
+
+.nav-card-arrow {
+  color: var(--account-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #FFFFFF;
+  border: 1px solid var(--account-border);
+  flex-shrink: 0;
+  transition: transform 180ms ease, background 180ms ease;
+}
+
+.body-profile-nav-card:hover .nav-card-arrow {
+  transform: translateX(4px);
+  background: var(--account-primary);
+  color: var(--account-on-primary);
+}
+
+/* ==========================================================================
+   PAGE: /account/body-profile (Hero, Chart & History)
+   ========================================================================== */
+
+/* Section 1: Hero Card for Latest Measurements */
+.latest-measurements-hero {
+  background: var(--account-surface);
+  border: 1px solid var(--account-border);
+  border-radius: var(--account-radius-container);
+  padding: 32px;
+  margin-bottom: 32px;
+  box-shadow: var(--account-shadow-hero);
+  position: relative;
+  overflow: hidden;
+}
+
+.latest-measurements-hero:before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #C6A15B 0%, #D8BE7A 50%, #C6A15B 100%);
+}
+
+.hero-top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.hero-title-box {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hero-badge-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--account-primary-hover);
+  background: var(--account-primary-light);
+  padding: 4px 10px;
+  border-radius: var(--account-radius-pill);
+  width: fit-content;
+  margin-bottom: 6px;
+}
+
+.hero-title-box h2 {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--account-text);
+  margin: 0;
+}
+
+/* Important: Explicit date banner so measurements are never mixed */
+.hero-date-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--account-text-secondary);
+  background: var(--account-surface-warm);
+  border: 1px solid var(--account-border-subtle);
+  padding: 8px 14px;
+  border-radius: var(--account-radius-control);
+  margin-top: 6px;
+}
+
+.hero-date-banner strong {
+  color: var(--account-text);
+}
+
+.hero-actions-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Metric Display Grid */
+.hero-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+@media (max-width: 1024px) {
+  .hero-metrics-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .hero-metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.metric-card-item {
+  background: var(--account-surface-warm);
+  border: 1px solid var(--account-border-subtle);
+  border-radius: var(--account-radius-card);
+  padding: 18px 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: transform 150ms ease, border-color 150ms ease;
+}
+
+.metric-card-item:hover {
+  border-color: var(--account-primary);
+  transform: translateY(-2px);
+}
+
+.metric-card-header {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--account-text-secondary);
+  margin-bottom: 8px;
+}
+
+.metric-card-value {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.metric-card-value .val-big {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--account-text);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.metric-card-value .val-unit {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--account-text-muted);
+}
+
+.metric-card-value .val-null {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--account-text-muted);
+  line-height: 1.3;
+}
+
+.metric-source-badge {
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: var(--account-radius-pill);
+  width: fit-content;
+  display: inline-block;
+  line-height: 1.2;
+}
+
+.badge-user_input {
+  background: #E8EEF5;
+  color: #2D5A7B;
+}
+
+.badge-photo_estimate {
+  background: #EEF6EE;
+  color: #194E3D;
+}
+
+.badge-photo_with_prior {
+  background: #FCF4E6;
+  color: #8F5819;
+}
+
+.badge-template_model {
+  background: #F4EBF6;
+  color: #7B2D78;
+}
+
+.badge-unavailable {
+  background: #F1EFEA;
+  color: #8C8479;
+}
+
+.hero-quick-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--account-text-secondary);
+  padding-top: 14px;
+  border-top: 1px solid var(--account-border-subtle);
+}
+
+/* ==========================================================================
+   COMPONENT: BodyChart.tsx Styling
+   ========================================================================== */
+
+.body-chart-card {
+  background: var(--account-surface);
+  border: 1px solid var(--account-border);
+  border-radius: var(--account-radius-container);
+  padding: 28px;
+  margin-bottom: 32px;
+  box-shadow: var(--account-shadow-card);
+}
+
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.chart-title-area {
+  flex: 1;
+}
+
+.chart-title-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--account-text);
+  margin-bottom: 4px;
+}
+
+.chart-title-badge svg {
+  color: var(--account-primary);
+}
+
+.chart-subtitle {
+  font-size: 13.5px;
+  color: var(--account-text-secondary);
+  margin: 0;
+}
+
+.chart-range-group {
+  display: flex;
+  background: var(--account-surface-warm);
+  border: 1px solid var(--account-border);
+  border-radius: var(--account-radius-control);
+  padding: 4px;
+  gap: 4px;
+}
+
+.range-pill {
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--account-text-secondary);
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.range-pill:hover {
+  color: var(--account-text);
+}
+
+.range-pill.is-active {
+  background: #FFFFFF;
+  color: var(--account-text);
+  box-shadow: 0 1px 4px rgba(38, 33, 26, 0.08);
+}
+
+/* Metric Toggles */
+.chart-metric-toggles {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.metric-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: var(--account-radius-pill);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1.5px solid;
+  transition: all 150ms ease;
+}
+
+.metric-symbol-icon {
+  font-size: 13px;
+  line-height: 1;
+}
+
+.metric-toggle-btn.is-inactive {
+  opacity: 0.6;
+}
+
+.metric-toggle-btn:hover {
+  opacity: 1;
+}
+
+/* SVG Chart Canvas */
+.chart-canvas-wrapper {
+  position: relative;
+  width: 100%;
+  margin-bottom: 16px;
+  background: #FCFAF7;
+  border-radius: var(--account-radius-card);
+  border: 1px solid var(--account-border-subtle);
+  overflow: visible;
+}
+
+.svg-container {
+  position: relative;
+  width: 100%;
+  padding-bottom: 40.5%; /* Aspect ratio 840 x 340 */
+  height: 0;
+}
+
+.body-chart-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.chart-empty-state {
+  padding: 64px 20px;
+  text-align: center;
+  color: var(--account-text-muted);
+}
+
+.chart-empty-state .empty-icon {
+  margin: 0 auto 12px auto;
+  color: var(--account-border);
+}
+
+.chart-empty-state .empty-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--account-text);
+  margin: 0 0 4px 0;
+}
+
+.chart-empty-state .empty-hint {
+  font-size: 13px;
+  color: var(--account-text-secondary);
+  margin: 0;
+}
+
+/* Floating Tooltip */
+.chart-floating-tooltip {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  background: #26211A;
+  color: #FAF7F0;
+  padding: 12px 14px;
+  border-radius: var(--account-radius-control);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  font-size: 12px;
+  pointer-events: auto;
+  z-index: 20;
+  min-width: 180px;
+  white-space: nowrap;
+}
+
+.chart-floating-tooltip:after {
+  content: "";
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 6px 6px 0 6px;
+  border-style: solid;
+  border-color: #26211A transparent transparent transparent;
+}
+
+.tooltip-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 11px;
+  color: #B8B0A3;
+  border-bottom: 1px solid #3D352B;
+  padding-bottom: 4px;
+}
+
+.tooltip-mode-badge {
+  background: #3D352B;
+  color: #C6A15B;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.tooltip-body {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.tooltip-metric {
+  font-weight: 600;
+}
+
+.tooltip-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: #FFFFFF;
+}
+
+.tooltip-source {
+  font-size: 11px;
+  color: #8C8479;
+}
+
+.tooltip-source strong {
+  color: #FAF7F0;
+}
+
+.tooltip-action-btn {
+  margin-top: 8px;
+  background: var(--account-primary);
+  color: var(--account-on-primary);
+  border: none;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 8px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  width: 100%;
+  justify-content: center;
+}
+
+.tooltip-action-btn:hover {
+  background: var(--account-primary-hover);
+}
+
+/* Cluster Badge Markers & Popover */
+.chart-cluster-badge-group:hover rect {
+  filter: drop-shadow(0 2px 6px rgba(198, 161, 91, 0.45));
+  transition: all 0.2s ease;
+}
+
+.chart-cluster-popover {
+  position: absolute;
+  transform: translate(-50%, 0);
+  background: #26211A;
+  color: #FAF7F0;
+  padding: 14px 16px;
+  border-radius: var(--account-radius-card);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  font-size: 12px;
+  pointer-events: auto;
+  z-index: 25;
+  width: 320px;
+  max-width: 90vw;
+  border: 1px solid #4A3F33;
+}
+
+.cluster-popover-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid #3D352B;
+  padding-bottom: 6px;
+}
+
+.cluster-header-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #C6A15B;
+  font-size: 12.5px;
+}
+
+.cluster-icon {
+  color: #C6A15B;
+  flex-shrink: 0;
+}
+
+.cluster-close-btn {
+  background: none;
+  border: none;
+  color: #8C8479;
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+}
+
+.cluster-close-btn:hover {
+  color: #FFFFFF;
+  background: #3D352B;
+}
+
+.cluster-popover-note {
+  font-size: 11px;
+  color: #A89F91;
+  margin: 0 0 10px 0;
+  line-height: 1.4;
+}
+
+.cluster-scans-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.cluster-scan-item {
+  background: #332B22;
+  border: 1px solid #473C2F;
+  border-radius: var(--account-radius-control);
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: border-color 0.2s;
+}
+
+.cluster-scan-item:hover {
+  border-color: #C6A15B;
+}
+
+.cluster-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+
+.cluster-item-time {
+  font-weight: 700;
+  color: #FFFFFF;
+}
+
+.cluster-item-date {
+  color: #A89F91;
+}
+
+.cluster-item-mode {
+  margin-left: auto;
+  background: #473C2F;
+  color: #C6A15B;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.cluster-item-measurements {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.meas-chip {
+  background: #26211A;
+  border: 1px solid #3D352B;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10.5px;
+  color: #DDD4C6;
+}
+
+.meas-chip strong {
+  color: #FFFFFF;
+}
+
+.cluster-item-action {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 2px;
+}
+
+.cluster-scan-select-btn {
+  background: var(--account-primary);
+  color: var(--account-on-primary);
+  border: none;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.cluster-scan-select-btn:hover {
+  background: var(--account-primary-hover);
+  color: var(--account-on-primary);
+}
+
+/* Disclaimer Bar */
+.chart-disclaimer-bar {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: var(--account-surface-warm);
+  border: 1px solid var(--account-border-subtle);
+  padding: 10px 14px;
+  border-radius: var(--account-radius-control);
+  font-size: 12.5px;
+  color: var(--account-text-secondary);
+  line-height: 1.45;
+  margin-bottom: 12px;
+}
+
+.disclaimer-icon {
+  color: var(--account-primary);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* Data Table Below Chart */
+.chart-table-toggle-row {
+  display: flex;
+  justify-content: center;
+  margin: 12px 0;
+}
+
+.table-toggle-btn {
+  background: none;
+  border: none;
+  color: var(--account-primary-hover);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 4px 8px;
+}
+
+.chart-data-table-container {
+  overflow-x: auto;
+  border: 1px solid var(--account-border);
+  border-radius: var(--account-radius-card);
+  margin-top: 14px;
+}
+
+.chart-data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  text-align: left;
+}
+
+.chart-data-table th {
+  background: var(--account-surface-subtle);
+  color: var(--account-text);
+  font-weight: 600;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--account-border);
+  white-space: nowrap;
+}
+
+.chart-data-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--account-border-subtle);
+  color: var(--account-text-secondary);
+  white-space: nowrap;
+}
+
+.chart-data-table tr:hover {
+  background: var(--account-surface-warm);
+}
+
+.mode-pill {
+  font-size: 11px;
+  font-weight: 600;
+  background: #FFFFFF;
+  border: 1px solid var(--account-border);
+  padding: 2px 8px;
+  border-radius: var(--account-radius-pill);
+}
+
+.src-hint {
+  font-size: 10px;
+  color: var(--account-text-muted);
+}
+
+.tbl-action-link {
+  color: var(--account-primary);
+  font-weight: 600;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.tbl-action-link:hover {
+  text-decoration: underline;
+}
+
+/* ==========================================================================
+   SECTION 3: Scan History List & Selection
+   ========================================================================== */
+
+.history-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.history-title-box h3 {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--account-text);
+  margin: 0 0 4px 0;
+}
+
+.history-subtitle {
+  font-size: 13.5px;
+  color: var(--account-text-secondary);
+  margin: 0;
+}
+
+/* Compare Sticky Float Bar */
+.compare-selection-bar {
+  background: #26211A;
+  color: #FAF7F0;
+  border-radius: var(--account-radius-card);
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  animation: slideDown 200ms ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.compare-bar-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13.5px;
+}
+
+.compare-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-compare-trigger {
+  background: var(--account-primary);
+  color: var(--account-on-primary);
+  border: none;
+  font-weight: 600;
+  font-size: 13.5px;
+  padding: 8px 18px;
+  border-radius: var(--account-radius-control);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-compare-trigger:hover {
+  background: var(--account-primary-hover);
+}
+
+.btn-clear-selection {
+  background: none;
+  border: none;
+  color: #B8B0A3;
+  font-size: 12.5px;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+/* History Cards List */
+.history-cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.scan-history-card {
+  background: var(--account-surface);
+  border: 1px solid var(--account-border);
+  border-radius: var(--account-radius-container);
+  padding: 22px 24px;
+  box-shadow: var(--account-shadow-card);
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  transition: all 180ms ease;
+  position: relative;
+}
+
+.scan-history-card.is-selected-for-compare {
+  border-color: var(--account-primary);
+  background: var(--account-surface-warm);
+  box-shadow: 0 0 0 2px rgba(198, 161, 91, 0.3);
+}
+
+.scan-history-card:hover {
+  border-color: #D6CCA8;
+  transform: translateY(-1px);
+}
+
+/* Checkbox for compare */
+.scan-card-select-col {
+  flex-shrink: 0;
+}
+
+.custom-checkbox {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  border: 1.5px solid var(--account-border);
+  cursor: pointer;
+  accent-color: var(--account-primary);
+}
+
+.scan-card-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.scan-card-top-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.scan-card-time {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--account-text);
+}
+
+.scan-card-meta-pill {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--account-radius-pill);
+  background: var(--account-surface-subtle);
+  color: var(--account-text-secondary);
+}
+
+.scan-card-note {
+  font-size: 13px;
+  color: var(--account-text-secondary);
+  font-style: italic;
+}
+
+.scan-card-metrics-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.scan-card-metric-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  color: var(--account-text-secondary);
+}
+
+.scan-card-metric-badge strong {
+  color: var(--account-text);
+  font-weight: 700;
+}
+
+.scan-card-actions-col {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Action Icons */
+.btn-action-icon {
+  background: none;
+  border: 1px solid var(--account-border);
+  color: var(--account-text-secondary);
+  border-radius: var(--account-radius-control);
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 150ms ease;
+  text-decoration: none;
+}
+
+.btn-action-icon:hover {
+  background: var(--account-surface-warm);
+  border-color: var(--account-primary);
+  color: var(--account-text);
+}
+
+.btn-action-icon.is-danger:hover {
+  background: #FBEFED;
+  border-color: #9E2A2B;
+  color: #9E2A2B;
+}
+
+/* Empty State */
+.history-empty-state {
+  background: var(--account-surface);
+  border: 1px dashed var(--account-border);
+  border-radius: var(--account-radius-container);
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--account-text-muted);
+}
+
+.history-empty-state svg {
+  margin-bottom: 16px;
+  color: var(--account-border);
+}
+
+.history-empty-state h4 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--account-text);
+  margin: 0 0 8px 0;
+}
+
+.history-empty-state p {
+  font-size: 14px;
+  color: var(--account-text-secondary);
+  margin: 0 0 24px 0;
+  max-width: 440px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ==========================================================================
+   COMPONENT: ScanCompareModal.tsx Styling
+   ========================================================================== */
+
+.compare-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(38, 33, 26, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  animation: fadeIn 200ms ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.compare-modal-sheet {
+  background: var(--account-surface);
+  border-radius: var(--account-radius-container);
+  box-shadow: var(--account-shadow-modal);
+  width: 100%;
+  max-width: 900px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--account-border);
+  animation: scaleUp 220ms ease-out;
+}
+
+@keyframes scaleUp {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.compare-modal-header {
+  padding: 24px 28px 18px 28px;
+  border-bottom: 1px solid var(--account-border);
+}
+
+.header-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.header-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--account-text);
+}
+
+.header-badge svg {
+  color: var(--account-primary);
+}
+
+.close-icon-btn {
+  background: none;
+  border: none;
+  color: var(--account-text-muted);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 150ms ease;
+}
+
+.close-icon-btn:hover {
+  background: var(--account-surface-warm);
+  color: var(--account-text);
+}
+
+.header-desc {
+  font-size: 13px;
+  color: var(--account-text-secondary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.compare-modal-body {
+  padding: 24px 28px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.compare-warning-banner {
+  background: #FCF4E6;
+  border: 1px solid #ECCB94;
+  border-radius: var(--account-radius-card);
+  padding: 14px 18px;
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+  color: #8F5819;
+  font-size: 13px;
+}
+
+.compare-warning-banner .warning-icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.compare-warning-banner ul {
+  margin: 4px 0 0 0;
+  padding-left: 18px;
+}
+
+.compare-sessions-grid {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.session-card {
+  background: var(--account-surface-warm);
+  border: 1px solid var(--account-border);
+  border-radius: var(--account-radius-card);
+  padding: 16px 18px;
+}
+
+.session-card-badge {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--account-text-muted);
+  margin-bottom: 6px;
+}
+
+.session-card-badge.is-gold {
+  color: var(--account-primary-hover);
+}
+
+.session-time {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--account-text);
+  margin-bottom: 6px;
+}
+
+.session-meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.meta-pill {
+  font-size: 11px;
+  background: #FFFFFF;
+  border: 1px solid var(--account-border-subtle);
+  padding: 2px 8px;
+  border-radius: var(--account-radius-pill);
+  color: var(--account-text-secondary);
+}
+
+.session-note {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--account-text-secondary);
+}
+
+.compare-arrow-divider {
+  color: var(--account-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Compare Metrics Table */
+.compare-table-wrapper {
+  overflow-x: auto;
+  border: 1px solid var(--account-border);
+  border-radius: var(--account-radius-card);
+  margin-bottom: 18px;
+}
+
+.compare-metrics-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  text-align: left;
+}
+
+.compare-metrics-table th {
+  background: var(--account-surface-subtle);
+  color: var(--account-text);
+  font-weight: 600;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--account-border);
+  white-space: nowrap;
+}
+
+.compare-metrics-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--account-border-subtle);
+}
+
+.cell-metric-name {
+  white-space: nowrap;
+}
+
+.inline-incompatible-pill {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  color: #8F5819;
+  background: #FCF4E6;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-top: 4px;
+  width: fit-content;
+}
+
+.val-number {
+  font-weight: 600;
+  color: var(--account-text);
+}
+
+.source-tag {
+  font-size: 11px;
+  color: var(--account-text-muted);
+  margin-left: 4px;
+}
+
+.delta-badge {
+  display: inline-block;
+  font-size: 12.5px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.delta-positive {
+  background: #EEF6EE;
+  color: #194E3D;
+}
+
+.delta-negative {
+  background: #FDF2E9;
+  color: #9E4D1A;
+}
+
+.delta-zero {
+  background: var(--account-surface-warm);
+  color: var(--account-text-secondary);
+}
+
+.delta-na {
+  background: #F4F2ED;
+  color: var(--account-text-muted);
+  font-size: 11px;
+}
+
+.statement-text {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--account-text-secondary);
+  line-height: 1.4;
+}
+
+.compare-disclaimer-note {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: 12px;
+  color: var(--account-text-muted);
+  line-height: 1.4;
+  padding: 8px 12px;
+  background: var(--account-surface-warm);
+  border-radius: var(--account-radius-control);
+}
+
+.compare-modal-footer {
+  padding: 16px 28px;
+  border-top: 1px solid var(--account-border);
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ==========================================================================
+   PAGE: /account/body-profile/scans/[id] (Detail View)
+   ========================================================================== */
+
+.scan-detail-card {
+  background: var(--account-surface);
+  border: 1px solid var(--account-border);
+  border-radius: var(--account-radius-container);
+  padding: 32px;
+  box-shadow: var(--account-shadow-card);
+  margin-bottom: 28px;
+}
+
+.meta-grid-four {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 860px) {
+  .meta-grid-four {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.meta-box-item {
+  background: var(--account-surface-warm);
+  border: 1px solid var(--account-border-subtle);
+  border-radius: var(--account-radius-card);
+  padding: 14px 16px;
+}
+
+.meta-box-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--account-text-muted);
+  margin-bottom: 4px;
+}
+
+.meta-box-value {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--account-text);
+}
+
+/* Detail Measurements Table */
+.detail-measurements-table-wrapper {
+  overflow-x: auto;
+  border: 1px solid var(--account-border);
+  border-radius: var(--account-radius-card);
+  margin-bottom: 24px;
+}
+
+.detail-measurements-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+  text-align: left;
+}
+
+.detail-measurements-table th {
+  background: var(--account-surface-subtle);
+  color: var(--account-text);
+  font-weight: 600;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--account-border);
+}
+
+.detail-measurements-table td {
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--account-border-subtle);
+}
+
+/* Detail Size Fitting Card */
+.detail-size-fitting-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  background: linear-gradient(135deg, #FAF6EE 0%, #F5EFE0 100%);
+  border: 1px solid #E6D8BA;
+  border-radius: var(--account-radius-card);
+  padding: 24px 28px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 16px rgba(198, 161, 91, 0.08);
+}
+
+@media (max-width: 768px) {
+  .detail-size-fitting-card {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 20px;
+  }
+}
+
+.fitting-card-left {
+  flex: 1;
+}
+
+.fitting-badge-gold {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #EFE4CA;
+  color: #7A5816;
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 3px 10px;
+  border-radius: var(--account-radius-pill);
+  margin-bottom: 8px;
+}
+
+.detail-size-fitting-card h3 {
+  font-size: 17px;
+  font-weight: 700;
+  color: #26211A;
+  margin: 0 0 6px 0;
+}
+
+.detail-size-fitting-card p {
+  font-size: 13.5px;
+  color: #5C5243;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.fitting-card-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .fitting-card-actions {
+    width: 100%;
+  }
+
+  .fitting-card-actions button,
+  .fitting-card-actions a {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* User Note Editor Card */
+.note-editor-card {
+  background: var(--account-surface-warm);
+  border: 1px solid var(--account-border);
+  border-radius: var(--account-radius-card);
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.note-editor-card h4 {
+  margin: 0 0 8px 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--account-text);
+}
+
+.note-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: inherit;
+  font-size: 13.5px;
+  padding: 10px 14px;
+  border: 1px solid var(--account-border);
+  border-radius: var(--account-radius-control);
+  background: #FFFFFF;
+  color: var(--account-text);
+  resize: vertical;
+  min-height: 80px;
+  outline: none;
+  margin-bottom: 10px;
+}
+
+.note-textarea:focus {
+  border-color: var(--account-primary);
+  box-shadow: 0 0 0 3px rgba(198, 161, 91, 0.15);
+}
+
+/* Confirmation Modal (for Delete) */
+.confirm-modal-box {
+  background: #FFFFFF;
+  border-radius: var(--account-radius-container);
+  border: 1px solid var(--account-border);
+  padding: 32px;
+  max-width: 440px;
+  width: 100%;
+  text-align: center;
+  box-shadow: var(--account-shadow-modal);
+}
+
+.confirm-icon-danger {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #FBEFED;
+  color: #9E2A2B;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px auto;
+}
+
+.confirm-modal-box h3 {
+  font-size: 20px;
+  color: var(--account-text);
+  margin: 0 0 8px 0;
+}
+
+.confirm-modal-box p {
+  font-size: 14px;
+  color: var(--account-text-secondary);
+  line-height: 1.5;
+  margin: 0 0 24px 0;
+}
+
+.confirm-actions-row {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+/* Loading Spinner */
+.spin-gold {
+  animation: spin 1s linear infinite;
+  color: var(--account-primary);
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Responsive tweaks for Mobile (< 640px) */
+@media (max-width: 640px) {
+  .account-main-content {
+    padding: 20px 16px 48px 16px;
+  }
+
+  .latest-measurements-hero {
+    padding: 20px 16px;
+  }
+
+  .body-chart-card {
+    padding: 18px 14px;
+  }
+
+  .scan-history-card {
+    padding: 16px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .scan-card-actions-col {
+    width: 100%;
+    justify-content: flex-end;
+    padding-top: 10px;
+    border-top: 1px solid var(--account-border-subtle);
+  }
+
+  .compare-sessions-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .compare-arrow-divider {
+    transform: rotate(90deg);
+    padding: 6px 0;
+  }
+}

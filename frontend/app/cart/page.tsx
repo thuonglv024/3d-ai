@@ -1,14 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { ArrowLeft, ArrowRight, Minus, Plus, ShoppingBag, Trash2, Undo2, X, Sparkles, Check, Truck } from "lucide-react";
 import Header from "../../components/shop/Header";
 import Footer from "../../components/shop/Footer";
 import CartDrawer from "../../components/shop/CartDrawer";
 import WishlistDrawer from "../../components/shop/WishlistDrawer";
 import { useCart, CartItem } from "../../lib/CartContext";
-import { PRODUCTS, getProductBySlug, money } from "../../lib/catalog";
+import { PRODUCTS, getProductBySlug, money, type Product } from "../../lib/catalog";
+import { resolveProductsByIds, productCache, fetchProductBySlug } from "../../lib/catalogApi";
+import CustomSelect from "../../components/shop/CustomSelect";
 
 const FREE_SHIPPING_THRESHOLD = 500000;
 const STANDARD_SHIPPING_FEE = 30000;
@@ -32,6 +34,143 @@ export default function CartPage() {
   } = useCart();
 
   const [undoToast, setUndoToast] = useState<UndoToastState | null>(null);
+  const [resolvedProductsMap, setResolvedProductsMap] = useState<Record<string, Product>>({});
+
+  // Fetch full product details including variants from API
+  const fetchProductDetails = useCallback(async (slugOrId: string): Promise<Product | null> => {
+    if (!slugOrId) return null;
+    const cached = productCache.get(slugOrId);
+    if (cached && cached.variants && cached.variants.length > 0) {
+      return cached;
+    }
+
+    try {
+      const res = await fetch(`/api/products/${encodeURIComponent(slugOrId)}`, {
+        headers: { Accept: "application/json" },
+        cache: "no-store",
+      });
+      if (res.ok) {
+        const data = (await res.json()) as Product;
+        if (data && (data.id || data.slug)) {
+          productCache.set(data.id, data);
+          if (data.slug) productCache.set(data.slug, data);
+          return data;
+        }
+      }
+    } catch {
+      // Fall back
+    }
+
+    const fallback = await fetchProductBySlug(slugOrId);
+    if (fallback) {
+      productCache.set(fallback.id, fallback);
+      if (fallback.slug) productCache.set(fallback.slug, fallback);
+      return fallback;
+    }
+    return null;
+  }, []);
+
+  // Resolve full product info for all cart items from API
+  useEffect(() => {
+    if (cart.length === 0) return;
+    const idsToResolve = Array.from(
+      new Set(cart.flatMap((i) => [i.productId, i.productSlug]).filter(Boolean))
+    );
+    const missing = idsToResolve.filter((id) => !resolvedProductsMap[id]);
+    if (missing.length === 0) return;
+
+    let active = true;
+    Promise.all(missing.map((id) => fetchProductDetails(id))).then((results) => {
+      if (!active) return;
+      setResolvedProductsMap((prev) => {
+        const next = { ...prev };
+        results.forEach((p) => {
+          if (p) {
+            if (p.id) next[p.id] = p;
+            if (p.slug) next[p.slug] = p;
+          }
+        });
+        return next;
+      });
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [cart, resolvedProductsMap, fetchProductDetails]);
+
+  // Helper to extract product and real available variants (colors, sizes)
+  const getProductOptions = (item: CartItem) => {
+    const product =
+      resolvedProductsMap[item.productId] ||
+      resolvedProductsMap[item.productSlug] ||
+      productCache.get(item.productId) ||
+      productCache.get(item.productSlug) ||
+      getProductBySlug(item.productSlug);
+
+    // Available colors
+    let availableColors: { name: string; hex: string }[] = [];
+    if (product?.colors && product.colors.length > 0) {
+      availableColors = product.colors;
+    } else if (product?.variants && product.variants.length > 0) {
+      const colorMap = new Map<string, string>();
+      product.variants.forEach((v) => {
+        const cName = v.color_name || v.color;
+        if (cName && !colorMap.has(cName)) {
+          colorMap.set(cName, v.color_hex || v.colorHex || "#ccc");
+        }
+      });
+      availableColors = Array.from(colorMap.entries()).map(([name, hex]) => ({ name, hex }));
+    } else {
+      availableColors = [{ name: item.color, hex: "#ccc" }];
+    }
+
+    // Available sizes for currently selected color
+    let availableSizes: string[] = [];
+    if (product?.variants && product.variants.length > 0) {
+      const colorVariants = product.variants.filter(
+        (v) =>
+          (v.color_name === item.color || v.color === item.color) &&
+          (v.stock === undefined || v.stock > 0) &&
+          v.isActive !== false &&
+          v.is_active !== 0
+      );
+      if (colorVariants.length > 0) {
+        availableSizes = Array.from(new Set(colorVariants.map((v) => v.size)));
+      } else {
+        availableSizes = Array.from(new Set(product.variants.map((v) => v.size)));
+      }
+    } else if (product?.sizes && product.sizes.length > 0) {
+      availableSizes = product.sizes;
+    } else {
+      availableSizes = [item.size];
+    }
+
+    return { product, availableColors, availableSizes };
+  };
+
+  const handleColorChange = (item: CartItem, newColor: string) => {
+    const { product } = getProductOptions(item);
+    let targetSize = item.size;
+    if (product?.variants && product.variants.length > 0) {
+      const colorVariants = product.variants.filter(
+        (v) =>
+          (v.color_name === newColor || v.color === newColor) &&
+          (v.stock === undefined || v.stock > 0) &&
+          v.isActive !== false &&
+          v.is_active !== 0
+      );
+      const sizesForColor = colorVariants.map((v) => v.size);
+      if (sizesForColor.length > 0 && !sizesForColor.includes(item.size)) {
+        targetSize = sizesForColor[0];
+      }
+    }
+    updateVariant(item, newColor, targetSize);
+  };
+
+  const handleSizeChange = (item: CartItem, newSize: string) => {
+    updateVariant(item, item.color, newSize);
+  };
 
   // Auto-dismiss undo toast after 7 seconds
   useEffect(() => {
@@ -153,9 +292,7 @@ export default function CartPage() {
                     </thead>
                     <tbody>
                       {cart.map((item) => {
-                        const product = getProductBySlug(item.productSlug);
-                        const availableColors = product?.colors || [{ name: item.color, hex: "#ccc" }];
-                        const availableSizes = product?.sizes || [item.size];
+                        const { availableColors, availableSizes } = getProductOptions(item);
                         const lineTotal = item.price * item.quantity;
 
                         return (
@@ -166,7 +303,15 @@ export default function CartPage() {
                                   href={`/products/${item.productSlug}`}
                                   className="cart-product-thumb"
                                 >
-                                  <img src={item.image} alt={item.name} width="72" height="90" />
+                                  <img
+                                    src={item.image}
+                                    alt={item.name}
+                                    width="72"
+                                    height="90"
+                                    onError={(e) => {
+                                      e.currentTarget.src = "/products/ao-thun-essential.jpg";
+                                    }}
+                                  />
                                 </Link>
                                 <div className="cart-product-info">
                                   <Link
@@ -176,44 +321,44 @@ export default function CartPage() {
                                     {item.name}
                                   </Link>
 
-                                  {/* Inline variant changing */}
+                                  {/* Inline variant changing with real dynamic variants */}
                                   <div className="cart-inline-variant">
                                     <div className="cart-variant-group">
                                       <label htmlFor={`color-${item.id}`}>Màu:</label>
-                                      <select
+                                      <CustomSelect
                                         id={`color-${item.id}`}
-                                        className="cart-variant-select"
+                                        className="cart-variant-select-custom"
+                                        size="sm"
+                                        variant="compact"
                                         value={item.color}
-                                        aria-label={`Đổi màu cho ${item.name}`}
-                                        onChange={(e) =>
-                                          updateVariant(item, e.target.value, item.size)
+                                        ariaLabel={`Đổi màu cho ${item.name}`}
+                                        onChange={(val) =>
+                                          handleColorChange(item, val)
                                         }
-                                      >
-                                        {availableColors.map((c) => (
-                                          <option key={c.name} value={c.name}>
-                                            {c.name}
-                                          </option>
-                                        ))}
-                                      </select>
+                                        options={availableColors.map((c) => ({
+                                          value: c.name,
+                                          label: c.name,
+                                        }))}
+                                      />
                                     </div>
 
                                     <div className="cart-variant-group">
                                       <label htmlFor={`size-${item.id}`}>Size:</label>
-                                      <select
+                                      <CustomSelect
                                         id={`size-${item.id}`}
-                                        className="cart-variant-select"
+                                        className="cart-variant-select-custom"
+                                        size="sm"
+                                        variant="compact"
                                         value={item.size}
-                                        aria-label={`Đổi size cho ${item.name}`}
-                                        onChange={(e) =>
-                                          updateVariant(item, item.color, e.target.value)
+                                        ariaLabel={`Đổi size cho ${item.name}`}
+                                        onChange={(val) =>
+                                          handleSizeChange(item, val)
                                         }
-                                      >
-                                        {availableSizes.map((s) => (
-                                          <option key={s} value={s}>
-                                            {s}
-                                          </option>
-                                        ))}
-                                      </select>
+                                        options={availableSizes.map((s) => ({
+                                          value: s,
+                                          label: s,
+                                        }))}
+                                      />
                                     </div>
                                   </div>
                                 </div>
@@ -271,9 +416,7 @@ export default function CartPage() {
                 {/* Mobile 1-Column Card List */}
                 <div className="cart-mobile-card-list">
                   {cart.map((item) => {
-                    const product = getProductBySlug(item.productSlug);
-                    const availableColors = product?.colors || [{ name: item.color, hex: "#ccc" }];
-                    const availableSizes = product?.sizes || [item.size];
+                    const { availableColors, availableSizes } = getProductOptions(item);
                     const lineTotal = item.price * item.quantity;
 
                     return (
@@ -282,7 +425,15 @@ export default function CartPage() {
                           href={`/products/${item.productSlug}`}
                           className="cart-mobile-item-thumb"
                         >
-                          <img src={item.image} alt={item.name} width="84" height="105" />
+                          <img
+                            src={item.image}
+                            alt={item.name}
+                            width="84"
+                            height="105"
+                            onError={(e) => {
+                              e.currentTarget.src = "/products/ao-thun-essential.jpg";
+                            }}
+                          />
                         </Link>
 
                         <div className="cart-mobile-item-details">
@@ -296,34 +447,36 @@ export default function CartPage() {
                           <div className="cart-inline-variant">
                             <div className="cart-variant-group">
                               <label htmlFor={`m-color-${item.id}`}>Màu:</label>
-                              <select
+                              <CustomSelect
                                 id={`m-color-${item.id}`}
-                                className="cart-variant-select"
+                                className="cart-variant-select-custom"
+                                size="sm"
+                                variant="compact"
                                 value={item.color}
-                                onChange={(e) => updateVariant(item, e.target.value, item.size)}
-                              >
-                                {availableColors.map((c) => (
-                                  <option key={c.name} value={c.name}>
-                                    {c.name}
-                                  </option>
-                                ))}
-                              </select>
+                                ariaLabel={`Đổi màu cho ${item.name}`}
+                                onChange={(val) => handleColorChange(item, val)}
+                                options={availableColors.map((c) => ({
+                                  value: c.name,
+                                  label: c.name,
+                                }))}
+                              />
                             </div>
 
                             <div className="cart-variant-group">
                               <label htmlFor={`m-size-${item.id}`}>Size:</label>
-                              <select
+                              <CustomSelect
                                 id={`m-size-${item.id}`}
-                                className="cart-variant-select"
+                                className="cart-variant-select-custom"
+                                size="sm"
+                                variant="compact"
                                 value={item.size}
-                                onChange={(e) => updateVariant(item, item.color, e.target.value)}
-                              >
-                                {availableSizes.map((s) => (
-                                  <option key={s} value={s}>
-                                    {s}
-                                  </option>
-                                ))}
-                              </select>
+                                ariaLabel={`Đổi size cho ${item.name}`}
+                                onChange={(val) => handleSizeChange(item, val)}
+                                options={availableSizes.map((s) => ({
+                                  value: s,
+                                  label: s,
+                                }))}
+                              />
                             </div>
                           </div>
 

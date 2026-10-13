@@ -4,6 +4,8 @@ and authenticated order lookup via secret token.
 """
 from contextlib import contextmanager
 from datetime import datetime, timezone
+import hashlib
+import json
 import logging
 import os
 from pathlib import Path
@@ -13,11 +15,18 @@ import sqlite3
 from typing import Any, Optional, Union
 import uuid
 
+
 from fastapi import APIRouter, Body, Header, HTTPException, Query, Request, status
 from pydantic import BaseModel, ConfigDict, Field, AliasChoices
 
 from .catalog import PRODUCTS
 from .config import ROOT
+from .db import (
+    get_db_connection,
+    get_db_path,
+    get_product_by_slug_or_id,
+    run_migrations,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -37,92 +46,17 @@ STATUS_LABELS = {
 }
 
 
-def get_db_path() -> Path:
-    """Returns the path to the orders SQLite database."""
-    custom = os.getenv("MORPH_ORDERS_DB")
-    if custom:
-        p = Path(custom)
-        p.parent.mkdir(parents=True, exist_ok=True)
-        return p
-
-    # Preferred: workspace .runtime/orders.db
-    workspace_runtime = ROOT.parent / ".runtime"
-    try:
-        workspace_runtime.mkdir(parents=True, exist_ok=True)
-        return workspace_runtime / "orders.db"
-    except Exception:
-        pass
-
-    # Fallback: backend/app/orders.db
-    fallback = Path(__file__).resolve().parent / "orders.db"
-    fallback.parent.mkdir(parents=True, exist_ok=True)
-    return fallback
-
-
-@contextmanager
-def get_db_connection(db_path: Optional[Path | str] = None):
-    """Context manager for SQLite database connection."""
-    path = Path(db_path) if db_path else get_db_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(path), timeout=15.0)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON;")
-    try:
-        yield conn
-    finally:
-        conn.close()
-
-
 def init_db(db_path: Optional[Path | str] = None) -> None:
-    """Initialize orders database schema if not existing."""
+    """Initialize orders and catalog database schema, and seed catalog if empty."""
     path = Path(db_path) if db_path else get_db_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with sqlite3.connect(str(path), timeout=15.0) as conn:
-        conn.execute("PRAGMA foreign_keys = ON;")
-        if str(path) != ":memory:":
-            try:
-                conn.execute("PRAGMA journal_mode = WAL;")
-            except Exception:
-                pass
-        conn.executescript("""
-        CREATE TABLE IF NOT EXISTS orders (
-            id TEXT PRIMARY KEY,
-            order_code TEXT UNIQUE NOT NULL,
-            token TEXT NOT NULL,
-            idempotency_key TEXT UNIQUE,
-            status TEXT NOT NULL,
-            status_label TEXT NOT NULL,
-            customer_name TEXT NOT NULL,
-            customer_phone TEXT NOT NULL,
-            customer_email TEXT,
-            customer_address TEXT NOT NULL,
-            customer_note TEXT,
-            subtotal_vnd INTEGER NOT NULL,
-            shipping_fee_vnd INTEGER NOT NULL,
-            total_vnd INTEGER NOT NULL,
-            created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL
-        );
+    run_migrations(path)
 
-        CREATE TABLE IF NOT EXISTS order_items (
-            id TEXT PRIMARY KEY,
-            order_id TEXT NOT NULL,
-            product_id TEXT NOT NULL,
-            product_slug TEXT NOT NULL,
-            product_name TEXT NOT NULL,
-            color TEXT NOT NULL,
-            size TEXT NOT NULL,
-            image TEXT NOT NULL,
-            unit_price_vnd INTEGER NOT NULL,
-            quantity INTEGER NOT NULL,
-            subtotal_vnd INTEGER NOT NULL,
-            FOREIGN KEY (order_id) REFERENCES orders (id) ON DELETE CASCADE
-        );
-
-        CREATE INDEX IF NOT EXISTS idx_orders_order_code ON orders (order_code);
-        CREATE INDEX IF NOT EXISTS idx_orders_idempotency_key ON orders (idempotency_key);
-        CREATE INDEX IF NOT EXISTS idx_order_items_order_id ON order_items (order_id);
-        """)
+    # If products table has no rows, seed baseline catalog
+    with get_db_connection(path) as conn:
+        count = conn.execute("SELECT COUNT(*) FROM products").fetchone()[0]
+        if count == 0:
+            from .seed import seed_catalog
+            seed_catalog(db_path=path)
 
 
 # Ensure database tables exist at import time
@@ -167,13 +101,9 @@ def validate_vn_phone(phone: str) -> str:
     return cleaned
 
 
-def find_product(product_id: str) -> Optional[dict]:
-    """Finds a product in catalog by id or slug (case-insensitive)."""
-    target = str(product_id).strip().lower()
-    for p in PRODUCTS:
-        if str(p.get("id", "")).strip().lower() == target or str(p.get("slug", "")).strip().lower() == target:
-            return p
-    return None
+def find_product(product_id: str, db_path: Optional[Path | str] = None) -> Optional[dict]:
+    """Finds a product in catalog by id or slug from SQLite database."""
+    return get_product_by_slug_or_id(product_id, db_path=db_path)
 
 
 def get_product_colors(product: dict) -> list[str]:
@@ -189,8 +119,8 @@ def get_product_colors(product: dict) -> list[str]:
     return colors
 
 
-def validate_cart_item(item: Any) -> dict:
-    """Validates an order item against the product catalog."""
+def validate_cart_item(item: Any, db_path: Optional[Path | str] = None) -> dict:
+    """Validates an order item against the product catalog and variant stock in SQLite DB."""
     if isinstance(item, dict):
         pid = item.get("productId") or item.get("product_id")
         color_in = item.get("color", "")
@@ -205,50 +135,87 @@ def validate_cart_item(item: Any) -> dict:
     if not pid or not str(pid).strip():
         raise HTTPException(status_code=400, detail="Mã sản phẩm (productId) không được để trống.")
 
-    product = find_product(pid)
+    product = find_product(pid, db_path=db_path)
     if not product:
         raise HTTPException(status_code=400, detail=f"Sản phẩm '{pid}' không tồn tại trong danh mục.")
 
     if not isinstance(quantity_in, int) or quantity_in < 1:
         raise HTTPException(status_code=400, detail="Số lượng sản phẩm phải là số nguyên lớn hơn hoặc bằng 1.")
 
-    # Validate color
-    avail_colors = get_product_colors(product)
-    color_clean = str(color_in).strip().lower()
-    matched_color = None
-    for ac in avail_colors:
-        if ac.strip().lower() == color_clean:
-            matched_color = ac
-            break
-    if not matched_color:
-        color_options = ", ".join(avail_colors) if avail_colors else "Mặc định"
-        raise HTTPException(
-            status_code=400,
-            detail=f"Màu sắc '{color_in}' không hợp lệ cho sản phẩm '{product.get('name')}'. Màu hiện có: {color_options}."
-        )
+    # Validate product active status in DB
+    with get_db_connection(db_path) as conn:
+        p_row = conn.execute("SELECT id, name, is_active, price FROM products WHERE id = ?", (product["id"],)).fetchone()
+        if not p_row or not p_row["is_active"]:
+            raise HTTPException(status_code=400, detail=f"Sản phẩm '{product.get('name')}' hiện không còn kinh doanh.")
 
-    # Validate size
-    avail_sizes = product.get("sizes", [])
-    size_clean = str(size_in).strip().upper()
-    matched_size = None
-    for asize in avail_sizes:
-        if asize.strip().upper() == size_clean:
-            matched_size = asize
-            break
-    if not matched_size:
-        size_options = ", ".join(avail_sizes) if avail_sizes else "Free size"
-        raise HTTPException(
-            status_code=400,
-            detail=f"Kích thước '{size_in}' không hợp lệ cho sản phẩm '{product.get('name')}'. Kích thước hiện có: {size_options}."
-        )
+        # Validate color
+        avail_colors = get_product_colors(product)
+        color_clean = str(color_in).strip().lower()
+        matched_color = None
+        for ac in avail_colors:
+            if ac.strip().lower() == color_clean:
+                matched_color = ac
+                break
+        if not matched_color:
+            color_options = ", ".join(avail_colors) if avail_colors else "Mặc định"
+            raise HTTPException(
+                status_code=400,
+                detail=f"Màu sắc '{color_in}' không hợp lệ cho sản phẩm '{product.get('name')}'. Màu hiện có: {color_options}."
+            )
 
-    unit_price = int(product.get("price", 0))
+        # Validate size
+        avail_sizes = product.get("sizes", [])
+        size_clean = str(size_in).strip().upper()
+        matched_size = None
+        for asize in avail_sizes:
+            if asize.strip().upper() == size_clean:
+                matched_size = asize
+                break
+        if not matched_size:
+            size_options = ", ".join(avail_sizes) if avail_sizes else "Free size"
+            raise HTTPException(
+                status_code=400,
+                detail=f"Kích thước '{size_in}' không hợp lệ cho sản phẩm '{product.get('name')}'. Kích thước hiện có: {size_options}."
+            )
+
+        # Query variant row for exact variant ID, active state and stock
+        v_row = conn.execute(
+            """
+            SELECT id, sku, color_name, size, stock, is_active
+            FROM product_variants
+            WHERE product_id = ? AND LOWER(color_name) = LOWER(?) AND UPPER(size) = UPPER(?)
+            LIMIT 1
+            """,
+            (product["id"], matched_color, matched_size)
+        ).fetchone()
+
+        if not v_row or not v_row["is_active"]:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Biến thể màu '{matched_color}', kích thước '{matched_size}' của sản phẩm '{product.get('name')}' hiện không khả dụng."
+            )
+
+        if v_row["stock"] < quantity_in:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Sản phẩm '{product.get('name')}' ({matched_color} / {matched_size}) không đủ tồn kho (chỉ còn {v_row['stock']} sản phẩm trong kho, bạn đặt {quantity_in})."
+            )
+
+        variant_id = v_row["id"]
+        variant_sku = v_row["sku"]
+        variant_stock = v_row["stock"]
+        unit_price = int(p_row["price"])
+
     subtotal = unit_price * quantity_in
     image = product.get("image") or (product.get("gallery") or [""])[0]
 
     return {
         "productId": product.get("id"),
         "product_id": product.get("id"),
+        "variantId": variant_id,
+        "variant_id": variant_id,
+        "sku": variant_sku,
+        "stock": variant_stock,
         "slug": product.get("slug", product.get("id")),
         "name": product.get("name"),
         "color": matched_color,
@@ -260,6 +227,34 @@ def validate_cart_item(item: Any) -> dict:
         "subtotal_vnd": subtotal,
         "subtotal": subtotal,
     }
+
+
+def validate_and_aggregate_cart_items(items: list[Any], db_path: Optional[Path | str] = None) -> list[dict]:
+    """
+    Validates cart items and verifies combined quantity per variant does not exceed available stock.
+    """
+    if not items:
+        raise HTTPException(status_code=400, detail="Danh sách sản phẩm không được để trống.")
+
+    validated_items = [validate_cart_item(it, db_path=db_path) for it in items]
+
+    # Aggregate quantities per variant_id
+    totals_by_variant: dict[str, int] = {}
+    for it in validated_items:
+        v_id = it["variant_id"]
+        totals_by_variant[v_id] = totals_by_variant.get(v_id, 0) + it["quantity"]
+
+    for it in validated_items:
+        v_id = it["variant_id"]
+        req_total = totals_by_variant[v_id]
+        if req_total > it["stock"]:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Sản phẩm '{it['name']}' ({it['color']} / {it['size']}) không đủ tồn kho (chỉ còn {it['stock']} sản phẩm trong kho, tổng số lượng trong giỏ là {req_total})."
+            )
+
+    return validated_items
+
 
 
 def calculate_totals(validated_items: list[dict]) -> tuple[int, int, int]:
@@ -291,6 +286,7 @@ def _build_order_dict(order_row: sqlite3.Row, item_rows: list[sqlite3.Row]) -> d
         for r in item_rows
     ]
 
+    cust_note = order_row["customer_note"]
     return {
         "id": order_row["id"],
         "order_code": order_row["order_code"],
@@ -301,7 +297,8 @@ def _build_order_dict(order_row: sqlite3.Row, item_rows: list[sqlite3.Row]) -> d
             "phone": order_row["customer_phone"],
             "email": order_row["customer_email"],
             "address": order_row["customer_address"],
-            "note": order_row["customer_note"],
+            "note": cust_note,
+            "notes": cust_note,
         },
         "items": items,
         "subtotal_vnd": order_row["subtotal_vnd"],
@@ -310,13 +307,15 @@ def _build_order_dict(order_row: sqlite3.Row, item_rows: list[sqlite3.Row]) -> d
         "subtotal": order_row["subtotal_vnd"],
         "shipping_fee": order_row["shipping_fee_vnd"],
         "total": order_row["total_vnd"],
+        "note": cust_note,
+        "notes": cust_note,
         "created_at": order_row["created_at"],
         "updated_at": order_row["updated_at"],
     }
 
 
 def get_order_by_idempotency_key(key: str, db_path: Optional[Path | str] = None) -> Optional[dict]:
-    """Retrieves existing order and token by idempotency key."""
+    """Retrieves existing order, token, and payload_hash by idempotency key."""
     if not key or not str(key).strip():
         return None
     with get_db_connection(db_path) as conn:
@@ -327,9 +326,11 @@ def get_order_by_idempotency_key(key: str, db_path: Optional[Path | str] = None)
         items_cursor = conn.execute("SELECT * FROM order_items WHERE order_id = ?", (row["id"],))
         item_rows = items_cursor.fetchall()
         order_dict = _build_order_dict(row, item_rows)
+        payload_hash = row["payload_hash"] if "payload_hash" in row.keys() else None
         return {
             "order": order_dict,
             "token": row["token"],
+            "payload_hash": payload_hash,
         }
 
 
@@ -376,7 +377,7 @@ class CustomerInput(BaseModel):
     phone: str
     email: Optional[str] = None
     address: str
-    note: Optional[str] = None
+    note: Optional[str] = Field(None, validation_alias=AliasChoices("note", "notes"))
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -385,8 +386,34 @@ class CreateOrderRequest(BaseModel):
     idempotency_key: Optional[str] = None
     customer: CustomerInput
     items: list[OrderItemInput]
+    note: Optional[str] = Field(None, validation_alias=AliasChoices("note", "notes"))
 
     model_config = ConfigDict(populate_by_name=True)
+
+
+def compute_payload_fingerprint(payload: CreateOrderRequest) -> str:
+    """Computes a deterministic SHA-256 fingerprint of the order payload."""
+    cust = payload.customer
+    effective_note = (payload.note or cust.note or "").strip()
+    cust_data = {
+        "name": (cust.name or "").strip(),
+        "phone": re.sub(r"[\s\.\-\(\)]", "", (cust.phone or "").strip()),
+        "email": (cust.email or "").strip().lower() if cust.email else None,
+        "address": (cust.address or "").strip(),
+        "note": effective_note,
+    }
+    items_data = [
+        {
+            "productId": str(it.productId).strip(),
+            "color": str(it.color).strip().lower(),
+            "size": str(it.size).strip().upper(),
+            "quantity": int(it.quantity),
+        }
+        for it in payload.items
+    ]
+    items_data.sort(key=lambda x: (x["productId"], x["color"], x["size"], x["quantity"]))
+    canonical = json.dumps({"customer": cust_data, "items": items_data}, sort_keys=True)
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 # API Routes
@@ -395,6 +422,7 @@ def quote_order(payload: Union[QuoteRequest, list[OrderItemInput]] = Body(...)):
     """
     Calculates subtotal, shipping fee, and total in VND for a list of items.
     Validates each product, color variant, size variant, and quantity against catalog.
+    Prices are strictly derived from SQLite products table.
     """
     if isinstance(payload, QuoteRequest):
         items = payload.items
@@ -406,7 +434,7 @@ def quote_order(payload: Union[QuoteRequest, list[OrderItemInput]] = Body(...)):
     if not items:
         raise HTTPException(status_code=400, detail="Danh sách sản phẩm không được để trống.")
 
-    validated_items = [validate_cart_item(it) for it in items]
+    validated_items = validate_and_aggregate_cart_items(items)
     subtotal_vnd, shipping_fee_vnd, total_vnd = calculate_totals(validated_items)
 
     return {
@@ -430,17 +458,25 @@ def create_order(
     idempotency_key_header: Optional[str] = Header(None, alias="Idempotency-Key"),
 ):
     """
-    Creates a new checkout order with atomic transaction snapshot and idempotency protection.
+    Creates a new checkout order with atomic stock deduction and idempotency protection.
     Returns the created order and its secret access token.
     """
     idem_key = payload.idempotency_key or idempotency_key_header
     if idem_key:
         idem_key = idem_key.strip() or None
 
-    # Idempotency check: if key already exists, return existing order immediately
+    payload_hash = compute_payload_fingerprint(payload)
+
+    # Idempotency check:
     if idem_key:
         existing = get_order_by_idempotency_key(idem_key)
         if existing:
+            stored_hash = existing.get("payload_hash")
+            if stored_hash and stored_hash != payload_hash:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Idempotency-Key đã được sử dụng với nội dung đơn hàng khác."
+                )
             order_dict = existing["order"]
             token = existing["token"]
             return {
@@ -470,13 +506,13 @@ def create_order(
     if len(address) < 5:
         raise HTTPException(status_code=400, detail="Địa chỉ nhận hàng phải có ít nhất 5 ký tự.")
 
-    note = cust.note.strip() if cust.note and cust.note.strip() else None
+    note = (payload.note or cust.note or "").strip() or None
 
-    # Validate Items
+    # Validate Items & Stock
     if not payload.items:
         raise HTTPException(status_code=400, detail="Đơn hàng phải có ít nhất 1 sản phẩm.")
 
-    validated_items = [validate_cart_item(it) for it in payload.items]
+    validated_items = validate_and_aggregate_cart_items(payload.items)
     subtotal_vnd, shipping_fee_vnd, total_vnd = calculate_totals(validated_items)
 
     # Order Metadata
@@ -487,56 +523,98 @@ def create_order(
     status_label = STATUS_LABELS.get(order_status, "Đã tiếp nhận")
     now_iso = datetime.now(timezone.utc).isoformat()
 
-    # Atomic DB Insertion
+    # Aggregate quantities per variant for atomic deduction
+    variant_quantities: dict[str, tuple[int, str, str, str]] = {}
+    for it in validated_items:
+        v_id = it["variant_id"]
+        if v_id not in variant_quantities:
+            variant_quantities[v_id] = (it["quantity"], it["name"], it["color"], it["size"])
+        else:
+            prev_qty, n, c, s = variant_quantities[v_id]
+            variant_quantities[v_id] = (prev_qty + it["quantity"], n, c, s)
+
+    # Atomic DB Insertion and Stock Deduction in transaction
     try:
         with get_db_connection() as conn:
-            conn.execute(
-                """
-                INSERT INTO orders (
-                    id, order_code, token, idempotency_key, status, status_label,
-                    customer_name, customer_phone, customer_email, customer_address, customer_note,
-                    subtotal_vnd, shipping_fee_vnd, total_vnd, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    order_id, order_code, token, idem_key, order_status, status_label,
-                    name, clean_phone, email, address, note,
-                    subtotal_vnd, shipping_fee_vnd, total_vnd, now_iso, now_iso,
-                )
-            )
+            conn.execute("BEGIN IMMEDIATE;")
+            try:
+                # 1. Deduct stock atomically for each variant
+                for var_id, (total_qty, prod_name, col_name, size_name) in variant_quantities.items():
+                    cur = conn.execute(
+                        """
+                        UPDATE product_variants
+                        SET stock = stock - ?
+                        WHERE id = ? AND is_active = 1 AND stock >= ?
+                        """,
+                        (total_qty, var_id, total_qty),
+                    )
+                    if cur.rowcount == 0:
+                        row = conn.execute("SELECT stock, is_active FROM product_variants WHERE id = ?", (var_id,)).fetchone()
+                        curr_stock = row["stock"] if row else 0
+                        raise HTTPException(
+                            status_code=400,
+                            detail=f"Sản phẩm '{prod_name}' ({col_name} / {size_name}) không đủ tồn kho để đặt hàng (hiện còn {curr_stock}, yêu cầu {total_qty})."
+                        )
 
-            item_records = [
-                (
-                    f"item_{uuid.uuid4().hex[:16]}",
-                    order_id,
-                    it["productId"],
-                    it["slug"],
-                    it["name"],
-                    it["color"],
-                    it["size"],
-                    it["image"],
-                    it["unit_price_vnd"],
-                    it["quantity"],
-                    it["subtotal_vnd"],
+                # 2. Insert order
+                conn.execute(
+                    """
+                    INSERT INTO orders (
+                        id, order_code, token, idempotency_key, payload_hash, status, status_label,
+                        customer_name, customer_phone, customer_email, customer_address, customer_note,
+                        subtotal_vnd, shipping_fee_vnd, total_vnd, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        order_id, order_code, token, idem_key, payload_hash, order_status, status_label,
+                        name, clean_phone, email, address, note,
+                        subtotal_vnd, shipping_fee_vnd, total_vnd, now_iso, now_iso,
+                    )
                 )
-                for it in validated_items
-            ]
 
-            conn.executemany(
-                """
-                INSERT INTO order_items (
-                    id, order_id, product_id, product_slug, product_name,
-                    color, size, image, unit_price_vnd, quantity, subtotal_vnd
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                item_records,
-            )
-            conn.commit()
+                # 3. Insert order items
+                item_records = [
+                    (
+                        f"item_{uuid.uuid4().hex[:16]}",
+                        order_id,
+                        it["productId"],
+                        it["slug"],
+                        it["name"],
+                        it["color"],
+                        it["size"],
+                        it["image"],
+                        it["unit_price_vnd"],
+                        it["quantity"],
+                        it["subtotal_vnd"],
+                    )
+                    for it in validated_items
+                ]
+
+                conn.executemany(
+                    """
+                    INSERT INTO order_items (
+                        id, order_id, product_id, product_slug, product_name,
+                        color, size, image, unit_price_vnd, quantity, subtotal_vnd
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    item_records,
+                )
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
+    except HTTPException:
+        raise
     except sqlite3.IntegrityError as err:
-        # Handle race condition on idempotency key
         if idem_key:
             existing = get_order_by_idempotency_key(idem_key)
             if existing:
+                stored_hash = existing.get("payload_hash")
+                if stored_hash and stored_hash != payload_hash:
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail="Idempotency-Key đã được sử dụng với nội dung đơn hàng khác."
+                    )
                 order_dict = existing["order"]
                 return {
                     "order": order_dict,
@@ -566,6 +644,7 @@ def create_order(
             "email": email,
             "address": address,
             "note": note,
+            "notes": note,
         },
         "items": validated_items,
         "subtotal_vnd": subtotal_vnd,
@@ -574,6 +653,8 @@ def create_order(
         "subtotal": subtotal_vnd,
         "shipping_fee": shipping_fee_vnd,
         "total": total_vnd,
+        "note": note,
+        "notes": note,
         "created_at": now_iso,
         "updated_at": now_iso,
     }
@@ -583,6 +664,7 @@ def create_order(
         "token": token,
         **order_dict,
     }
+
 
 
 @router.get("/{order_identifier}")

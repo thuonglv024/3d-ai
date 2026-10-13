@@ -1,0 +1,46 @@
+{
+  "passedCount": 8,
+  "totalCount": 8,
+  "testResults": [
+    {
+      "name": "All Storefront Product Images Loaded Cleanly",
+      "passed": true,
+      "detail": "24/24 images loaded (naturalWidth > 0)"
+    },
+    {
+      "name": "Target Product Image Loaded: \"Áo thun In Chữ Tối Giản Studio\"",
+      "passed": true,
+      "detail": "Dimensions: 800x1067, src: ao-thun-in-chu-toi-gian-studio.jpg"
+    },
+    {
+      "name": "Target Product Image Loaded: \"Chân Váy Xẻ Tà Đùi Quyến Rũ Slit Skirt\"",
+      "passed": true,
+      "detail": "Dimensions: 800x1067, src: chan-vay-xe-ta-dui-quyen-ru-slit-skirt.jpg"
+    },
+    {
+      "name": "Target Product Image Loaded: \"Quần Jeans Đen Rửa Tối Giản Slim\"",
+      "passed": true,
+      "detail": "Dimensions: 800x1067, src: quan-jeans-den-rua-toi-gian-slim.jpg"
+    },
+    {
+      "name": "Target Product Image Loaded: \"Quần Short Chino Màu Pastel Tươi Sáng\"",
+      "passed": true,
+      "detail": "Dimensions: 800x1067, src: quan-short-chino-mau-pastel-tuoi-sang.jpg"
+    },
+    {
+      "name": "Target Product Image Loaded: \"Quần Tây Dáng Lửng Cropped Ankle\"",
+      "passed": true,
+      "detail": "Dimensions: 800x1067, src: quan-tay-dang-lung-cropped-ankle.jpg"
+    },
+    {
+      "name": "PDP Main Product Image Loaded",
+      "passed": true,
+      "detail": "Dimensions: 800x1067"
+    },
+    {
+      "name": "PDP Gallery Thumbnails Loaded",
+      "passed": true,
+      "detail": "2 thumbnails loaded"
+    }
+  ]
+}

@@ -1,8 +1,9 @@
 "use client";
 
-import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from "react";
 import type { Job } from "./useBodyScan";
 import type { Product } from "./catalog";
+import { useAuth } from "./AuthContext";
 
 export interface SizeAdviceResult {
   status: "matched" | "no_match" | "insufficient_measurements" | "error";
@@ -11,6 +12,8 @@ export interface SizeAdviceResult {
   warning?: string;
   chart_name?: string;
 }
+
+export type ScanSaveStatus = "idle" | "saving" | "saved" | "error";
 
 export interface ScanContextValue {
   job: Job | null;
@@ -28,6 +31,28 @@ export interface ScanContextValue {
   // Size applied directly to product from scan
   appliedSizes: Record<string, string>; // productId -> selected size
   applySizeToProduct: (productId: string, size: string) => void;
+  // Body profile scan saving & guest token management
+  guestTokens: Record<string, string>;
+  getGuestToken: (scanId: string) => string;
+  savedScans: Record<string, ScanSaveStatus>;
+  saveErrors: Record<string, string>;
+  saveScanToProfile: (
+    scanId: string,
+    guestToken?: string
+  ) => Promise<{ success: boolean; error?: string; expired?: boolean }>;
+  clearPersonalScanData: () => void;
+  applySavedScanToSession: (scan: {
+    id: string;
+    source_scan_id?: string | null;
+    capture_mode: "upper_body" | "full_body";
+    height_input_cm: number;
+    measurements: {
+      metric_key: string;
+      label: string;
+      value_cm: number | null;
+      source: string;
+    }[];
+  }) => void;
 }
 
 const ScanContext = createContext<ScanContextValue | null>(null);
@@ -92,6 +117,7 @@ export function computeClientSizeAdvice(
 }
 
 export function ScanProvider({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
   const [job, setJobState] = useState<Job | null>(null);
   const [jobError, setJobError] = useState<string>("");
   const [adviceCache, setAdviceCache] = useState<Record<string, SizeAdviceResult>>({});
@@ -99,13 +125,65 @@ export function ScanProvider({ children }: { children: React.ReactNode }) {
   const [activeScanProduct, setActiveScanProduct] = useState<Product | null>(null);
   const [appliedSizes, setAppliedSizes] = useState<Record<string, string>>({});
 
-  const setJob = useCallback((newJob: Job | null) => {
-    setJobState(newJob);
-    if (!newJob) {
-      // Clear dependent size advice if session ends or is reset
-      setAdviceCache({});
+  // Profile save states & guest tokens
+  const [guestTokens, setGuestTokens] = useState<Record<string, string>>({});
+  const [savedScans, setSavedScans] = useState<Record<string, ScanSaveStatus>>({});
+  const [saveErrors, setSaveErrors] = useState<Record<string, string>>({});
+
+  const prevUserRef = useRef(user);
+
+  // Clear personal scan save status when user logs out
+  useEffect(() => {
+    if (prevUserRef.current && !user) {
+      setSavedScans({});
+      setSaveErrors({});
     }
-  }, []);
+    prevUserRef.current = user;
+  }, [user]);
+
+  const getGuestToken = useCallback(
+    (scanId: string): string => {
+      if (!scanId) return "";
+      if (guestTokens[scanId]) return guestTokens[scanId];
+      if (job?.id === scanId && job.guest_token) {
+        setGuestTokens((prev) => ({ ...prev, [scanId]: job.guest_token! }));
+        return job.guest_token;
+      }
+
+      if (typeof window !== "undefined") {
+        try {
+          const stored = sessionStorage.getItem(`morph_scan_guest_token_${scanId}`);
+          if (stored) {
+            setGuestTokens((prev) => ({ ...prev, [scanId]: stored }));
+            return stored;
+          }
+        } catch {
+          // sessionStorage may fail in private mode
+        }
+      }
+
+      return "";
+    },
+    [guestTokens, job]
+  );
+
+  const setJob = useCallback(
+    (newJob: Job | null) => {
+      setJobState(newJob);
+      if (!newJob) {
+        // Clear dependent size advice if session ends or is reset
+        setAdviceCache({});
+      } else if (newJob.id && newJob.guest_token) {
+        setGuestTokens((prev) => ({ ...prev, [newJob.id]: newJob.guest_token! }));
+        if (typeof window !== "undefined") {
+          try {
+            sessionStorage.setItem(`morph_scan_guest_token_${newJob.id}`, newJob.guest_token);
+          } catch {}
+        }
+      }
+    },
+    []
+  );
 
   // Shared job polling: Maintain active job polling in ScanContext across modal open/close
   useEffect(() => {
@@ -186,12 +264,32 @@ export function ScanProvider({ children }: { children: React.ReactNode }) {
         return adviceCache[cacheKey];
       }
 
+      const token = getGuestToken(activeJob.id) || activeJob.guest_token || "";
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) {
+        headers["X-Guest-Token"] = token;
+      }
+
       try {
-        const res = await fetch(`/api/scans/${activeJob.id}/size-advice`, {
+        let res = await fetch("/api/sizing/recommend", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(product.chart),
+          headers,
+          credentials: "include",
+          body: JSON.stringify({
+            product_id: product.id,
+            scan_id: activeJob.id,
+            chart: product.chart,
+          }),
         });
+
+        if (res.status === 404 || res.status === 405) {
+          res = await fetch(`/api/scans/${activeJob.id}/size-advice`, {
+            method: "POST",
+            headers,
+            credentials: "include",
+            body: JSON.stringify(product.chart),
+          });
+        }
 
         if (res.status === 404) {
           setJobState(null);
@@ -231,6 +329,129 @@ export function ScanProvider({ children }: { children: React.ReactNode }) {
     [job, adviceCache]
   );
 
+  const saveScanToProfile = useCallback(
+    async (
+      scanId: string,
+      guestTokenParam?: string
+    ): Promise<{ success: boolean; error?: string; expired?: boolean }> => {
+      if (!scanId) {
+        return { success: false, error: "Thiếu mã phiên scan." };
+      }
+      const token = guestTokenParam || getGuestToken(scanId);
+
+      setSavedScans((prev) => ({ ...prev, [scanId]: "saving" }));
+      setSaveErrors((prev) => ({ ...prev, [scanId]: "" }));
+
+      try {
+        const res = await fetch("/api/user/scans/save", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            scan_id: scanId,
+            guest_token: token || undefined,
+          }),
+        });
+
+        if (res.status === 404 || res.status === 410) {
+          const expiredMsg = "Phiên scan tạm thời đã hết hạn, vui lòng quét lại để lưu số đo mới nhất.";
+          setSavedScans((prev) => ({ ...prev, [scanId]: "error" }));
+          setSaveErrors((prev) => ({ ...prev, [scanId]: expiredMsg }));
+          return { success: false, expired: true, error: expiredMsg };
+        }
+
+        if (!res.ok) {
+          let errMsg = "Không thể lưu vào hồ sơ lúc này. Vui lòng thử lại.";
+          try {
+            const data = await res.json();
+            if (data?.detail) {
+              errMsg = typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail);
+            } else if (data?.message) {
+              errMsg = data.message;
+            }
+          } catch {}
+          setSavedScans((prev) => ({ ...prev, [scanId]: "error" }));
+          setSaveErrors((prev) => ({ ...prev, [scanId]: errMsg }));
+          return { success: false, error: errMsg };
+        }
+
+        setSavedScans((prev) => ({ ...prev, [scanId]: "saved" }));
+        return { success: true };
+      } catch {
+        const networkErrMsg = "Lỗi kết nối mạng khi lưu hồ sơ. Vui lòng thử lại.";
+        setSavedScans((prev) => ({ ...prev, [scanId]: "error" }));
+        setSaveErrors((prev) => ({ ...prev, [scanId]: networkErrMsg }));
+        return { success: false, error: networkErrMsg };
+      }
+    },
+    [getGuestToken]
+  );
+
+  const clearPersonalScanData = useCallback(() => {
+    setSavedScans({});
+    setSaveErrors({});
+    setGuestTokens({});
+    setAdviceCache({});
+    setAppliedSizes({});
+  }, []);
+
+  // Listen to logout broadcast event to clear memory cache immediately
+  useEffect(() => {
+    const handleLogout = () => {
+      clearPersonalScanData();
+    };
+    window.addEventListener("morph:auth:logout", handleLogout);
+    return () => {
+      window.removeEventListener("morph:auth:logout", handleLogout);
+    };
+  }, [clearPersonalScanData]);
+
+  const applySavedScanToSession = useCallback(
+    (scan: {
+      id: string;
+      source_scan_id?: string | null;
+      capture_mode: "upper_body" | "full_body";
+      height_input_cm: number;
+      measurements: {
+        metric_key: string;
+        label: string;
+        value_cm: number | null;
+        source: string;
+      }[];
+    }) => {
+      const measMap: Record<string, number | undefined> = {};
+      scan.measurements.forEach((m) => {
+        if (m.value_cm !== null && m.source !== "template_model") {
+          measMap[m.metric_key] = m.value_cm;
+        }
+      });
+      measMap.height_cm = scan.height_input_cm;
+
+      const sessionJob: Job = {
+        id: scan.source_scan_id || scan.id,
+        status: "completed",
+        stage: "complete",
+        measurements: measMap,
+        body_profile: {
+          capture_mode: scan.capture_mode,
+          measurement_details: scan.measurements.map((m) => ({
+            key: m.metric_key,
+            label: m.label,
+            value_cm: m.value_cm,
+            source: m.source as any,
+            color: "#C29B38",
+            points_m: [],
+          })),
+        },
+      };
+
+      setJobState(sessionJob);
+      setAdviceCache({});
+      setSavedScans((prev) => ({ ...prev, [scan.id]: "saved" }));
+    },
+    []
+  );
+
   const openScanModal = useCallback((product: Product) => {
     setActiveScanProduct(product);
     setIsScanModalOpen(true);
@@ -260,6 +481,13 @@ export function ScanProvider({ children }: { children: React.ReactNode }) {
         closeScanModal,
         appliedSizes,
         applySizeToProduct,
+        guestTokens,
+        getGuestToken,
+        savedScans,
+        saveErrors,
+        saveScanToProfile,
+        clearPersonalScanData,
+        applySavedScanToSession,
       }}
     >
       {children}

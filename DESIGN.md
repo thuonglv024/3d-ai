@@ -215,3 +215,38 @@ Hệ thống tuân thủ nghiêm ngặt các nguyên tắc:
   --shadow-lg: 0 12px 36px rgba(38, 33, 26, 0.11);
 }
 ```
+
+---
+
+## 6. Tài Khoản Người Dùng & Hồ Sơ Hình Thể (`/account`, `/account/body-profile`)
+
+### 6.1 Xác Thực & Phiên Bảo Mật (HttpOnly Session)
+- **Modal Xác thực Toàn cục (`AuthModal`)**:
+  - Tích hợp 2 tab Đăng nhập & Tạo tài khoản, bo góc 24px, cân giữa trên desktop và chuyển thành Bottom Sheet trên di động.
+  - Hỗ trợ lưu trữ phiên bằng HttpOnly cookie từ backend (`morph_session`), tuyệt đối không lưu token/mật khẩu trong `localStorage`.
+  - Khóa tạm thời 5 phút sau 5 lần thử đăng nhập sai (HTTP 429 lockout) với cảnh báo nổi bật.
+  - Hỗ trợ hành động chờ (Pending Action): cho phép khách quét scan xong rồi mới đăng nhập, hệ thống tự động gắn và lưu kết quả scan vào tài khoản mà không yêu cầu quét lại.
+- **Thanh Điều Khiển & Menu Header**:
+  - Badge người dùng với avatar viết tắt họ tên, dropdown menu căn lề phải chống tràn mép dẫn tới Hồ sơ và Đăng xuất.
+
+### 6.2 Hồ Sơ Hình Thể & Biểu Đồ Số Đo (`/account/body-profile`)
+- **Hero Card Số Đo Gần Nhất**:
+  - Hiển thị đầy đủ Chiều cao, Vòng ngực, Vòng eo, Vòng mông, Rộng vai kèm nhãn nguồn số đo rõ ràng (`user_input`, `photo_estimate`, `photo_with_prior`, `template_model`).
+  - Ghi nhận chính xác ngày giờ chụp (`captured_at`) và ngày giờ bấm lưu (`saved_at`), tuyệt đối không ghép nối số đo từ các ngày khác nhau.
+  - Đối với quét thân trên (`upper_body`), vòng mông được hiển thị minh bạch `Chưa đo (Thân trên)` / `Theo mẫu 3D`.
+- **Biểu Đồ Biến Thiên SVG Thuần (`BodyChart`)**:
+  - Đồ thị đường SVG tương tác mượt mà, không phụ thuộc thư viện ngoài, tương thích React 19.
+  - Trục X: Thời gian scan thực tế. Trục Y: Số đo (cm).
+  - 4 metric với màu sắc tương phản cao và ký hiệu hình học: Ngực (●), Eo (■), Mông (◆), Vai (▲).
+  - Lọc khoảng thời gian 30 ngày, 90 ngày, Toàn bộ.
+  - Xử lý trung thực: Dữ liệu thiếu (`null`) hoặc xuất phát từ `template_model` tạo khoảng trống ngắt quãng trên đường đồ thị; không vẽ về 0; không nội suy số đo giả.
+  - Bảng dữ liệu tương đương (Accessible Table) bên dưới phục vụ đọc số đo nhanh và hỗ trợ trợ năng.
+  - Chú thích công nghệ bắt buộc đi kèm biểu đồ.
+
+### 6.3 Lịch Sử & So Sánh Số Đo (`ScanCompareModal`)
+- Danh sách lịch sử scan cho phép chỉnh sửa ghi chú cá nhân, xem chi tiết, và xóa có xác nhận.
+- Cho phép chọn 2 lần scan bất kỳ để mở công cụ đối chiếu Trước / Sau:
+  - Bảng so sánh từng số đo với chênh lệch có dấu (`+1.5 cm`, `-0.8 cm`).
+  - Cảnh báo không tương thích rõ ràng khi khác chế độ chụp (`upper_body` vs `full_body`).
+  - Câu nhận định toán học trung tính, không suy đoán thể trạng hay sức khỏe.
+

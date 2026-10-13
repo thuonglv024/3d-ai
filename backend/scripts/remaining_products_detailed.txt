@@ -1,0 +1,735 @@
+
+==================== cat-ao-khoac (29 items) ====================
+ 1. ao-blazer-cat-ngan-cropped-nang-dong
+    Name: Áo Blazer Cắt Ngắn Cropped Năng Động
+    Material: Polyester twill cao cấp
+    Fit: Cropped modern
+    Desc: Áo Blazer Cắt Ngắn Cropped Năng Động với thân áo cắt ngang eo tôn chiều dài chân. Sản phẩm được MORPH tuyển chọn từ chất liệu polyester twill cao cấp, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+ 2. ao-blazer-co-tron-khong-ve-minimal
+    Name: Áo Blazer Cổ Tròn Không ve Minimal
+    Material: Wool blend pha sợi tơ
+    Fit: Clean boxy
+    Desc: Áo Blazer Cổ Tròn Không ve Minimal với thiết kế loại bỏ ve cổ truyền thống hiện đại. Sản phẩm được MORPH tuyển chọn từ chất liệu wool blend pha sợi tơ, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+ 3. ao-blazer-coc-tay-mua-he-linen
+    Name: Áo Blazer Cộc Tay Mùa Hè Linen
+    Material: 100% Linen tự nhiên
+    Fit: Relaxed fit
+    Desc: Áo Blazer Cộc Tay Mùa Hè Linen với tay cộc thoáng mát thanh lịch nơi công sở. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% linen tự nhiên, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+ 4. ao-blazer-linen-phom-suong-mau-cat
+    Name: Áo Blazer Linen Phom Suông Màu Cát
+    Material: 100% Linen Ý
+    Fit: Relaxed suông
+    Desc: Áo Blazer Linen Phom Suông Màu Cát với màu be cát tự nhiên phóng khoáng. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% linen ý, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+ 5. ao-bomber-kaki-lot-lua-dang-cap
+    Name: Áo Bomber Kaki Lót Lụa Đẳng Cấp
+    Material: Cotton Twill chống nước nhẹ
+    Fit: Relaxed bomber
+    Desc: Áo Bomber Kaki Lót Lụa Đẳng Cấp với lớp lót lụa habotai êm ái trượt trên da. Sản phẩm được MORPH tuyển chọn từ chất liệu cotton twill chống nước nhẹ, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+ 6. ao-bomber-ni-bong-day-giu-am
+    Name: Áo Bomber Nỉ Bông Dày Giữ Ấm
+    Material: Cotton nỉ 380gsm
+    Fit: Bomber boxy
+    Desc: Áo Bomber Nỉ Bông Dày Giữ Ấm với chất nỉ bông cào ấm áp trong tiết trời lạnh. Sản phẩm được MORPH tuyển chọn từ chất liệu cotton nỉ 380gsm, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+ 7. ao-cardigan-co-v-cuc-sung
+    Name: Áo Cardigan Cổ V Cúc Sừng
+    Material: Len Merino pha Cotton
+    Fit: Relaxed fit
+    Desc: Áo Cardigan Cổ V Cúc Sừng với cúc làm từ sừng tự nhiên dệt len mềm mại. Sản phẩm được MORPH tuyển chọn từ chất liệu len merino pha cotton, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+ 8. ao-cardigan-det-day-cable-knit-van-thung
+    Name: Áo Cardigan Dệt Dày Cable Knit Vặn Thừng
+    Material: Wool blend dệt kim nổi
+    Fit: Cozy oversized
+    Desc: Áo Cardigan Dệt Dày Cable Knit Vặn Thừng với họa tiết vặn thừng dày dặn ấm cúng. Sản phẩm được MORPH tuyển chọn từ chất liệu wool blend dệt kim nổi, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+ 9. ao-cardigan-khuy-bam-kim-loai-hien-dai
+    Name: Áo Cardigan Khuy Bấm Kim Loại Hiện Đại
+    Material: Cotton dệt đặc mịn
+    Fit: Slim relaxed
+    Desc: Áo Cardigan Khuy Bấm Kim Loại Hiện Đại với khuy bấm kim loại mạ bạc sáng bóng. Sản phẩm được MORPH tuyển chọn từ chất liệu cotton dệt đặc mịn, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+10. ao-khoac-blazer-linen
+    Name: Áo khoác Blazer Khuy đơn
+    Material: Vải Linen pha Cotton nhập khẩu cao cấp, lót lụa habotai nửa thân.
+    Fit: Relaxed tailored fit tôn dáng không gò bó.
+    Desc: Áo khoác blazer may đo theo cấu trúc unconstructed tự nhiên, vai không đệm mút dày mang đến phom dáng mềm mại, thanh lịch dễ phối đồ.
+11. ao-khoac-bomber-minimal
+    Name: Áo khoác Bomber Gió nhẹ
+    Material: 100% Nylon trượt nước công nghệ DWR, lót lưới polyester thoáng khí.
+    Fit: Semi-oversized fit bo chun gấu và cổ tay.
+    Desc: Mẫu bomber cổ điển được tái hiện với phong cách tối giản. Vải dù kỹ thuật cao trượt nước nhẹ hạt sen, cản gió tốt trong những ngày chuyển mùa.
+12. ao-khoac-cardigan-len
+    Name: Áo khoác Cardigan Dệt kim
+    Material: 60% Sợi len Merino pha 40% Acrylic xơ dài giữ nhiệt.
+    Fit: Relaxed slouchy fit vai trễ nhẹ nhàng.
+    Desc: Cardigan dệt kim gân rib với độ dày dặn vừa phải, êm ái khi tiếp xúc trực tiếp với da mà không gây dặm ngứa. Thiết kế cổ V dễ phối cùng áo thun hay sơ mi bên trong.
+13. ao-khoac-da-dang-dai-ve-to-co-dien
+    Name: Áo Khoác Dạ Dáng Dài Ve To Cổ Điển
+    Material: 60% Wool 40% Viscose
+    Fit: Tailored long
+    Desc: Áo Khoác Dạ Dáng Dài Ve To Cổ Điển với ve cổ bẻ to bản phong cách quý tộc châu âu. Sản phẩm được MORPH tuyển chọn từ chất liệu 60% wool 40% viscose, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+14. ao-khoac-da-lon-suede-gia-da-cao-cap
+    Name: Áo Khoác Da Lộn Suede Giả Da Cao Cấp
+    Material: Microfiber Faux Suede
+    Fit: Tailored fit
+    Desc: Áo Khoác Da Lộn Suede Giả Da Cao Cấp với bề mặt mềm như nhung không bong tróc. Sản phẩm được MORPH tuyển chọn từ chất liệu microfiber faux suede, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+15. ao-khoac-dang-kimono-linen-toi-gian
+    Name: Áo Khoác Dáng Kimono Linen Tối Giản
+    Material: 100% Pure Linen 280gsm
+    Fit: Loose drape
+    Desc: Áo Khoác Dáng Kimono Linen Tối Giản với áo khoác buộc vạt cảm hứng á đông. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% pure linen 280gsm, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+16. ao-khoac-dang-so-mi-shacket-da-ep
+    Name: Áo Khoác Dáng Sơ Mi Shacket Dạ Ép
+    Material: Dạ ép sợi len tổng hợp
+    Fit: Boxy shacket
+    Desc: Áo Khoác Dáng Sơ Mi Shacket Dạ Ép với chất dạ ép mịn giữ ấm tốt ngày se lạnh. Sản phẩm được MORPH tuyển chọn từ chất liệu dạ ép sợi len tổng hợp, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+17. ao-khoac-denim-vintage-wash-xanh-nhat
+    Name: Áo Khoác Denim Vintage Wash Xanh Nhạt
+    Material: 100% Cotton Denim 13oz
+    Fit: Regular trucker
+    Desc: Áo Khoác Denim Vintage Wash Xanh Nhạt với nhuộm wash cổ điển phối chỉ vàng vintage. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% cotton denim 13oz, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+18. ao-khoac-du-windbreaker-chong-nuoc
+    Name: Áo Khoác Dù Windbreaker Chống Nước
+    Material: Nylon ripstop phủ nano
+    Fit: Sporty regular
+    Desc: Áo Khoác Dù Windbreaker Chống Nước với gọn nhẹ dễ gấp gọn mang theo mọi nơi. Sản phẩm được MORPH tuyển chọn từ chất liệu nylon ripstop phủ nano, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+19. ao-khoac-field-jacket-bon-tui-quan-doi
+    Name: Áo Khoác Field Jacket Bốn Túi Quân Đội
+    Material: Cotton Canvas chống sờn
+    Fit: Relaxed utilitarian
+    Desc: Áo Khoác Field Jacket Bốn Túi Quân Đội với thiết kế túi hộp utility đa năng tiện dụng. Sản phẩm được MORPH tuyển chọn từ chất liệu cotton canvas chống sờn, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+20. ao-khoac-gile-vest-tran-bong-phoi-layer
+    Name: Áo Khoác Gile Vest Trần Bông Phối Layer
+    Material: Nylon mờ lót bông sinh học
+    Fit: Regular gile
+    Desc: Áo Khoác Gile Vest Trần Bông Phối Layer với áo sát nách giữ ấm ngực dễ kết hợp đồ. Sản phẩm được MORPH tuyển chọn từ chất liệu nylon mờ lót bông sinh học, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+21. ao-khoac-gio-hai-lop-the-thao
+    Name: Áo Khoác Gió Hai Lớp Thể Thao
+    Material: Nylon dù siêu nhẹ
+    Fit: Sporty fit
+    Desc: Áo Khoác Gió Hai Lớp Thể Thao với lớp lưới bên trong thoáng khí chống bí. Sản phẩm được MORPH tuyển chọn từ chất liệu nylon dù siêu nhẹ, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+22. ao-khoac-harrington-co-be-lot-caro
+    Name: Áo Khoác Harrington Cổ Bẻ Lót Caro
+    Material: Cotton pha Poly chống gió
+    Fit: Classic Harrington
+    Desc: Áo Khoác Harrington Cổ Bẻ Lót Caro với phong cách mod kinh điển vượt thời gian. Sản phẩm được MORPH tuyển chọn từ chất liệu cotton pha poly chống gió, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+23. ao-khoac-nhung-tam-corduroy-am-ap
+    Name: Áo Khoác Nhung Tăm Corduroy Ấm Áp
+    Material: 100% Cotton Corduroy
+    Fit: Regular trucker
+    Desc: Áo Khoác Nhung Tăm Corduroy Ấm Áp với vải nhung tăm sợi nổi retro hoài niệm. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% cotton corduroy, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+24. ao-khoac-safari-bon-tui-vai-linen
+    Name: Áo Khoác Safari Bốn Túi Vải Linen
+    Material: 100% Linen dệt dày
+    Fit: Safari regular
+    Desc: Áo Khoác Safari Bốn Túi Vải Linen với phong cách viễn thám cổ điển đầy cuốn hút. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% linen dệt dày, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+25. ao-khoac-trench-coat-ngan
+    Name: Áo khoác Trench Coat Dáng lửng
+    Material: Vải Gabardine cotton chéo dày dặn cản gió.
+    Fit: Tailored crop fit dáng lửng tôn eo.
+    Desc: Phiên bản dáng lửng trẻ trung của mẫu trench coat kinh điển. Chiều dài qua hông vừa phải giúp tôn dáng đôi chân, phối cùng đai thắt eo điều chỉnh linh hoạt.
+26. ao-khoac-trench-ngan-tay-raglan
+    Name: Áo Khoác Trench Ngắn Tay Raglan
+    Material: Cotton Twill chống nhăn
+    Fit: Raglan regular
+    Desc: Áo Khoác Trench Ngắn Tay Raglan với dáng áo ngắn hiện đại cho người năng động. Sản phẩm được MORPH tuyển chọn từ chất liệu cotton twill chống nhăn, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+27. ao-khoac-trut-phao-tran-bong-sieu-nhe
+    Name: Áo Khoác Trút Phao Trần Bông Siêu Nhẹ
+    Material: Nylon dệt mật độ cao
+    Fit: Regular fit
+    Desc: Áo Khoác Trút Phao Trần Bông Siêu Nhẹ với chần bông hình sóng nhẹ tênh giữ ấm. Sản phẩm được MORPH tuyển chọn từ chất liệu nylon dệt mật độ cao, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+28. ao-parka-co-mu-day-rut-chong-mua
+    Name: Áo Parka Có Mũ Dây Rút Chống Mưa
+    Material: Polyester pha Cotton wax
+    Fit: Parka oversized
+    Desc: Áo Parka Có Mũ Dây Rút Chống Mưa với mũ trùm đầu sâu có dây rút bảo vệ tối ưu. Sản phẩm được MORPH tuyển chọn từ chất liệu polyester pha cotton wax, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+29. ao-trench-coat-dang-dai-co-dien
+    Name: Áo Trench Coat Dáng Dài Cổ Điển
+    Material: Gabardine Cotton chống thấm
+    Fit: Overcoat fit
+    Desc: Áo Trench Coat Dáng Dài Cổ Điển với áo khoác dáng dài qua gối với đai thắt eo. Sản phẩm được MORPH tuyển chọn từ chất liệu gabardine cotton chống thấm, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+
+==================== cat-ao-thun (29 items) ====================
+ 1. ao-thun-ba-lo-tank-top-cotton
+    Name: Áo thun Ba Lỗ Tank Top Cotton
+    Material: 100% Cotton 200gsm
+    Fit: Suông mát mẻ
+    Desc: Áo thun Ba Lỗ Tank Top Cotton với phom suông nách khoét vừa phải. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% cotton 200gsm, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+ 2. ao-thun-co-thuyen-bateaux-dang-rong
+    Name: Áo thun Cổ Thuyền Bateaux Dáng Rộng
+    Material: Cotton lụa mềm mát
+    Fit: Oversized fit
+    Desc: Áo thun Cổ Thuyền Bateaux Dáng Rộng với thiết kế cổ thuyền thanh thoát bay bổng. Sản phẩm được MORPH tuyển chọn từ chất liệu cotton lụa mềm mát, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+ 3. ao-thun-co-tron-xep-ly-vai
+    Name: Áo thun Cổ Tròn Xếp Ly Vai
+    Material: 100% Supima Cotton
+    Fit: Regular fit
+    Desc: Áo thun Cổ Tròn Xếp Ly Vai với chi tiết xếp ly nhỏ tinh tế ở vai. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% supima cotton, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+ 4. ao-thun-co-v-sau-thoi-trang
+    Name: Áo thun Cổ V Sâu Thời Trang
+    Material: 100% Cotton chải kỹ
+    Fit: Slim fit
+    Desc: Áo thun Cổ V Sâu Thời Trang với cổ chữ v tôn đường nét cổ và ngực. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% cotton chải kỹ, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+ 5. ao-thun-cotton-lanh-thoang-he
+    Name: Áo thun Cotton Lanh Thoáng Hè
+    Material: 70% Cotton 30% Linen
+    Fit: Relaxed fit suông
+    Desc: Áo thun Cotton Lanh Thoáng Hè với pha lanh tăng độ khô ráo thoáng khí. Sản phẩm được MORPH tuyển chọn từ chất liệu 70% cotton 30% linen, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+ 6. ao-thun-dai-tay-co-lo-nhe
+    Name: Áo thun Dài Tay Cổ Lọ Nhẹ
+    Material: Modal pha Cotton co giãn
+    Fit: Slim-regular fit
+    Desc: Áo thun Dài Tay Cổ Lọ Nhẹ với tay dài cổ lọ mềm dễ phối layer. Sản phẩm được MORPH tuyển chọn từ chất liệu modal pha cotton co giãn, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+ 7. ao-thun-det-gan-co-tron-ribbed
+    Name: Áo thun Dệt Gân Cổ Tròn Ribbed
+    Material: Cotton Ribbed dệt co giãn
+    Fit: Slim fit
+    Desc: Áo thun Dệt Gân Cổ Tròn Ribbed với vải dệt gân co giãn ôm nhẹ cơ thể. Sản phẩm được MORPH tuyển chọn từ chất liệu cotton ribbed dệt co giãn, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+ 8. ao-thun-det-kim-knit-tee
+    Name: Áo thun Dệt Kim Knit Tee
+    Material: Cotton pha Silk dệt kim
+    Fit: Regular fit mềm mại
+    Desc: Áo thun Dệt Kim Knit Tee với dệt kim mỏng nhẹ mang vẻ thanh lịch. Sản phẩm được MORPH tuyển chọn từ chất liệu cotton pha silk dệt kim, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+ 9. ao-thun-graphic-studio-edition
+    Name: Áo thun Graphic Studio Edition
+    Material: 100% Cotton 240gsm
+    Fit: Oversized fit
+    Desc: Áo thun Graphic Studio Edition với họa tiết typographic in lụa thủ công. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% cotton 240gsm, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+10. ao-thun-heavyweight-boxy-cut
+    Name: Áo thun Heavyweight Boxy Cut
+    Material: 100% Organic Cotton 300gsm
+    Fit: Boxy cut ngắn thân
+    Desc: Áo thun Heavyweight Boxy Cut với vải dày 300gsm giữ form áo vuông vắn. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% organic cotton 300gsm, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+11. ao-thun-henley-co-cai-nut
+    Name: Áo thun Henley Cổ Cài Nút
+    Material: 100% Cotton chải kỹ 250gsm
+    Fit: Regular fit
+    Desc: Áo thun Henley Cổ Cài Nút với cổ trụ cài nút đặc trưng phong trần. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% cotton chải kỹ 250gsm, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+12. ao-thun-henley-tay-dai-khuy-go
+    Name: Áo thun Henley Tay Dài Khuy Gỗ
+    Material: 100% Waffle Cotton
+    Fit: Regular fit
+    Desc: Áo thun Henley Tay Dài Khuy Gỗ với khuy gỗ phong cách mộc mạc. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% waffle cotton, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+13. ao-thun-in-chu-toi-gian-studio
+    Name: Áo thun In Chữ Tối Giản Studio
+    Material: 100% Combed Cotton
+    Fit: Relaxed fit
+    Desc: Áo thun In Chữ Tối Giản Studio với chi tiết slogan in nổi vi mô trước ngực. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% combed cotton, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+14. ao-thun-mercerized-bong-min
+    Name: Áo thun Mercerized Bóng Mịn
+    Material: 100% Mercerized Cotton
+    Fit: Tailored fit
+    Desc: Áo thun Mercerized Bóng Mịn với sợi xử lý mercerized ánh bóng sang trọng. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% mercerized cotton, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+15. ao-thun-mock-neck-co-cao
+    Name: Áo thun Mock Neck Cổ Cao
+    Material: Cotton dệt đặc 260gsm
+    Fit: Boxy fit trẻ trung
+    Desc: Áo thun Mock Neck Cổ Cao với cổ đứng 3cm hiện đại giữ ấm cổ. Sản phẩm được MORPH tuyển chọn từ chất liệu cotton dệt đặc 260gsm, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+16. ao-thun-pima-co-v
+    Name: Áo thun Pima Cotton Cổ V
+    Material: 100% Pima Cotton 210gsm
+    Fit: Slim fit tôn dáng
+    Desc: Áo thun Pima Cotton Cổ V với dệt từ sợi pima siêu dài mềm mại. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% pima cotton 210gsm, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+17. ao-thun-polo-det-day-premium
+    Name: Áo thun Polo Dệt Dày Premium
+    Material: Cotton cá sấu 4 chiều
+    Fit: Regular fit
+    Desc: Áo thun Polo Dệt Dày Premium với cổ polo dệt bo dày dặn chỉn chu. Sản phẩm được MORPH tuyển chọn từ chất liệu cotton cá sấu 4 chiều, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+18. ao-thun-polo-det-kim-co-cuba
+    Name: Áo thun Polo Dệt Kim Cổ Cuba
+    Material: Cotton len mỏng thoáng khí
+    Fit: Relaxed fit
+    Desc: Áo thun Polo Dệt Kim Cổ Cuba với cổ mở chữ v không nút mềm mại. Sản phẩm được MORPH tuyển chọn từ chất liệu cotton len mỏng thoáng khí, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+19. ao-thun-raglan-vintage
+    Name: Áo thun Raglan Vintage
+    Material: 100% Combed Cotton 230gsm
+    Fit: Relaxed fit thoải mái
+    Desc: Áo thun Raglan Vintage với thiết kế tay phối màu thể thao cổ điển. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% combed cotton 230gsm, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+20. ao-thun-rong-tay-lo-drop-shoulder
+    Name: Áo thun Rộng Tay Lỡ Drop Shoulder
+    Material: 100% Cotton 230gsm
+    Fit: Oversized fit
+    Desc: Áo thun Rộng Tay Lỡ Drop Shoulder với vai trễ tay lỡ phủ khuỷu tay. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% cotton 230gsm, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+21. ao-thun-soi-tu-nhien-khong-nhuom
+    Name: Áo thun Sợi Tự Nhiên Không Nhuộm
+    Material: 100% Bông mộc không tẩy
+    Fit: Regular fit
+    Desc: Áo thun Sợi Tự Nhiên Không Nhuộm với màu sắc mộc từ bông tự nhiên. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% bông mộc không tẩy, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+22. ao-thun-striped-breton-co-thuyen
+    Name: Áo thun Striped Breton Cổ Thuyền
+    Material: 100% Cotton dệt jacquard
+    Fit: Regular fit
+    Desc: Áo thun Striped Breton Cổ Thuyền với kẻ ngang phong cách thủy thủ pháp. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% cotton dệt jacquard, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+23. ao-thun-supima-crewneck
+    Name: Áo thun Supima Cổ tròn
+    Material: 100% Supima Cotton sợi dài cao cấp.
+    Fit: Tailored fit ôm nhẹ gọn gàng.
+    Desc: Được dệt từ bông Supima cao cấp có sợi dài hơn 35% so với cotton thông thường, đem lại cảm giác êm ái, bền màu và giữ phom qua hàng trăm lần giặt.
+24. ao-thun-tay-bo-co-be-co-dien
+    Name: Áo thun Tay Bo Cổ Bẻ Cổ Điển
+    Material: 100% Cotton chải kỹ
+    Fit: Classic fit
+    Desc: Áo thun Tay Bo Cổ Bẻ Cổ Điển với tay bo gọn gàng phong cách retro. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% cotton chải kỹ, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+25. ao-thun-the-thao-quick-dry
+    Name: Áo thun Thể Thao Quick-Dry
+    Material: Poly-spandex sợi mát
+    Fit: Athletic fit
+    Desc: Áo thun Thể Thao Quick-Dry với thấm hút mồ hôi và khô cực nhanh. Sản phẩm được MORPH tuyển chọn từ chất liệu poly-spandex sợi mát, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+26. ao-thun-tron-toi-gian-basic-tee
+    Name: Áo thun Trơn Tối Giản Basic Tee
+    Material: 100% Cotton 200gsm
+    Fit: Regular fit
+    Desc: Áo thun Trơn Tối Giản Basic Tee với chiếc áo thun thường nhật không thể thiếu. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% cotton 200gsm, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+27. ao-thun-tui-nguc-minimal-pocket
+    Name: Áo thun Túi Ngực Minimal Pocket
+    Material: 100% Cotton 240gsm
+    Fit: Regular fit
+    Desc: Áo thun Túi Ngực Minimal Pocket với túi đắp vuông tối giản góc ngực trái. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% cotton 240gsm, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+28. ao-thun-waffle-long-sleeve
+    Name: Áo thun Waffle Dệt tổ ong
+    Material: 95% Cotton waffle, 5% Spandex tăng độ đàn hồi.
+    Fit: Comfortable regular fit, tay dài bo chun.
+    Desc: Cấu trúc dệt waffle tạo các túi khí nhỏ giữ nhiệt ấm áp tự nhiên nhưng vẫn thông thoáng. Bo tay thun đàn hồi giữ tay áo gọn gàng khi cử động.
+29. ao-thun-washed-vintage-hieu-ung-son
+    Name: Áo thun Washed Vintage Hiệu Ứng Sờn
+    Material: Cotton 260gsm giặt đá
+    Fit: Relaxed boxy
+    Desc: Áo thun Washed Vintage Hiệu Ứng Sờn với nhuộm wash acid tạo vết phai tự nhiên. Sản phẩm được MORPH tuyển chọn từ chất liệu cotton 260gsm giặt đá, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+
+==================== cat-quan (29 items) ====================
+ 1. quan-cargo-tui-hop-ong-rut-gau
+    Name: Quần Cargo Túi Hộp Ống Rút Gấu
+    Material: Cotton Ripstop chống rách
+    Fit: Relaxed cargo
+    Desc: Quần Cargo Túi Hộp Ống Rút Gấu với túi hộp hai bên kèm dây rút túm gấu. Sản phẩm được MORPH tuyển chọn từ chất liệu cotton ripstop chống rách, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+ 2. quan-chino-ong-rong-rai-phom-nhat
+    Name: Quần Chino Ống Rộng Rãi Phom Nhật
+    Material: 100% Cotton Canvas
+    Fit: Japanese wide-leg
+    Desc: Quần Chino Ống Rộng Rãi Phom Nhật với phom dáng rộng rãi phong cách city boy nhật bản. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% cotton canvas, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+ 3. quan-chino-slim-fit-co-gian-4-chieu
+    Name: Quần Chino Slim Fit Co Giãn 4 Chiều
+    Material: 97% Cotton 3% Spandex
+    Fit: Slim fit tôn chân
+    Desc: Quần Chino Slim Fit Co Giãn 4 Chiều với vận động linh hoạt không lo gò bó. Sản phẩm được MORPH tuyển chọn từ chất liệu 97% cotton 3% spandex, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+ 4. quan-du-chong-bam-nuoc-parachute-pants
+    Name: Quần Dù Chống Bám Nước Parachute Pants
+    Material: Nylon dệt mỏng
+    Fit: Parachute loose
+    Desc: Quần Dù Chống Bám Nước Parachute Pants với phom phồng bồng bềnh phong cách y2k. Sản phẩm được MORPH tuyển chọn từ chất liệu nylon dệt mỏng, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+ 5. quan-jeans-den-rua-toi-gian-slim
+    Name: Quần Jeans Đen Rửa Tối Giản Slim
+    Material: 98% Cotton 2% Elastane
+    Fit: Slim fit
+    Desc: Quần Jeans Đen Rửa Tối Giản Slim với màu đen sâu giữ màu bền sau nhiều lần giặt. Sản phẩm được MORPH tuyển chọn từ chất liệu 98% cotton 2% elastane, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+ 6. quan-jeans-ong-suong-rong-baggy
+    Name: Quần Jeans Ống Suông Rộng Baggy
+    Material: 100% Cotton Denim 12oz
+    Fit: Baggy loose
+    Desc: Quần Jeans Ống Suông Rộng Baggy với phom baggy rộng rãi theo phong cách streetwear. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% cotton denim 12oz, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+ 7. quan-jeans-regular-selvedge
+    Name: Quần Jeans Regular Selvedge
+    Material: 100% Cotton Selvedge Denim 13oz dệt thoi.
+    Fit: Regular fit ống suông thẳng đứng cổ điển.
+    Desc: Quần jeans selvedge dệt trên máy dệt con thoi cổ xưa với đường biên đỏ đặc trưng. Chất vải 13oz đứng phom, sẽ tạo vệt phai tự nhiên độc nhất theo thời gian sử dụng.
+ 8. quan-jeans-selvedge-wash-co-dien
+    Name: Quần Jeans Selvedge Wash Cổ Điển
+    Material: 100% Selvedge Denim 13.5oz
+    Fit: Regular fit
+    Desc: Quần Jeans Selvedge Wash Cổ Điển với đường may biên đỏ cuộn gấu đặc trưng. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% selvedge denim 13.5oz, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+ 9. quan-jeans-trang-nga-ecru-denim
+    Name: Quần Jeans Trắng Ngà Ecru Denim
+    Material: 100% Unbleached Cotton
+    Fit: Straight regular
+    Desc: Quần Jeans Trắng Ngà Ecru Denim với sợi denim màu mộc tự nhiên không tẩy. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% unbleached cotton, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+10. quan-jogger-kaki-bo-gau-the-thao
+    Name: Quần Jogger Kaki Bo Gấu Thể Thao
+    Material: Cotton Twill co giãn
+    Fit: Jogger fit
+    Desc: Quần Jogger Kaki Bo Gấu Thể Thao với cạp chun dây rút và gấu bo năng động. Sản phẩm được MORPH tuyển chọn từ chất liệu cotton twill co giãn, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+11. quan-kaki-ong-dung-khong-ly-toi-gian
+    Name: Quần Kaki Ống Đứng Không Ly Tối Giản
+    Material: 100% Cotton Twill
+    Fit: Straight leg
+    Desc: Quần Kaki Ống Đứng Không Ly Tối Giản với thiết kế phẳng phiu cho vẻ ngoài hiện đại. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% cotton twill, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+12. quan-kaki-tui-cheo-dang-suong-nhe
+    Name: Quần Kaki Túi Chéo Dáng Suông Nhẹ
+    Material: Cotton Twill 280gsm
+    Fit: Comfort straight
+    Desc: Quần Kaki Túi Chéo Dáng Suông Nhẹ với túi chéo sâu tiện lợi đựng điện thoại. Sản phẩm được MORPH tuyển chọn từ chất liệu cotton twill 280gsm, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+13. quan-khaki-cap-tang-do-khong-day-nit
+    Name: Quần Khaki Cạp Tăng Đơ Không Dây Nịt
+    Material: 100% Combed Cotton Khaki
+    Fit: Classic straight
+    Desc: Quần Khaki Cạp Tăng Đơ Không Dây Nịt với khóa tăng đơ bên hông điều chỉnh eo. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% combed cotton khaki, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+14. quan-khaki-xep-ly-don-phom-suong
+    Name: Quần Khaki Xếp Ly Đơn Phom Suông
+    Material: 100% Cotton Khaki
+    Fit: Relaxed fit
+    Desc: Quần Khaki Xếp Ly Đơn Phom Suông với một ly trước thanh lịch dễ ứng dụng. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% cotton khaki, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+15. quan-linen-dang-baggy-lung-mat-me
+    Name: Quần Linen Dáng Baggy Lửng Mát Mẻ
+    Material: Linen pha Cotton mộc
+    Fit: Baggy cropped
+    Desc: Quần Linen Dáng Baggy Lửng Mát Mẻ với đũng thụng nhẹ và ống ôm dần xuống gấu. Sản phẩm được MORPH tuyển chọn từ chất liệu linen pha cotton mộc, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+16. quan-linen-ong-rong-cap-cao-khuy-go
+    Name: Quần Linen Ống Rộng Cạp Cao Khuy Gỗ
+    Material: 100% Linen Pháp
+    Fit: Wide leg suông
+    Desc: Quần Linen Ống Rộng Cạp Cao Khuy Gỗ với cạp cao kéo dài chân tự nhiên. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% linen pháp, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+17. quan-linen-ong-suong-thang-dang-ru
+    Name: Quần Linen Ống Suông Thẳng Dáng Rủ
+    Material: 100% Linen wash sinh học
+    Fit: Straight loose
+    Desc: Quần Linen Ống Suông Thẳng Dáng Rủ với độ rủ tự nhiên mềm mại mỗi bước đi. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% linen wash sinh học, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+18. quan-ni-bo-gau-day-dan-sweatpants
+    Name: Quần Nỉ Bo Gấu Dày Dặn Sweatpants
+    Material: 100% Cotton French Terry
+    Fit: Relaxed fit
+    Desc: Quần Nỉ Bo Gấu Dày Dặn Sweatpants với mặt trong nỉ bông êm ái cho ngày nghỉ. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% cotton french terry, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+19. quan-short-chino-mau-pastel-tuoi-sang
+    Name: Quần Short Chino Màu Pastel Tươi Sáng
+    Material: Cotton Khaki mềm
+    Fit: Regular short
+    Desc: Quần Short Chino Màu Pastel Tươi Sáng với tone màu pastel dịu mát cho mùa nắng. Sản phẩm được MORPH tuyển chọn từ chất liệu cotton khaki mềm, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+20. quan-short-denim-rach-gau-phui-bui
+    Name: Quần Short Denim Rách Gấu Phủi Bụi
+    Material: 100% Cotton Denim
+    Fit: Regular shorts
+    Desc: Quần Short Denim Rách Gấu Phủi Bụi với gấu cắt sờn tự nhiên khỏe khoắn. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% cotton denim, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+21. quan-short-linen-cap-chun-day-rut
+    Name: Quần Short Linen Cạp Chun Dây Rút
+    Material: 100% Pure Linen
+    Fit: Relaxed short
+    Desc: Quần Short Linen Cạp Chun Dây Rút với chiếc quần ngắn hoàn hảo cho kỳ nghỉ biển. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% pure linen, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+22. quan-short-tay-xep-ly-lich-lam
+    Name: Quần Short Tây Xếp Ly Lịch Lãm
+    Material: Poly-viscose chống nhăn
+    Fit: Tailored shorts
+    Desc: Quần Short Tây Xếp Ly Lịch Lãm với độ dài trên gối phối cùng sơ mi và polo. Sản phẩm được MORPH tuyển chọn từ chất liệu poly-viscose chống nhăn, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+23. quan-tay-cap-lien-hollywood-waistband
+    Name: Quần Tây Cạp Liền Hollywood Waistband
+    Material: Wool touch twill
+    Fit: Classic regular
+    Desc: Quần Tây Cạp Liền Hollywood Waistband với cạp liền không đường may cắt ngang eo. Sản phẩm được MORPH tuyển chọn từ chất liệu wool touch twill, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+24. quan-tay-dang-lung-cropped-ankle
+    Name: Quần Tây Dáng Lửng Cropped Ankle
+    Material: Wool blend đứng dáng
+    Fit: Cropped straight
+    Desc: Quần Tây Dáng Lửng Cropped Ankle với độ dài chạm mắt cá chân gọn gàng. Sản phẩm được MORPH tuyển chọn từ chất liệu wool blend đứng dáng, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+25. quan-tay-gurkha-cap-cao-hai-khoa
+    Name: Quần Tây Gurkha Cạp Cao Hai Khóa
+    Material: Viscose pha Wool cao cấp
+    Fit: Gurkha high-rise
+    Desc: Quần Tây Gurkha Cạp Cao Hai Khóa với đai gurkha huyền thoại không cần dây lưng. Sản phẩm được MORPH tuyển chọn từ chất liệu viscose pha wool cao cấp, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+26. quan-tay-lua-bang-thoang-mat-mua-he
+    Name: Quần Tây Lụa Băng Thoáng Mát Mùa Hè
+    Material: Ice-silk pha Polyester
+    Fit: Straight drape
+    Desc: Quần Tây Lụa Băng Thoáng Mát Mùa Hè với chất liệu sợi làm mát hạ nhiệt cơ thể. Sản phẩm được MORPH tuyển chọn từ chất liệu ice-silk pha polyester, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+27. quan-tay-ong-loe-nhe-cat-may-tinh-te
+    Name: Quần Tây Ống Loe Nhẹ Cắt May Tinh Tế
+    Material: Poly-spandex co giãn 2 chiều
+    Fit: Flared tailored
+    Desc: Quần Tây Ống Loe Nhẹ Cắt May Tinh Tế với ống loe nhẹ phần gấu giúp đôi chân thon dài. Sản phẩm được MORPH tuyển chọn từ chất liệu poly-spandex co giãn 2 chiều, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+28. quan-tay-xep-ly-doi-phom-thang
+    Name: Quần Tây Xếp Ly Đôi Phom Thẳng
+    Material: Polyester pha Viscose co giãn
+    Fit: Straight pleated
+    Desc: Quần Tây Xếp Ly Đôi Phom Thẳng với xếp 2 ly trước tạo độ phồng nhẹ tinh tế. Sản phẩm được MORPH tuyển chọn từ chất liệu polyester pha viscose co giãn, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+29. quan-tay-xep-ly-giua-om-nhe-chan
+    Name: Quần Tây Xếp Ly Giữa Ôm Nhẹ Chân
+    Material: Terylene pha Rayon
+    Fit: Tapered fit
+    Desc: Quần Tây Xếp Ly Giữa Ôm Nhẹ Chân với ly ủi nhiệt giữ nếp vĩnh viễn. Sản phẩm được MORPH tuyển chọn từ chất liệu terylene pha rayon, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+
+==================== cat-so-mi (29 items) ====================
+ 1. so-mi-chambray-xanh-indigo
+    Name: Sơ mi Chambray Xanh Indigo
+    Material: 100% Cotton Chambray
+    Fit: Regular fit
+    Desc: Sơ mi Chambray Xanh Indigo với sợi dệt thô mộc phong cách workwear. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% cotton chambray, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+ 2. so-mi-co-be-cuban-ke-soc-doc
+    Name: Sơ mi Cổ Bẻ Cuban Kẻ Sọc Dọc
+    Material: Cotton linen mỏng nhẹ
+    Fit: Relaxed fit
+    Desc: Sơ mi Cổ Bẻ Cuban Kẻ Sọc Dọc với kẻ sọc dọc phối màu trung tính nhã nhặn. Sản phẩm được MORPH tuyển chọn từ chất liệu cotton linen mỏng nhẹ, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+ 3. so-mi-co-choker-no-buoc
+    Name: Sơ mi Cổ Choker Nơ Buộc
+    Material: Chiffon tơ nhân tạo
+    Fit: Soft elegant
+    Desc: Sơ mi Cổ Choker Nơ Buộc với dải nơ cổ thanh thoát có thể thắt hoặc buông lơi. Sản phẩm được MORPH tuyển chọn từ chất liệu chiffon tơ nhân tạo, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+ 4. so-mi-co-cuba-hoa-tiet-la-nhiet-doi
+    Name: Sơ mi Cổ Cuba Họa Tiết Lá Nhiệt Đới
+    Material: 100% Viscose Rayon rũ mát
+    Fit: Cuban relaxed
+    Desc: Sơ mi Cổ Cuba Họa Tiết Lá Nhiệt Đới với họa tiết in chìm tinh tế phong cách resort. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% viscose rayon rũ mát, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+ 5. so-mi-co-lanh-tu-linen-tho
+    Name: Sơ mi Cổ Lãnh Tụ Linen Thô
+    Material: 100% Linen tự nhiên
+    Fit: Suông thoải mái
+    Desc: Sơ mi Cổ Lãnh Tụ Linen Thô với chất vải linen dệt thưa phong trần tự tại. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% linen tự nhiên, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+ 6. so-mi-co-tau-khuy-an-toi-gian
+    Name: Sơ mi Cổ Tàu Khuy Ẩn Tối Giản
+    Material: Cotton pha Tencel thoáng mát
+    Fit: Modern fit
+    Desc: Sơ mi Cổ Tàu Khuy Ẩn Tối Giản với nẹp áo che hàng cúc thanh lịch hiện đại. Sản phẩm được MORPH tuyển chọn từ chất liệu cotton pha tencel thoáng mát, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+ 7. so-mi-co-tron-dang-dai-tunic
+    Name: Sơ mi Cổ Tròn Dáng Dài Tunic
+    Material: Linen pha Rayon mềm rũ
+    Fit: Long tunic fit
+    Desc: Sơ mi Cổ Tròn Dáng Dài Tunic với vạt dài xẻ tà nghệ thuật và cá tính. Sản phẩm được MORPH tuyển chọn từ chất liệu linen pha rayon mềm rũ, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+ 8. so-mi-dang-rong-thung-oversize
+    Name: Sơ mi Dáng Rộng Thụng Oversize
+    Material: 100% Cotton Oxford wash
+    Fit: Oversized
+    Desc: Sơ mi Dáng Rộng Thụng Oversize với phom áo rộng phóng khoáng theo xu hướng seoul. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% cotton oxford wash, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+ 9. so-mi-denim-nhe
+    Name: Sơ mi Denim Dệt nhẹ
+    Material: 100% Cotton Denim 6.5oz dệt thoi.
+    Fit: Regular fit dáng thẳng khoẻ khoắn.
+    Desc: Sơ mi denim định lượng nhẹ 6.5oz được wash đá sinh học tạo sắc chàm mờ cuốn hút. Có thể mặc riêng lẻ hoặc làm áo khoác mỏng nhẹ bên ngoài.
+10. so-mi-denim-rach-nhe-dam-chat-bui
+    Name: Sơ mi Denim Rách Nhẹ Đậm Chất Bụi
+    Material: 100% Cotton Denim 7oz
+    Fit: Regular fit
+    Desc: Sơ mi Denim Rách Nhẹ Đậm Chất Bụi với chi tiết mài sờn nhẹ tự nhiên. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% cotton denim 7oz, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+11. so-mi-denim-selvedge-rua-nhe
+    Name: Sơ mi Denim Selvedge Rửa Nhẹ
+    Material: 100% Selvedge Denim 6.5oz
+    Fit: Regular fit
+    Desc: Sơ mi Denim Selvedge Rửa Nhẹ với vải denim dệt biên bền chắc cá tính. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% selvedge denim 6.5oz, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+12. so-mi-det-gan-seersucker-sui-bot
+    Name: Sơ mi Dệt Gân Seersucker Sủi Bọt
+    Material: 100% Cotton Seersucker
+    Fit: Relaxed fit
+    Desc: Sơ mi Dệt Gân Seersucker Sủi Bọt với vải dệt sủi tạo khe thoáng không dính da. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% cotton seersucker, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+13. so-mi-det-jacquard-hoa-tiet-chim
+    Name: Sơ mi Dệt Jacquard Họa Tiết Chìm
+    Material: 100% Cotton Jacquard
+    Fit: Modern fit
+    Desc: Sơ mi Dệt Jacquard Họa Tiết Chìm với họa tiết dệt chìm tạo chiều sâu tinh xảo. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% cotton jacquard, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+14. so-mi-flanel-ke-caro-am-ap
+    Name: Sơ mi Flanel Kẻ Caro Ấm Áp
+    Material: 100% Cotton Flanel chải lông
+    Fit: Relaxed fit
+    Desc: Sơ mi Flanel Kẻ Caro Ấm Áp với chất nỉ bông mềm ấm áp mùa thu đông. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% cotton flanel chải lông, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+15. so-mi-ke-gingham-nho-nang-dong
+    Name: Sơ mi Kẻ Gingham Nhỏ Năng Động
+    Material: 100% Cotton chải kỹ
+    Fit: Regular fit
+    Desc: Sơ mi Kẻ Gingham Nhỏ Năng Động với họa tiết kẻ ca-rô nhỏ tươi trẻ dễ phối đồ. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% cotton chải kỹ, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+16. so-mi-ke-soc-bengal-stripe
+    Name: Sơ mi Kẻ Sọc Bengal Stripe
+    Material: 100% Giza Cotton dệt sọc
+    Fit: Regular fit
+    Desc: Sơ mi Kẻ Sọc Bengal Stripe với kẻ sọc lam thanh lịch chuẩn phong cách anh. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% giza cotton dệt sọc, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+17. so-mi-ke-windowpane-o-vuong-nho
+    Name: Sơ mi Kẻ Windowpane Ô Vuông Nhỏ
+    Material: 100% Cotton chải kỹ
+    Fit: Regular fit
+    Desc: Sơ mi Kẻ Windowpane Ô Vuông Nhỏ với họa tiết kẻ ô mảnh nhẹ nhàng thanh nhã. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% cotton chải kỹ, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+18. so-mi-khuy-xa-cu-cat-may-thu-cong
+    Name: Sơ mi Khuy Xà Cừ Cắt May Thủ Công
+    Material: Cotton dệt 140s cao cấp
+    Fit: Tailored fit
+    Desc: Sơ mi Khuy Xà Cừ Cắt May Thủ Công với khuy khảm ốc xà cừ tự nhiên sang trọng. Sản phẩm được MORPH tuyển chọn từ chất liệu cotton dệt 140s cao cấp, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+19. so-mi-linen-nhuom-tram-tu-nhien
+    Name: Sơ mi Linen Nhuộm Tràm Tự Nhiên
+    Material: 100% Indigo Dyed Linen
+    Fit: Regular fit
+    Desc: Sơ mi Linen Nhuộm Tràm Tự Nhiên với màu xanh tràm truyền thống nhuộm thủ công. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% indigo dyed linen, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+20. so-mi-linen-tay-ngan-mua-he
+    Name: Sơ mi Linen Tay Ngắn Mùa Hè
+    Material: 100% Pure French Linen
+    Fit: Relaxed fit
+    Desc: Sơ mi Linen Tay Ngắn Mùa Hè với tay ngắn mát mẻ cho những ngày hè oi ả. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% pure french linen, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+21. so-mi-linen-thoang-khi
+    Name: Sơ mi Linen Thoáng khí
+    Material: 100% Linen tự nhiên đã giặt mềm enzym.
+    Fit: Relaxed fit rộng rãi, thoáng gió.
+    Desc: Chất liệu sợi lanh tự nhiên từ vùng Normandy mát lạnh, có nếp nhăn tự nhiên đặc trưng mang lại vẻ phóng khoáng, thanh lịch không gắng gượng.
+22. so-mi-lua-pha-cotton-min-muot
+    Name: Sơ mi Lụa Pha Cotton Mịn Mượt
+    Material: 80% Cotton 20% Silk
+    Fit: Relaxed fit thanh lịch
+    Desc: Sơ mi Lụa Pha Cotton Mịn Mượt với ánh bóng nhẹ từ sợi tơ tằm thượng hạng. Sản phẩm được MORPH tuyển chọn từ chất liệu 80% cotton 20% silk, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+23. so-mi-lua-satin-bong-sang-trong
+    Name: Sơ mi Lụa Satin Bóng Sang Trọng
+    Material: Satin lụa pha tencel
+    Fit: Fluid fit
+    Desc: Sơ mi Lụa Satin Bóng Sang Trọng với bề mặt satin bóng mềm rủ quý phái. Sản phẩm được MORPH tuyển chọn từ chất liệu satin lụa pha tencel, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+24. so-mi-overshirt-day-dan-hai-tui
+    Name: Sơ mi Overshirt Dày Dặn Hai Túi
+    Material: Cotton Canvas dày dặn
+    Fit: Boxy overshirt
+    Desc: Sơ mi Overshirt Dày Dặn Hai Túi với khoác ngoài như áo jacket nhẹ thời thượng. Sản phẩm được MORPH tuyển chọn từ chất liệu cotton canvas dày dặn, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+25. so-mi-oxford-tay-ngan-gap-gau
+    Name: Sơ mi Oxford Tay Ngắn Gấp Gấu
+    Material: 100% Oxford Cotton
+    Fit: Classic regular
+    Desc: Sơ mi Oxford Tay Ngắn Gấp Gấu với tay áo gấp gấu phong cách hè trẻ trung. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% oxford cotton, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+26. so-mi-poplin-dang-suong-cong-so
+    Name: Sơ mi Poplin Dáng Suông Công Sở
+    Material: 100% Poplin Cotton 120s
+    Fit: Classic suông
+    Desc: Sơ mi Poplin Dáng Suông Công Sở với mặt vải poplin đanh mịn chống nhăn. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% poplin cotton 120s, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+27. so-mi-tay-bong-nu-tinh-nhe-nhang
+    Name: Sơ mi Tay Bồng Nữ Tính Nhẹ Nhàng
+    Material: Cotton tơ tằm dệt mỏng
+    Fit: Flattering fit
+    Desc: Sơ mi Tay Bồng Nữ Tính Nhẹ Nhàng với cổ áo lá sen tay bo nhún nhẹ duyên dáng. Sản phẩm được MORPH tuyển chọn từ chất liệu cotton tơ tằm dệt mỏng, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+28. so-mi-trang-co-nhon-formal
+    Name: Sơ mi Trắng Cổ Nhọn Formal
+    Material: 100% Cotton 2 ply 100s
+    Fit: Tailored fit
+    Desc: Sơ mi Trắng Cổ Nhọn Formal với phù hợp phối suit và thắt cà vạt cao cấp. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% cotton 2 ply 100s, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+29. so-mi-vat-lech-asymmetric-hem
+    Name: Sơ mi Vạt Lệch Asymmetric Hem
+    Material: 100% Poplin Cotton
+    Fit: Loose fit
+    Desc: Sơ mi Vạt Lệch Asymmetric Hem với vạt trước lệch tà mang hơi thở avant-garde. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% poplin cotton, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+
+==================== cat-vay (29 items) ====================
+ 1. chan-vay-but-chi-xe-ta-sau-ton-dang
+    Name: Chân Váy Bút Chì Xẻ Tà Sau Tôn Dáng
+    Material: Cotton pha Spandex đứng phom
+    Fit: Pencil ôm vừa
+    Desc: Chân Váy Bút Chì Xẻ Tà Sau Tôn Dáng với ôm nhẹ vòng 3 xẻ tà sau dễ di chuyển. Sản phẩm được MORPH tuyển chọn từ chất liệu cotton pha spandex đứng phom, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+ 2. chan-vay-cargo-tui-hop-xe-ta-truoc
+    Name: Chân Váy Cargo Túi Hộp Xẻ Tà Trước
+    Material: Cotton Kaki ripstop
+    Fit: Straight cargo
+    Desc: Chân Váy Cargo Túi Hộp Xẻ Tà Trước với phong cách streetwear tiện dụng khỏe khoắn. Sản phẩm được MORPH tuyển chọn từ chất liệu cotton kaki ripstop, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+ 3. chan-vay-chu-a-kaki-khuy-giua
+    Name: Chân Váy Chữ A Kaki Khuy Giữa
+    Material: Cotton Kaki dày dặn
+    Fit: Chữ A cổ điển
+    Desc: Chân Váy Chữ A Kaki Khuy Giữa với hàng khuy gỗ chạy dọc thân trước. Sản phẩm được MORPH tuyển chọn từ chất liệu cotton kaki dày dặn, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+ 4. chan-vay-da-chu-a-ke-caro-mua-dong
+    Name: Chân Váy Dạ Chữ A Kẻ Caro Mùa Đông
+    Material: Dạ len chải mịn
+    Fit: A-line mini
+    Desc: Chân Váy Dạ Chữ A Kẻ Caro Mùa Đông với chất vải dạ ấm áp họa tiết kẻ tartan. Sản phẩm được MORPH tuyển chọn từ chất liệu dạ len chải mịn, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+ 5. chan-vay-dai-dap-ly-mau-ombre-doc-dao
+    Name: Chân Váy Dài Dập Ly Màu Ombre Độc Đáo
+    Material: Chiffon dập ly nhỏ
+    Fit: Maxi pleated
+    Desc: Chân Váy Dài Dập Ly Màu Ombre Độc Đáo với hiệu ứng chuyển màu ombre huyền ảo tinh tế. Sản phẩm được MORPH tuyển chọn từ chất liệu chiffon dập ly nhỏ, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+ 6. chan-vay-dap-vat-asymmetric-skirt
+    Name: Chân Váy Đắp Vạt Asymmetric Skirt
+    Material: Poly-viscose chống nhăn
+    Fit: Modern asymmetric
+    Desc: Chân Váy Đắp Vạt Asymmetric Skirt với vạt trước lệch tầng hiện đại và cá tính. Sản phẩm được MORPH tuyển chọn từ chất liệu poly-viscose chống nhăn, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+ 7. chan-vay-jean-chu-a-cap-cao-xanh-dam
+    Name: Chân Váy Jean Chữ A Cạp Cao Xanh Đậm
+    Material: 100% Cotton Denim 11oz
+    Fit: Chữ A cạp cao
+    Desc: Chân Váy Jean Chữ A Cạp Cao Xanh Đậm với chất denim dày dặn giữ phom chữ a chuẩn. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% cotton denim 11oz, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+ 8. chan-vay-jean-xe-ta
+    Name: Chân váy Denim Xẻ tà Cổ điển
+    Material: 100% Cotton Denim 11oz wash mài nhẹ.
+    Fit: Midi straight fit cạp cao ôm hông suông nhẹ.
+    Desc: Chân váy bò midi cạp cao với đường xẻ tà trước vừa đủ để bước đi thoải mái và kéo dài đôi chân. Vải denim được giặt wash mài nhẹ phong trần.
+ 9. chan-vay-midi-lua-satin-cat-cheo-bias
+    Name: Chân Váy Midi Lụa Satin Cắt Chéo Bias
+    Material: Satin tơ lụa mềm mướt
+    Fit: Bias drape
+    Desc: Chân Váy Midi Lụa Satin Cắt Chéo Bias với cắt xéo canh sợi tạo độ lượn sóng tự nhiên. Sản phẩm được MORPH tuyển chọn từ chất liệu satin tơ lụa mềm mướt, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+10. chan-vay-quan-dap-linen-day-buoc-hong
+    Name: Chân Váy Quấn Đắp Linen Dây Buộc Hông
+    Material: 100% Pure Linen
+    Fit: Wrap midi
+    Desc: Chân Váy Quấn Đắp Linen Dây Buộc Hông với buộc nơ lệch hông tự điều chỉnh độ vừa. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% pure linen, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+11. chan-vay-tang-xoe-bohemian-phong-khoang
+    Name: Chân Váy Tầng Xòe Bohemian Phóng Khoáng
+    Material: Cotton xô Muslin 2 lớp
+    Fit: Boho tiered
+    Desc: Chân Váy Tầng Xòe Bohemian Phóng Khoáng với ba tầng bèo nhún nhẹ nhàng thướt tha. Sản phẩm được MORPH tuyển chọn từ chất liệu cotton xô muslin 2 lớp, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+12. chan-vay-xe-ta-dui-quyen-ru-slit-skirt
+    Name: Chân Váy Xẻ Tà Đùi Quyến Rũ Slit Skirt
+    Material: Thun Ribbed dệt kim
+    Fit: Midi slit
+    Desc: Chân Váy Xẻ Tà Đùi Quyến Rũ Slit Skirt với xẻ tà đùi trước vừa phải bước đi uyển chuyển. Sản phẩm được MORPH tuyển chọn từ chất liệu thun ribbed dệt kim, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+13. chan-vay-xep-ly-dai-maxi-mem-mai
+    Name: Chân Váy Xếp Ly Dài Maxi Mềm Mại
+    Material: Chiffon lụa xếp nếp
+    Fit: Maxi thướt tha
+    Desc: Chân Váy Xếp Ly Dài Maxi Mềm Mại với nếp gấp ly dập nhỏ bay bổng khi chuyển động. Sản phẩm được MORPH tuyển chọn từ chất liệu chiffon lụa xếp nếp, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+14. chan-vay-xep-ly-ngan-tennis-skirt
+    Name: Chân Váy Xếp Ly Ngắn Tennis Skirt
+    Material: Polyester twill đứng nếp
+    Fit: Tennis mini
+    Desc: Chân Váy Xếp Ly Ngắn Tennis Skirt với phong cách thể thao năng động trẻ trung. Sản phẩm được MORPH tuyển chọn từ chất liệu polyester twill đứng nếp, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+15. chan-vay-xep-ly-ngang-hong-dang-ha-eo
+    Name: Chân Váy Xếp Ly Ngang Hông Dáng Hạ Eo
+    Material: Poly-viscose cao cấp
+    Fit: Drop-waist midi
+    Desc: Chân Váy Xếp Ly Ngang Hông Dáng Hạ Eo với thân trên ôm nhẹ thân dưới dập ly. Sản phẩm được MORPH tuyển chọn từ chất liệu poly-viscose cao cấp, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+16. chan-vay-xoe-phong-dang-tron-circle-skirt
+    Name: Chân Váy Xòe Phồng Dáng Tròn Circle Skirt
+    Material: Taffeta bóng nhẹ đứng dáng
+    Fit: Full circle
+    Desc: Chân Váy Xòe Phồng Dáng Tròn Circle Skirt với xòe tròn 360 độ điệu đà thanh lịch. Sản phẩm được MORPH tuyển chọn từ chất liệu taffeta bóng nhẹ đứng dáng, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+17. dam-babydoll-bong-benh-ngot-ngao
+    Name: Đầm BabyDoll Bồng Bềnh Ngọt Ngào
+    Material: Cotton xốp dệt nổi hoa
+    Fit: Babydoll loose
+    Desc: Đầm BabyDoll Bồng Bềnh Ngọt Ngào với dáng babydoll xòe rộng giấu khuyết điểm. Sản phẩm được MORPH tuyển chọn từ chất liệu cotton xốp dệt nổi hoa, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+18. dam-chu-a-sat-nach-toi-gian-minimal
+    Name: Đầm Chữ A Sát Nách Tối Giản Minimal
+    Material: Cotton Twill đanh mịn
+    Fit: Shift A-line
+    Desc: Đầm Chữ A Sát Nách Tối Giản Minimal với đường cắt tối giản không chi tiết thừa. Sản phẩm được MORPH tuyển chọn từ chất liệu cotton twill đanh mịn, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+19. dam-co-yem-ho-lung-thanh-lich
+    Name: Đầm Cổ Yếm Hở Lưng Thanh Lịch
+    Material: Lụa Habotai 2 lớp
+    Fit: Flattering flow
+    Desc: Đầm Cổ Yếm Hở Lưng Thanh Lịch với cổ yếm mềm buộc nơ sau gáy quý phái. Sản phẩm được MORPH tuyển chọn từ chất liệu lụa habotai 2 lớp, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+20. dam-day-hai-day-slip-dress-lua-min
+    Name: Đầm Dây Hai Dây Slip Dress Lụa Mịn
+    Material: Satin lụa dệt mịn rủ
+    Fit: Bias cut ôm nhẹ
+    Desc: Đầm Dây Hai Dây Slip Dress Lụa Mịn với dây vai mảnh lưng trần quyến rũ. Sản phẩm được MORPH tuyển chọn từ chất liệu satin lụa dệt mịn rủ, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+21. dam-knit-det-kim-co-lo-om-dang
+    Name: Đầm Knit Dệt Kim Cổ Lọ Ôm Dáng
+    Material: Cotton len dệt kim gân
+    Fit: Slim bodycon nhẹ
+    Desc: Đầm Knit Dệt Kim Cổ Lọ Ôm Dáng với len dệt gân co giãn giữ ấm ngày thu. Sản phẩm được MORPH tuyển chọn từ chất liệu cotton len dệt kim gân, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+22. dam-linen-co-v-hai-tui-vuong-phia-truoc
+    Name: Đầm Linen Cổ V Hai Túi Vuông Phía Trước
+    Material: 100% Linen dệt thô
+    Fit: Relaxed shift
+    Desc: Đầm Linen Cổ V Hai Túi Vuông Phía Trước với hai túi vuông nổi tiện lợi phong cách mộc. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% linen dệt thô, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+23. dam-linen-tay-bong-co-v-cuc-boc
+    Name: Đầm Linen Tay Bồng Cổ V Cúc Bọc
+    Material: 100% Linen tự nhiên
+    Fit: A-line fit
+    Desc: Đầm Linen Tay Bồng Cổ V Cúc Bọc với chi tiết cúc bọc vải cùng màu tinh xảo. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% linen tự nhiên, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+24. dam-maxi-tre-vai-bo-thun-tuoi-tan
+    Name: Đầm Maxi Trễ Vai Bo Thun Tươi Tắn
+    Material: Rayon hoa nhí vintage
+    Fit: Maxi off-shoulder
+    Desc: Đầm Maxi Trễ Vai Bo Thun Tươi Tắn với thân áo bo thun smocking co giãn ôm ngực. Sản phẩm được MORPH tuyển chọn từ chất liệu rayon hoa nhí vintage, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+25. dam-polo-the-thao-nang-dong
+    Name: Đầm Polo Thể Thao Năng Động
+    Material: Cotton cá sấu 4 chiều
+    Fit: Straight sporty
+    Desc: Đầm Polo Thể Thao Năng Động với cổ bẻ cài 3 khuy phong cách sporty chic. Sản phẩm được MORPH tuyển chọn từ chất liệu cotton cá sấu 4 chiều, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+26. dam-quan-wrap-dress-co-v-that-no
+    Name: Đầm Quấn Wrap Dress Cổ V Thắt Nơ
+    Material: Lụa nhân tạo pha Tencel
+    Fit: Wrap fit duyên dáng
+    Desc: Đầm Quấn Wrap Dress Cổ V Thắt Nơ với vạt quấn đắp chéo che khuyết điểm vòng 2. Sản phẩm được MORPH tuyển chọn từ chất liệu lụa nhân tạo pha tencel, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+27. dam-so-mi-that-dai-eo-shirt-dress
+    Name: Đầm Sơ Mi Thắt Đai Eo Shirt Dress
+    Material: Cotton Poplin 100s
+    Fit: Shirt dress fit
+    Desc: Đầm Sơ Mi Thắt Đai Eo Shirt Dress với sự giao thoa giữa sơ mi chỉn chu và đầm duyên dáng. Sản phẩm được MORPH tuyển chọn từ chất liệu cotton poplin 100s, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+28. dam-suong-hai-day-phom-rong-thoai-mai
+    Name: Đầm Suông Hai Dây Phom Rộng Thoải Mái
+    Material: Cotton lanh thoáng mát
+    Fit: Loose airy
+    Desc: Đầm Suông Hai Dây Phom Rộng Thoải Mái với phom đầm suông rộng bay bổng cho ngày hè. Sản phẩm được MORPH tuyển chọn từ chất liệu cotton lanh thoáng mát, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.
+29. dam-suong-linen-co-vuong-tay-lo
+    Name: Đầm Suông Linen Cổ Vuông Tay Lỡ
+    Material: 100% Linen cao cấp
+    Fit: Suông thoải mái
+    Desc: Đầm Suông Linen Cổ Vuông Tay Lỡ với cổ vuông khoe xương quai xanh thanh mảnh. Sản phẩm được MORPH tuyển chọn từ chất liệu 100% linen cao cấp, hoàn thiện tỉ mỉ từng chi tiết cho tủ đồ hiện đại.

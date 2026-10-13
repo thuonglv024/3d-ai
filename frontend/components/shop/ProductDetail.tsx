@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import type { Product } from "../../lib/catalog";
 import { getRelatedProducts, money } from "../../lib/catalog";
+import { fetchProducts } from "../../lib/catalogApi";
 import { useCart } from "../../lib/CartContext";
 import { useScan, type SizeAdviceResult } from "../../lib/ScanContext";
 import Header from "./Header";
@@ -32,6 +33,15 @@ const FitExperience = dynamic(() => import("./FitExperience"), {
   ssr: false,
   loading: () => <div className="fit-lazy">Đang mở phòng tìm size…</div>,
 });
+
+function getCategoryFallback(cat: string) {
+  const c = (cat || "").toLowerCase();
+  if (c.includes("so-mi") || c.includes("sơ mi")) return "/products/so-mi-oxford-classic.jpg";
+  if (c.includes("ao-khoac") || c.includes("áo khoác")) return "/products/ao-khoac-blazer-linen.jpg";
+  if (c.includes("quan") || c.includes("quần")) return "/products/quan-tay-pleated-wide-leg.jpg";
+  if (c.includes("vay") || c.includes("váy") || c.includes("đầm")) return "/products/chan-vay-chu-a-linen.jpg";
+  return "/products/ao-thun-essential.jpg";
+}
 
 export default function ProductDetail({ product }: { product: Product }) {
   const router = useRouter();
@@ -48,6 +58,13 @@ export default function ProductDetail({ product }: { product: Product }) {
     return "";
   });
   const [selectedImage, setSelectedImage] = useState(product.image);
+
+  const galleryImages = useMemo(() => {
+    if (Array.isArray(product.gallery) && product.gallery.length > 0) {
+      return [...product.gallery];
+    }
+    return [product.image];
+  }, [product.gallery, product.image]);
   const [quantity, setQuantity] = useState(1);
   const [message, setMessage] = useState("");
   const [addedFeedback, setAddedFeedback] = useState<{
@@ -74,7 +91,37 @@ export default function ProductDetail({ product }: { product: Product }) {
   const [adviceLoading, setAdviceLoading] = useState(false);
 
   const favorite = isWishlisted(product.id);
-  const relatedProducts = useMemo(() => getRelatedProducts(product.id, 4), [product.id]);
+  const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
+
+  // Fetch actual related products from current catalog data
+  useEffect(() => {
+    let active = true;
+    fetchProducts({ category: product.category, limit: 12 })
+      .then((res) => {
+        if (!active) return;
+        const matches = res.items.filter((p) => p.id !== product.id && p.slug !== product.slug);
+        if (matches.length < 4) {
+          fetchProducts({ limit: 12 }).then((allRes) => {
+            if (!active) return;
+            const filler = allRes.items.filter(
+              (p) => p.id !== product.id && p.slug !== product.slug && !matches.some((m) => m.id === p.id)
+            );
+            setRelatedProducts([...matches, ...filler].slice(0, 4));
+          });
+        } else {
+          setRelatedProducts(matches.slice(0, 4));
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setRelatedProducts(getRelatedProducts(product.id, 4));
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [product.id, product.category, product.slug]);
 
   // Reset selection state when product changes to avoid carrying over wrong attributes
   useEffect(() => {
@@ -135,7 +182,7 @@ export default function ProductDetail({ product }: { product: Product }) {
     return () => {
       active = false;
     };
-  }, [job?.id, job?.status, product.id, fetchAdviceForProduct, product]);
+  }, [job?.id, job?.status, product.id, fetchAdviceForProduct]);
 
   // Explicit user action to add to cart
   const handleAddToCart = () => {
@@ -170,7 +217,7 @@ export default function ProductDetail({ product }: { product: Product }) {
     if (product.sizes.includes(sizeToApply)) {
       setSelectedSize(sizeToApply);
       applySizeToProduct(product.id, sizeToApply);
-      setMessage(`Đã chọn size ${sizeToApply} theo gợi ý hình thể của bạn.`);
+      setMessage(`Đã áp dụng size ${sizeToApply} theo gợi ý hình thể của bạn.`);
     }
     setFitOpen(false);
   };
@@ -205,12 +252,19 @@ export default function ProductDetail({ product }: { product: Product }) {
           <div className="product-gallery">
             <div className="product-photo">
               <img
+                key={selectedImage}
                 src={selectedImage}
                 alt={selectedColor === product.color ? `${product.name} - ${product.color}` : `${product.name} (Ảnh minh họa màu gốc: ${product.color})`}
-                width="1122"
-                height="1402"
+                width="900"
+                height="1200"
                 fetchPriority="high"
                 className="main-detail-img"
+                onError={(e) => {
+                  const fb = getCategoryFallback(product.category || product.categoryName);
+                  if (!e.currentTarget.src.endsWith(fb)) {
+                    e.currentTarget.src = fb;
+                  }
+                }}
               />
               <span className="product-photo-tag">{product.categoryName} · Thử nghiệm</span>
               <button
@@ -224,19 +278,35 @@ export default function ProductDetail({ product }: { product: Product }) {
             </div>
 
             {/* Gallery Thumbnails */}
-            {product.gallery.length > 1 && (
+            {galleryImages.length > 1 && (
               <div className="gallery-thumbnails" role="group" aria-label="Hình ảnh chi tiết">
-                {product.gallery.map((img, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    className={`thumb-btn ${selectedImage === img ? "active" : ""}`}
-                    onClick={() => setSelectedImage(img)}
-                    aria-label={`Xem ảnh ${idx + 1}`}
-                  >
-                    <img src={img} alt={`Góc nhìn ${idx + 1}`} width="80" height="100" />
-                  </button>
-                ))}
+                {galleryImages.map((img, idx) => {
+                  const isDetail = img.includes("-detail");
+                  const label = idx === 0 ? "Ảnh chính" : isDetail ? "Ảnh phóng to chi tiết" : "Ảnh phóng to chi tiết";
+                  return (
+                    <button
+                      key={img}
+                      type="button"
+                      className={`thumb-btn ${selectedImage === img ? "active" : ""}`}
+                      onClick={() => setSelectedImage(img)}
+                      aria-label={label}
+                      title={label}
+                    >
+                      <img
+                        src={img}
+                        alt={label}
+                        width="72"
+                        height="96"
+                        onError={(e) => {
+                          const fb = getCategoryFallback(product.category || product.categoryName);
+                          if (!e.currentTarget.src.endsWith(fb)) {
+                            e.currentTarget.src = fb;
+                          }
+                        }}
+                      />
+                    </button>
+                  );
+                })}
               </div>
             )}
 
@@ -257,6 +327,11 @@ export default function ProductDetail({ product }: { product: Product }) {
                 <span className="original-price">{money(product.originalPrice)}</span>
               )}
               <span>Giá thử nghiệm</span>
+            </div>
+
+            <div className="product-stock-badge in-stock" role="status" aria-label="Tình trạng kho hàng">
+              <span className="stock-indicator-dot" />
+              <span>Còn hàng · Sẵn sàng đóng gói và giao hàng</span>
             </div>
 
             <div className="product-divider" />
@@ -314,6 +389,16 @@ export default function ProductDetail({ product }: { product: Product }) {
                 </button>
               </div>
 
+              {/* Recommended size highlight badge from scan advice */}
+              {advice?.candidates && advice.candidates.length > 0 && (
+                <div className="product-recommended-size-badge" role="status">
+                  <Sparkles size={14} className="rec-sparkle-icon" />
+                  <span>
+                    Size gợi ý cho bạn: <strong>Size {advice.candidates.join(", ")}</strong>
+                  </span>
+                </div>
+              )}
+
               <div className="product-sizes" role="group" aria-label="Chọn kích thước">
                 {product.sizes.map((s) => {
                   const isSelected = selectedSize === s;
@@ -322,12 +407,17 @@ export default function ProductDetail({ product }: { product: Product }) {
                     <button
                       key={s}
                       type="button"
-                      aria-label={`Size ${s}`}
+                      aria-label={`Size ${s}${isRecommended ? " (Gợi ý cho bạn)" : ""}`}
                       className={`${isSelected ? "selected" : ""} ${isRecommended ? "recommended" : ""}`}
                       aria-pressed={isSelected}
                       onClick={() => {
                         setSelectedSize(s);
-                        setMessage("");
+                        applySizeToProduct(product.id, s);
+                        if (isRecommended) {
+                          setMessage(`Đã chọn size ${s} (gợi ý theo hình thể của bạn).`);
+                        } else {
+                          setMessage("");
+                        }
                         setAddedFeedback(null);
                       }}
                     >
@@ -408,22 +498,6 @@ export default function ProductDetail({ product }: { product: Product }) {
               </button>
             </div>
 
-            {addedFeedback && (
-              <div className="product-added-banner" role="status" aria-live="polite">
-                <div className="banner-left">
-                  <span className="banner-check-circle">
-                    <Check size={16} />
-                  </span>
-                  <span>
-                    Đã thêm <strong>{addedFeedback.productName}</strong> - Size <strong>{addedFeedback.size}</strong> vào giỏ hàng.
-                  </span>
-                </div>
-                <Link href="/cart" className="banner-cart-link">
-                  Xem giỏ hàng →
-                </Link>
-              </div>
-            )}
-
             {message && (
               <p className="product-message" role="alert">
                 {message}
@@ -482,8 +556,8 @@ export default function ProductDetail({ product }: { product: Product }) {
               </Link>
             </div>
             <div className="product-grid related-grid">
-              {relatedProducts.map((p) => (
-                <ProductCard key={p.id} product={p} />
+              {relatedProducts.map((p, idx) => (
+                <ProductCard key={p.id} product={p} index={idx} />
               ))}
             </div>
           </section>

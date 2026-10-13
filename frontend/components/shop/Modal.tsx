@@ -57,15 +57,6 @@ export default function Modal({
 
       return () => {
         clearTimeout(focusTimer);
-      };
-    } else {
-      if (dialog.open) {
-        dialog.close();
-      }
-    }
-
-    return () => {
-      if (open) {
         globalActiveModalCount = Math.max(0, globalActiveModalCount - 1);
         if (globalActiveModalCount === 0) {
           document.body.style.overflow = originalBodyOverflow;
@@ -79,13 +70,20 @@ export default function Modal({
         if (!remainingOpenDialog && triggerRef.current && typeof triggerRef.current.focus === "function") {
           triggerRef.current.focus();
         }
+      };
+    } else {
+      if (dialog.open) {
+        dialog.close();
       }
-    };
+    }
   }, [open]);
 
   // Trap focus within dialog & handle Escape key
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDialogElement>) => {
     if (e.key === "Escape") {
+      if (dialogRef.current?.querySelector(".capture-session.is-expanded")) {
+        return;
+      }
       e.preventDefault();
       e.stopPropagation();
       onClose();
@@ -132,6 +130,10 @@ export default function Modal({
       className={`shop-modal ${wide ? "fit-modal" : ""}`}
       aria-label={title}
       onCancel={(e) => {
+        if (dialogRef.current?.querySelector(".capture-session.is-expanded")) {
+          e.preventDefault();
+          return;
+        }
         e.preventDefault();
         onClose();
       }}

@@ -1,24 +1,59 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Heart } from "lucide-react";
 import type { Product } from "../../lib/catalog";
 import { money } from "../../lib/catalog";
 import { useCart } from "../../lib/CartContext";
 
-export default function ProductCard({ product }: { product: Product }) {
+function getCategoryFallback(cat: string) {
+  const c = (cat || "").toLowerCase();
+  if (c.includes("so-mi") || c.includes("sơ mi")) return "/products/so-mi-oxford-classic.jpg";
+  if (c.includes("ao-khoac") || c.includes("áo khoác")) return "/products/ao-khoac-blazer-linen.jpg";
+  if (c.includes("quan") || c.includes("quần")) return "/products/quan-tay-pleated-wide-leg.jpg";
+  if (c.includes("vay") || c.includes("váy") || c.includes("đầm")) return "/products/chan-vay-chu-a-linen.jpg";
+  return "/products/ao-thun-essential.jpg";
+}
+
+export default function ProductCard({
+  product,
+  index,
+}: {
+  product: Product;
+  index?: number;
+}) {
   const { isWishlisted, toggleWishlist } = useCart();
   const favorite = isWishlisted(product.id);
+  const fallback = getCategoryFallback(product.category || product.categoryName);
+  const [imgSrc, setImgSrc] = useState(product.image || fallback);
+
+  useEffect(() => {
+    setImgSrc(product.image || getCategoryFallback(product.category || product.categoryName));
+  }, [product.image, product.category, product.categoryName]);
+
+  const stagger = index !== undefined ? index % 12 : 0;
 
   return (
-    <article className="product-card" aria-label={`Sản phẩm ${product.name}`}>
+    <article
+      className="product-card"
+      aria-label={`Sản phẩm ${product.name}`}
+      style={{ "--stagger-index": stagger } as React.CSSProperties}
+    >
       <div className="product-card-media">
         <Link href={`/products/${product.slug}`} className="product-card-image-link">
           <img
-            src={product.image}
+            src={imgSrc}
             alt={`${product.name}, màu ${product.color}`}
             loading="lazy"
+            width="600"
+            height="800"
             className="product-card-img"
+            onError={() => {
+              if (imgSrc !== fallback) {
+                setImgSrc(fallback);
+              }
+            }}
           />
         </Link>
 

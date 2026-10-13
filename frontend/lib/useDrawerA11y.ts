@@ -16,6 +16,8 @@ export function useDrawerA11y(
   panelRef?: React.RefObject<HTMLElement | null>
 ) {
   const triggerRef = useRef<HTMLElement | null>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (!isOpen) return;
@@ -46,7 +48,7 @@ export function useDrawerA11y(
       if (e.key === "Escape") {
         e.preventDefault();
         e.stopPropagation();
-        onClose();
+        onCloseRef.current();
         return;
       }
 
@@ -88,5 +90,5 @@ export function useDrawerA11y(
         triggerRef.current.focus();
       }
     };
-  }, [isOpen, onClose, panelRef]);
+  }, [isOpen, panelRef]);
 }

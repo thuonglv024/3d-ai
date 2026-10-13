@@ -8,6 +8,7 @@ import "./scan-review.css";
 import "./commerce.css";
 import "./scan-result.css";
 import "./capture-flow.css";
+import "./account/account.css";
 import { Providers } from "./providers";
 
 export const metadata: Metadata = {

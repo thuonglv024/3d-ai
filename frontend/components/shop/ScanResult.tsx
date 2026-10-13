@@ -1,6 +1,7 @@
 "use client";
 import dynamic from "next/dynamic";
-import { Component, useRef, useState, type ReactNode } from "react";
+import Link from "next/link";
+import { Component, useRef, useState, useEffect, type ReactNode } from "react";
 import {
   ArrowRight,
   Box,
@@ -14,10 +15,17 @@ import {
   SlidersHorizontal,
   Sparkles,
   AlertCircle,
+  Bookmark,
+  CheckCircle2,
+  TrendingUp,
+  LoaderCircle,
 } from "lucide-react";
 import type { Job, MeasurementDetail } from "../../lib/useBodyScan";
 import type { Product } from "../../lib/catalog";
-import type { SizeAdviceResult } from "../../lib/ScanContext";
+import { useScan, type SizeAdviceResult } from "../../lib/ScanContext";
+import { useAuth } from "../../lib/AuthContext";
+import { useRouter } from "next/navigation";
+import { buildAuthUrl } from "../../lib/authNav";
 
 const Viewer = dynamic(() => import("../BodyViewer"), {
   ssr: false,
@@ -81,6 +89,41 @@ export default function ScanResult({
   const [unit, setUnit] = useState("cm");
   const [selected, setSelected] = useState("");
   const [notice, setNotice] = useState("");
+  const [loadingTimedOut, setLoadingTimedOut] = useState(false);
+
+  useEffect(() => {
+    if (!advice && !adviceError) {
+      setLoadingTimedOut(false);
+      const timer = setTimeout(() => {
+        setLoadingTimedOut(true);
+      }, 7000);
+      return () => clearTimeout(timer);
+    } else {
+      setLoadingTimedOut(false);
+    }
+  }, [advice, adviceError]);
+
+  const router = useRouter();
+  const { user } = useAuth();
+  const { savedScans, saveErrors, saveScanToProfile, getGuestToken } = useScan();
+  const autoSavedJobRef = useRef<Record<string, boolean>>({});
+
+  const currentSaveStatus = savedScans[job.id] || "idle";
+  const currentSaveError = saveErrors[job.id] || "";
+
+  useEffect(() => {
+    if (job?.status === "completed" && job?.id) {
+      if (
+        user &&
+        user.auto_save_scans &&
+        (!savedScans[job.id] || savedScans[job.id] === "idle") &&
+        !autoSavedJobRef.current[job.id]
+      ) {
+        autoSavedJobRef.current[job.id] = true;
+        void saveScanToProfile(job.id, getGuestToken(job.id));
+      }
+    }
+  }, [job?.id, job?.status, user, savedScans, saveScanToProfile, getGuestToken]);
 
   const rows = job.body_profile?.measurement_details || [];
   const upper = job.body_profile?.capture_mode === "upper_body";
@@ -150,7 +193,7 @@ export default function ScanResult({
         <div className="scan-header-actions">
           <button className="scan-btn-subtle" type="button" onClick={onReset} disabled={deleting}>
             <RotateCcw size={15} />
-            {deleting ? "Đang xóa…" : "Quét lại"}
+            {deleting ? "Đang xóa…" : "Chụp lại"}
           </button>
           <button className="scan-btn-subtle" type="button" onClick={fullscreen}>
             <Expand size={15} />
@@ -166,25 +209,99 @@ export default function ScanResult({
         Chưa kiểm chứng độ chính xác trên người thật.
       </p>
 
+      {/* Body Profile Save & Measurement History Bar */}
+      <div className="scan-profile-bar" role="region" aria-label="Lưu hồ sơ hình thể">
+        <div className="scan-profile-status-group">
+          {currentSaveStatus === "saved" ? (
+            <div className="scan-save-badge is-saved" role="status">
+              <CheckCircle2 size={16} />
+              <span>Đã lưu vào hồ sơ hình thể</span>
+              <Link href="/account/body-profile" className="scan-profile-link">
+                Xem trong hồ sơ →
+              </Link>
+            </div>
+          ) : currentSaveStatus === "saving" ? (
+            <div className="scan-save-badge is-saving" role="status">
+              <LoaderCircle size={16} className="scan-spin" />
+              <span>Đang lưu vào hồ sơ hình thể…</span>
+            </div>
+          ) : user ? (
+            <button
+              type="button"
+              className="scan-save-btn"
+              onClick={() => saveScanToProfile(job.id, getGuestToken(job.id))}
+            >
+              <Bookmark size={15} />
+              <span>Lưu vào hồ sơ hình thể</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="scan-save-btn is-guest"
+              onClick={() => {
+                const token = job.guest_token || getGuestToken(job.id);
+                const authUrl = buildAuthUrl("register", {
+                  returnTo: `/scan?scan_id=${encodeURIComponent(job.id)}`,
+                  intent: "save_scan",
+                  scanId: job.id,
+                  guestToken: token || undefined,
+                });
+                router.push(authUrl);
+              }}
+            >
+              <Bookmark size={15} />
+              <span>Lưu vào hồ sơ của tôi</span>
+            </button>
+          )}
+
+          {currentSaveStatus === "error" && (
+            <div className="scan-profile-error" role="alert">
+              <AlertCircle size={15} />
+              <span>{currentSaveError || "Lỗi lưu kết quả vào hồ sơ."}</span>
+              <button
+                type="button"
+                className="scan-retry-save-btn"
+                onClick={() => saveScanToProfile(job.id, getGuestToken(job.id))}
+              >
+                Thử lại
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="scan-profile-shortcuts">
+          <Link href="/account/body-profile" className="scan-btn-subtle scan-profile-history-btn">
+            <TrendingUp size={15} />
+            <span>Xem biểu đồ & Lịch sử số đo</span>
+          </Link>
+        </div>
+      </div>
+
       {/* Prominent Sizing Advice & Call To Action */}
       <section className="scan-size-panel" aria-label="Gợi ý size">
         <div className="scan-size-panel-info">
-          <h3>Chọn size cho {product?.name || "sản phẩm"}</h3>
+          <div className="scan-size-panel-title-row">
+            <Sparkles size={20} className="scan-panel-gold-icon" />
+            <h3>Gợi ý kích thước cho {product?.name || "sản phẩm"}</h3>
+          </div>
           <p>
             {isBottom
               ? "Đối chiếu vòng eo và mông của bạn với bảng size của sản phẩm."
               : "Đối chiếu vòng ngực và eo của bạn với bảng size của sản phẩm."}{" "}
-            Gợi ý mang tính tham khảo.
+            Gợi ý mang tính tham khảo theo tỷ lệ hình thể.
           </p>
         </div>
 
-        <div>
+        <div className="scan-size-panel-content">
           {adviceError ? (
-            <div className="scan-advice-nomatch">
-              <p role="alert">{adviceError}</p>
-              <div className="scan-advice-actions" style={{ marginTop: 8 }}>
+            <div className="scan-advice-nomatch" role="alert">
+              <div className="scan-nomatch-header">
+                <AlertCircle size={18} />
+                <p>{adviceError}</p>
+              </div>
+              <div className="scan-advice-actions">
                 <button className="scan-btn-subtle" type="button" onClick={onRetry}>
-                  Thử lại
+                  <RotateCcw size={14} /> Thử lại
                 </button>
                 {onOpenSizeChart && (
                   <button className="scan-btn-subtle" type="button" onClick={onOpenSizeChart}>
@@ -194,31 +311,41 @@ export default function ScanResult({
               </div>
             </div>
           ) : !advice ? (
-            <p role="status">Đang đối chiếu size…</p>
+            loadingTimedOut ? (
+              <div className="scan-advice-timeout" role="alert">
+                <div className="scan-timeout-msg">
+                  <AlertCircle size={18} />
+                  <span>Quá trình đối chiếu size mất nhiều thời gian hơn dự kiến.</span>
+                </div>
+                <div className="scan-advice-actions">
+                  <button className="scan-btn-subtle" type="button" onClick={onRetry}>
+                    <RotateCcw size={14} /> Thử lại
+                  </button>
+                  {onOpenSizeChart && (
+                    <button className="scan-btn-subtle" type="button" onClick={onOpenSizeChart}>
+                      Xem bảng size & chọn thủ công
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="scan-advice-loading" role="status">
+                <LoaderCircle size={20} className="scan-spin" />
+                <span>Đang đối chiếu số đo hình thể với bảng size…</span>
+              </div>
+            )
           ) : advice.status === "insufficient_measurements" ? (
-            <div className="scan-advice-insufficient">
-              <h4>
-                <AlertCircle size={15} style={{ verticalAlign: "middle", marginRight: 6 }} />
-                Chưa đủ dữ liệu để gợi ý (cần số đo vòng mông)
-              </h4>
+            <div className="scan-advice-insufficient" role="region" aria-label="Thiếu số đo để gợi ý size">
+              <div className="scan-insufficient-header">
+                <AlertCircle size={18} />
+                <h4>Chưa đủ dữ liệu để gợi ý (cần số đo vòng mông)</h4>
+              </div>
               <p>
-                Sản phẩm này là {isBottom ? "quần/váy" : "trang phục"} cần số đo vòng mông. Webcam thân trên chỉ ước
-                lượng ngực và eo từ ảnh; không quan sát vòng mông thực tế.
+                Sản phẩm <strong>{product?.name || "này"}</strong> là {isBottom ? "quần/chân váy" : "trang phục"} cần số đo vòng mông. Webcam thân trên chỉ ước lượng ngực và eo từ ảnh; không quan sát vòng mông thực tế.
               </p>
               <div className="scan-advice-actions">
                 <button
-                  className="scan-btn-subtle"
-                  type="button"
-                  onClick={() => {
-                    if (onOpenSizeChart) {
-                      onOpenSizeChart();
-                    }
-                  }}
-                >
-                  Xem bảng size & chọn thủ công
-                </button>
-                <button
-                  className="scan-btn-subtle"
+                  className="scan-size-apply-btn scan-fullbody-btn"
                   type="button"
                   onClick={() => {
                     if (onResetFullBody) {
@@ -229,36 +356,68 @@ export default function ScanResult({
                   }}
                   disabled={deleting}
                 >
-                  Quét lại toàn thân
+                  <RotateCcw size={15} />
+                  Quét lại toàn thân →
                 </button>
+                {onOpenSizeChart && (
+                  <button
+                    className="scan-btn-subtle"
+                    type="button"
+                    onClick={onOpenSizeChart}
+                  >
+                    Xem bảng size & chọn thủ công
+                  </button>
+                )}
               </div>
             </div>
           ) : advice.candidates && advice.candidates.length > 0 ? (
-            <div className="scan-advice-success">
-              <span className="scan-advice-badge">
-                <Sparkles size={16} /> Gợi ý: Size {advice.candidates.join(", ")}
-              </span>
-              {advice.candidates.map((size) => (
-                <button
-                  key={size}
-                  type="button"
-                  className="scan-size-apply-btn"
-                  onClick={() => onSelectSize(size)}
-                >
-                  Áp dụng size {size} →
-                </button>
-              ))}
+            <div className="scan-advice-success" role="region" aria-label="Size gợi ý">
+              <div className="scan-advice-success-info">
+                <span className="scan-advice-badge">
+                  <Sparkles size={16} /> Gợi ý: Size {advice.candidates.join(", ")}
+                </span>
+                <span className="scan-advice-subnote">
+                  Số đo của bạn vừa vặn với khoảng chuẩn trong bảng size.
+                </span>
+              </div>
+              <div className="scan-advice-actions">
+                {advice.candidates.map((size) => (
+                  <button
+                    key={size}
+                    type="button"
+                    className="scan-size-apply-btn"
+                    onClick={() => onSelectSize(size)}
+                  >
+                    Áp dụng size {size} →
+                  </button>
+                ))}
+                {onOpenSizeChart && (
+                  <button
+                    type="button"
+                    className="scan-btn-subtle"
+                    onClick={onOpenSizeChart}
+                  >
+                    Xem bảng size chi tiết
+                  </button>
+                )}
+              </div>
             </div>
           ) : (
-            <div className="scan-advice-nomatch">
-              <p>Không có size nào khớp tất cả số đo trong bảng. Bạn hãy xem bảng size hoặc chọn size thủ công.</p>
-              {onOpenSizeChart && (
-                <div className="scan-advice-actions" style={{ marginTop: 8 }}>
-                  <button className="scan-btn-subtle" type="button" onClick={onOpenSizeChart}>
-                    Xem bảng size & chọn thủ công
+            <div className="scan-advice-nomatch" role="region" aria-label="Không khớp size">
+              <div className="scan-nomatch-header">
+                <AlertCircle size={18} />
+                <p>Không có size nào khớp tất cả số đo trong bảng. Bạn hãy xem bảng size hoặc chọn size thủ công theo sở thích.</p>
+              </div>
+              <div className="scan-advice-actions">
+                {onOpenSizeChart && (
+                  <button className="scan-size-apply-btn scan-manual-btn" type="button" onClick={onOpenSizeChart}>
+                    Xem bảng size & chọn thủ công →
                   </button>
-                </div>
-              )}
+                )}
+                <button className="scan-btn-subtle" type="button" onClick={onReset}>
+                  <RotateCcw size={14} /> Quét lại
+                </button>
+              </div>
             </div>
           )}
         </div>

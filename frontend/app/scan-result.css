@@ -114,42 +114,128 @@
   padding: 22px 24px;
   margin-bottom: 20px;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 24px;
+  flex-direction: column;
+  gap: 16px;
   box-shadow: var(--shadow-sm);
+}
+
+.scan-size-panel-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.scan-size-panel-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.scan-panel-gold-icon {
+  color: var(--primary);
+  flex-shrink: 0;
 }
 
 .scan-size-panel-info h3 {
   font-size: 17px;
-  margin-bottom: 4px;
+  font-weight: 600;
   color: var(--text-primary);
+  margin: 0;
 }
 
 .scan-size-panel-info p {
   font-size: 13px;
   color: var(--text-secondary);
+  line-height: 1.6;
   margin: 0;
 }
 
+.scan-size-panel-content {
+  width: 100%;
+}
+
+/* Loading & Timeout States */
+.scan-advice-loading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-control);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.scan-spin {
+  animation: scanSpin 1s linear infinite;
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+@keyframes scanSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.scan-advice-timeout {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 20px;
+  background: #FFF8EC;
+  border: 1.5px solid #E5BA7D;
+  border-radius: var(--radius-control);
+}
+
+.scan-timeout-msg {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #8F5819;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* Matched State */
 .scan-advice-success {
   display: flex;
   align-items: center;
-  gap: 16px;
+  justify-content: space-between;
   flex-wrap: wrap;
+  gap: 16px;
+  padding: 16px 20px;
+  background: var(--primary-soft);
+  border: 1.5px solid var(--primary-border);
+  border-radius: var(--radius-control);
+}
+
+.scan-advice-success-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .scan-advice-badge {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: var(--accent-text);
-  background: var(--primary-soft);
-  border: 1px solid var(--primary-border);
-  padding: 8px 16px;
+  gap: 8px;
+  font-size: 14px;
+  color: #26211A;
+  background: var(--primary);
+  border: 1px solid var(--primary-hover);
+  padding: 8px 18px;
   border-radius: var(--radius-pill);
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  box-shadow: 0 2px 10px rgba(198, 161, 91, 0.28);
+}
+
+.scan-advice-subnote {
+  font-size: 12px;
+  color: var(--text-secondary);
 }
 
 .scan-size-apply-btn {
@@ -166,46 +252,87 @@
   border-radius: var(--radius-control);
   cursor: pointer;
   transition: all 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 10px rgba(198, 161, 91, 0.25);
 }
 
 .scan-size-apply-btn:hover {
   background: var(--primary-hover) !important;
   border-color: var(--primary-hover);
   transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(198, 161, 91, 0.35);
 }
 
 .scan-size-apply-btn:active {
   transform: scale(0.98);
 }
 
-.scan-advice-insufficient {
-  background: #fdf5eb;
-  border: 1px solid #ebd0ad;
-  border-radius: var(--radius-control);
-  padding: 14px 18px;
+.scan-fullbody-btn {
+  background: var(--primary) !important;
+  color: #26211A !important;
 }
 
-.scan-advice-insufficient h4 {
-  font-size: 14px;
-  color: #9e501b;
-  margin: 0 0 4px;
+.scan-manual-btn {
+  background: var(--primary) !important;
+  color: #26211A !important;
+}
+
+/* Insufficient Measurements State */
+.scan-advice-insufficient {
+  background: #FCF2E3;
+  border: 1.5px solid #E5BA7D;
+  border-radius: var(--radius-control);
+  padding: 16px 20px;
+}
+
+.scan-insufficient-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #8F5819;
+  margin-bottom: 6px;
+}
+
+.scan-insufficient-header h4 {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: #7A4B10;
+  margin: 0;
 }
 
 .scan-advice-insufficient p {
-  font-size: 12px;
-  color: #70471b;
-  margin: 0 0 12px;
-  line-height: 1.6;
+  font-size: 12.5px;
+  color: #6B3F06;
+  margin: 0 0 14px;
+  line-height: 1.65;
 }
 
 .scan-advice-actions {
   display: flex;
-  gap: 10px;
+  align-items: center;
+  gap: 12px;
   flex-wrap: wrap;
 }
 
+/* No Match State */
 .scan-advice-nomatch {
+  background: var(--surface-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  padding: 16px 20px;
+}
+
+.scan-nomatch-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+
+.scan-nomatch-header p {
+  margin: 0;
   font-size: 13px;
+  line-height: 1.6;
   color: var(--text-secondary);
 }
 
@@ -593,13 +720,72 @@
 
 /* Standalone /scan page */
 .scan-standalone {
-  max-width: 1400px;
+  width: 100%;
+  max-width: 1440px;
   margin: auto;
+  padding: 0 16px;
 }
 
 .scan-standalone > .fit-experience {
-  margin: 24px auto;
-  max-width: 1180px;
+  width: 100%;
+  margin: 20px auto;
+  max-width: 1280px;
+}
+
+.scan-standalone:has(.capture-session),
+.scan-standalone:has(.fit-experience-capturing) {
+  max-width: min(1600px, 98vw);
+  width: 100%;
+  margin: 6px auto 16px;
+  padding: 0 8px;
+}
+
+.fit-experience-capturing,
+.scan-standalone:has(.capture-session) > .fit-experience,
+.scan-standalone:has(.fit-experience-capturing) > .fit-experience {
+  max-width: 100% !important;
+  width: 100% !important;
+  margin: 4px auto;
+  box-sizing: border-box;
+}
+
+.scan-standalone:has(.capture-session) .shop-header,
+.scan-standalone:has(.fit-experience-capturing) .shop-header {
+  padding: 8px 16px;
+  margin-bottom: 6px;
+}
+
+@media (max-width: 768px) {
+  .scan-standalone .shop-header {
+    height: auto;
+    min-height: unset;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .scan-standalone .shop-logo {
+    font-size: 18px;
+  }
+
+  .scan-standalone .scan-product-picker {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  .scan-standalone .scan-product-picker select {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .scan-standalone .scan-back-link {
+    font-size: 12px;
+  }
 }
 
 .standalone-choice {
@@ -643,8 +829,12 @@
   }
   .scan-stage {
     min-height: 440px;
+    display: flex;
+    flex-direction: column;
   }
   .scan-stage .body-viewer {
+    position: relative;
+    inset: auto;
     height: 440px;
   }
   .scan-tools {

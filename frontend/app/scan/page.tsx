@@ -4,12 +4,17 @@ import { useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Check } from "lucide-react";
 import FitExperience from "../../components/shop/FitExperience";
-import { getAllProducts, essential, type Product } from "../../lib/catalog";
+import { essential, type Product } from "../../lib/catalog";
+import ProductPickerPopover from "../../components/shop/ProductPickerPopover";
 
 export default function Page() {
   const [selectedProduct, setSelectedProduct] = useState<Product>(essential);
   const [size, setSize] = useState("");
-  const allProducts = getAllProducts();
+
+  const handleSelectProduct = (prod: Product) => {
+    setSelectedProduct(prod);
+    setSize("");
+  };
 
   return (
     <main className="storefront scan-standalone">
@@ -17,28 +22,14 @@ export default function Page() {
         <Link href="/" className="shop-logo" aria-label="MORPH Studio trang chủ">
           MORPH<span>STUDIO</span>
         </Link>
+
         <div className="scan-product-picker">
-          <label htmlFor="scan-product-select">
-            Đối chiếu bảng size:
-          </label>
-          <select
-            id="scan-product-select"
-            value={selectedProduct.id}
-            onChange={(e) => {
-              const p = allProducts.find((item) => item.id === e.target.value);
-              if (p) {
-                setSelectedProduct(p);
-                setSize("");
-              }
-            }}
-          >
-            {allProducts.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.categoryName}: {p.name}
-              </option>
-            ))}
-          </select>
+          <ProductPickerPopover
+            selectedProduct={selectedProduct}
+            onSelectProduct={handleSelectProduct}
+          />
         </div>
+
         <Link href="/" className="scan-back-link">
           <ArrowLeft size={16} /> Về trang mua sắm
         </Link>

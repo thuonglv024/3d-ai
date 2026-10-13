@@ -119,7 +119,7 @@ export default function CheckoutPage() {
     };
   }, [cart, subtotal, hydrated]);
 
-  const validateForm = () => {
+  const validateForm = (): Record<string, string> => {
     const errs: Record<string, string> = {};
 
     if (!fullName.trim()) {
@@ -148,19 +148,26 @@ export default function CheckoutPage() {
       errs.address = "Địa chỉ cần chi tiết hơn (số nhà, tên đường, phường/xã, quận/huyện, tỉnh/thành)";
     }
 
-    setErrors(errs);
-    return Object.keys(errs).length === 0;
+    return errs;
   };
 
   const handleOrderSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     setSubmitError(null);
 
-    if (!validateForm()) {
-      // Scroll to the first error
-      const firstErrorKey = Object.keys(errors)[0];
+    const nextErrors = validateForm();
+    setErrors(nextErrors);
+
+    const errorKeys = Object.keys(nextErrors);
+    if (errorKeys.length > 0) {
+      // Focus and scroll to the first error field immediately using nextErrors
+      const firstErrorKey = errorKeys[0];
       const el = document.getElementById(firstErrorKey);
-      el?.focus();
+      if (el) {
+        el.focus();
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
       return;
     }
 
@@ -334,10 +341,14 @@ export default function CheckoutPage() {
                           if (errors.fullName) setErrors((prev) => ({ ...prev, fullName: "" }));
                         }}
                         autoComplete="name"
+                        aria-invalid={!!errors.fullName}
+                        aria-describedby={errors.fullName ? "fullName-error" : undefined}
                         required
                       />
                       {errors.fullName && (
-                        <span className="checkout-field-error">{errors.fullName}</span>
+                        <span id="fullName-error" className="checkout-field-error" role="alert">
+                          {errors.fullName}
+                        </span>
                       )}
                     </div>
 
@@ -356,10 +367,14 @@ export default function CheckoutPage() {
                           if (errors.phone) setErrors((prev) => ({ ...prev, phone: "" }));
                         }}
                         autoComplete="tel"
+                        aria-invalid={!!errors.phone}
+                        aria-describedby={errors.phone ? "phone-error" : undefined}
                         required
                       />
                       {errors.phone && (
-                        <span className="checkout-field-error">{errors.phone}</span>
+                        <span id="phone-error" className="checkout-field-error" role="alert">
+                          {errors.phone}
+                        </span>
                       )}
                     </div>
 
@@ -378,9 +393,13 @@ export default function CheckoutPage() {
                           if (errors.email) setErrors((prev) => ({ ...prev, email: "" }));
                         }}
                         autoComplete="email"
+                        aria-invalid={!!errors.email}
+                        aria-describedby={errors.email ? "email-error" : undefined}
                       />
                       {errors.email && (
-                        <span className="checkout-field-error">{errors.email}</span>
+                        <span id="email-error" className="checkout-field-error" role="alert">
+                          {errors.email}
+                        </span>
                       )}
                     </div>
 
@@ -399,10 +418,14 @@ export default function CheckoutPage() {
                           if (errors.address) setErrors((prev) => ({ ...prev, address: "" }));
                         }}
                         autoComplete="street-address"
+                        aria-invalid={!!errors.address}
+                        aria-describedby={errors.address ? "address-error" : undefined}
                         required
                       />
                       {errors.address && (
-                        <span className="checkout-field-error">{errors.address}</span>
+                        <span id="address-error" className="checkout-field-error" role="alert">
+                          {errors.address}
+                        </span>
                       )}
                     </div>
 
@@ -459,7 +482,15 @@ export default function CheckoutPage() {
                     {cart.map((item) => (
                       <div className="checkout-item-review-row" key={item.id}>
                         <div className="checkout-item-thumb">
-                          <img src={item.image} alt={item.name} width="56" height="70" />
+                          <img
+                            src={item.image}
+                            alt={item.name}
+                            width="56"
+                            height="70"
+                            onError={(e) => {
+                              e.currentTarget.src = "/products/ao-thun-essential.jpg";
+                            }}
+                          />
                         </div>
                         <div className="checkout-item-info">
                           <div className="checkout-item-name">{item.name}</div>

@@ -13,6 +13,29 @@
   border-bottom: 1px solid var(--line);
 }
 
+.fit-product-context.is-capturing {
+  padding: 8px 18px;
+  gap: 12px;
+}
+
+.fit-product-context.is-capturing .fit-product-thumb {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+}
+
+.fit-product-context.is-capturing .fit-product-name {
+  font-size: 13px;
+}
+
+.fit-product-context.is-capturing .fit-product-category {
+  font-size: 10px;
+}
+
+.fit-product-context.is-capturing .fit-product-price {
+  font-size: 13px;
+}
+
 .fit-product-thumb {
   width: 44px;
   height: 44px;
@@ -175,6 +198,133 @@
   color: var(--text-secondary);
 }
 
+/* Full Body Requirement Card for Bottoms / Dresses */
+.scan-fullbody-requirement-card {
+  background: var(--surface);
+  border: 1.5px solid var(--primary);
+  border-radius: var(--radius-card);
+  padding: 18px 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 18px rgba(198, 161, 91, 0.12);
+}
+
+.requirement-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.requirement-gold-icon {
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+.requirement-header h3 {
+  font-size: 15.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.requirement-desc {
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--text-secondary);
+  margin: 0 0 14px;
+}
+
+.requirement-tips-box {
+  background: var(--primary-soft);
+  border: 1px solid var(--primary-border);
+  border-radius: var(--radius-control);
+  padding: 12px 16px;
+}
+
+.requirement-tips-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-text);
+  display: block;
+  margin-bottom: 8px;
+}
+
+.requirement-tips-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.requirement-tips-list li {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--accent-text);
+}
+
+.tip-device {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 600;
+  color: var(--accent-text);
+}
+
+/* Amber Warning Card when User overrides to upper_body on full body items */
+.scan-upperbody-warning-card {
+  background: #FCF2E3;
+  border: 1.5px solid #E5BA7D;
+  border-radius: var(--radius-control);
+  padding: 14px 18px;
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.warning-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #8F5819;
+}
+
+.warning-card-head strong {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #7A4B10;
+}
+
+.scan-upperbody-warning-card p {
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: #6B3F06;
+  margin: 0;
+}
+
+.scan-switch-mode-btn {
+  align-self: flex-start;
+  min-height: 38px;
+  padding: 6px 16px;
+  font-size: 12.5px;
+  font-weight: 600;
+  border: 1px solid #C68A36;
+  border-radius: var(--radius-control);
+  background: #FFFFFF;
+  color: #7A4B10;
+  cursor: pointer;
+  transition: all 0.16s ease;
+  margin-top: 4px;
+}
+
+.scan-switch-mode-btn:hover {
+  background: #FAF3E8;
+  border-color: #A36B1C;
+  transform: translateY(-1px);
+}
+
 .scan-setup-fields {
   display: grid;
   grid-template-columns: 1fr 1.45fr;
@@ -226,6 +376,27 @@
   min-height: 48px;
   display: flex;
   align-items: center;
+}
+
+.scan-setup-fields > label,
+.scan-setup-fields .scan-field-label {
+  font-size: 12px;
+  font-weight: 500;
+  display: block;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.scan-framing-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.scan-setup-fields .morph-custom-select-trigger {
+  min-height: 48px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
 }
 
 .scan-setup-fields select {
@@ -424,27 +595,73 @@
   color: var(--text-primary);
   padding: 0;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  border-radius: var(--radius-card);
 }
 
 .fit-modal:has(.capture-session) {
-  max-width: 1080px;
-  width: 95vw;
+  max-width: min(1560px, 98vw);
+  width: 96vw;
+  max-height: 96dvh;
+}
+
+/* Fullscreen expansion mode */
+.capture-session.is-expanded {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  max-width: 100vw;
+  max-height: 100dvh;
+  margin: 0;
+  padding: 0;
+  border-radius: 0;
+  z-index: 99999;
+  background: var(--paper);
+}
+
+.fit-modal:has(.capture-session.is-expanded),
+.shop-modal:has(.capture-session.is-expanded) {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  max-width: 100vw !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: var(--paper) !important;
+}
+
+.shop-modal:has(.capture-session.is-expanded) .shop-modal-header,
+.shop-modal:has(.capture-session.is-expanded) .fit-product-context {
+  display: none !important;
 }
 
 .capture-session-head {
+  position: relative;
+  z-index: 50;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 20px;
-  padding: 16px 24px;
+  gap: 16px;
+  padding: 12px 20px;
   border-bottom: 1px solid var(--line);
   background: var(--surface);
+  flex-shrink: 0;
+  overflow: visible;
 }
 
-.capture-session-head > div {
+.capture-session-head-left {
   display: flex;
-  gap: 12px;
   align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .capture-session-head strong {
@@ -457,22 +674,36 @@
   font-size: 11px;
   font-weight: 600;
   color: var(--accent-text);
-  padding: 5px 11px;
+  padding: 4px 10px;
   background: var(--primary-soft);
   border: 1px solid var(--primary-border);
   border-radius: var(--radius-pill);
   white-space: nowrap;
 }
 
+.capture-session-head .capture-mode-tag {
+  background: var(--surface-muted);
+  border-color: var(--border);
+  color: var(--text-secondary);
+}
+
+.capture-session-head-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  overflow: visible;
+}
+
 .capture-session-head select {
-  max-width: 260px;
-  min-height: 44px;
+  max-width: 220px;
+  min-height: 40px;
   background-color: var(--surface);
   color: var(--text-primary);
   border: 1px solid var(--border);
   border-radius: var(--radius-control);
-  padding: 8px 34px 8px 12px;
-  font-size: 13px;
+  padding: 6px 30px 6px 12px;
+  font-size: 12.5px;
   font-family: inherit;
   font-weight: 500;
   outline: none;
@@ -482,13 +713,13 @@
   -moz-appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23C6A15B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 12px center;
+  background-position: right 10px center;
   box-shadow: var(--shadow-sm);
-  transition: border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
 .capture-session-head select:hover:not(:disabled) {
-  border-color: var(--border-strong);
+  border-color: var(--primary);
 }
 
 .capture-session-head select:focus {
@@ -508,41 +739,163 @@
   padding: 10px 14px;
 }
 
-.capture-session-head button {
+.capture-session-head .capture-expand-btn,
+.capture-session-head .capture-close-btn {
   display: grid;
   place-items: center;
   background: var(--surface);
   color: var(--text-primary);
   border: 1px solid var(--border);
   border-radius: var(--radius-control);
-  width: 44px;
-  height: 44px;
-  min-width: 44px;
-  min-height: 44px;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
   cursor: pointer;
   box-shadow: var(--shadow-sm);
   transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease, transform 0.16s ease;
 }
 
-.capture-session-head button:hover {
+.capture-session-head .capture-expand-btn:hover,
+.capture-session-head .capture-close-btn:hover {
   background: var(--primary-soft);
   border-color: var(--primary-border);
   color: var(--accent-text);
   transform: translateY(-1px);
 }
 
-.capture-session-head button:active {
+.capture-session-head .capture-expand-btn:active,
+.capture-session-head .capture-close-btn:active {
   transform: scale(0.96);
 }
 
-/* Video Stage */
+/* Dedicated styles for CustomSelect camera device dropdown */
+.capture-device-select {
+  position: relative;
+  z-index: 60;
+  max-width: 240px;
+}
+
+.capture-device-select .morph-custom-select-trigger {
+  min-height: 40px;
+  height: 40px;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+  width: auto !important;
+  min-width: 170px !important;
+  max-width: 240px !important;
+  padding: 6px 12px !important;
+  border-radius: var(--radius-control, 10px) !important;
+  background: var(--surface, #ffffff) !important;
+  border: 1px solid var(--border, #E8E2D5) !important;
+  box-shadow: var(--shadow-sm) !important;
+  transform: none !important;
+  text-align: left !important;
+}
+
+.capture-device-select .morph-custom-select-trigger:hover:not(:disabled) {
+  border-color: var(--primary, #C6A15B) !important;
+  background: var(--surface, #ffffff) !important;
+  transform: none !important;
+}
+
+.capture-device-select .morph-custom-select-menu {
+  position: absolute !important;
+  right: 0 !important;
+  left: auto !important;
+  top: calc(100% + 6px) !important;
+  min-width: 220px !important;
+  max-width: 320px !important;
+  width: max-content !important;
+  z-index: 9999 !important;
+  background: var(--surface, #FFFFFF) !important;
+  border: 1px solid var(--border-gold, #C6A15B) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 12px 32px rgba(44, 38, 30, 0.16), 0 2px 8px rgba(198, 161, 91, 0.18) !important;
+  padding: 6px !important;
+}
+
+.capture-device-select .morph-select-option {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  width: 100% !important;
+  height: auto !important;
+  min-height: 38px !important;
+  min-width: unset !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 8px !important;
+  padding: 8px 12px !important;
+  background: transparent !important;
+  text-align: left !important;
+  transform: none !important;
+  cursor: pointer !important;
+}
+
+.capture-device-select .morph-select-option:hover:not(:disabled) {
+  background: var(--primary-soft, #F7F2E7) !important;
+  color: var(--text-primary, #2C261E) !important;
+  transform: none !important;
+}
+
+.capture-device-select .morph-select-option.is-selected {
+  background: var(--primary-soft, #F7F2E7) !important;
+  color: var(--accent-text, #8C6D2D) !important;
+  font-weight: 600 !important;
+}
+
+/* Two-column layout */
+.capture-session-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 20px;
+  align-items: stretch;
+  padding: 16px 20px 20px;
+  background: var(--paper);
+  flex: 1;
+  min-height: 0;
+}
+
+/* Video Stage Area */
+.capture-stage-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #14120e;
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  border: 1px solid rgba(198, 161, 91, 0.2);
+  min-height: 380px;
+  max-height: calc(100dvh - 140px);
+  width: 100%;
+}
+
+.capture-session.is-expanded .capture-stage-wrapper {
+  max-height: calc(100dvh - 64px) !important;
+  min-height: unset !important;
+  height: 100% !important;
+  border-radius: 0;
+  border: none;
+}
+
 .capture-live {
   position: relative;
-  background: #191612;
-  min-height: 280px;
-  max-height: 60dvh;
   width: 100%;
-  overflow: hidden;
+  height: 100%;
+  max-height: calc(100dvh - 140px);
+  max-width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.capture-session.is-expanded .capture-live {
+  max-height: calc(100dvh - 64px) !important;
+  height: 100% !important;
 }
 
 .capture-live video {
@@ -557,62 +910,77 @@
 .capture-frame-mark {
   position: absolute;
   inset: 16px;
-  border: 2px dashed rgba(255, 255, 255, 0.45);
-  border-radius: var(--radius-control);
+  border: 2px dashed rgba(255, 255, 255, 0.4);
+  border-radius: var(--radius-card);
   pointer-events: none;
   transition: border-color 0.25s, box-shadow 0.25s;
+  z-index: 2;
 }
 
 .capture-live.pose-ready .capture-frame-mark {
   border-color: var(--primary);
   border-style: solid;
-  box-shadow: 0 0 16px rgba(198, 161, 91, 0.45);
+  box-shadow: inset 0 0 20px rgba(198, 161, 91, 0.2), 0 0 20px rgba(198, 161, 91, 0.35);
 }
 
-.capture-instruction {
+.capture-view-pill {
   position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: rgba(26, 22, 17, 0.88);
+  top: 18px;
+  left: 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(26, 22, 17, 0.82);
   backdrop-filter: blur(8px);
-  text-align: center;
-  padding: 16px 20px;
-  color: #ffffff;
-}
-
-.capture-instruction h2 {
-  font-size: 20px;
-  line-height: 1.4;
-  font-weight: 600;
-  margin: 0 0 4px;
-  color: #ffffff;
-}
-
-.capture-instruction p {
+  border: 1px solid rgba(198, 161, 91, 0.45);
+  color: #FAF7F0;
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
   font-size: 12px;
-  color: #e5ded2;
-  line-height: 1.6;
-  margin: 0;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  z-index: 3;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.capture-view-pill-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--primary);
+  box-shadow: 0 0 6px var(--primary);
 }
 
 .capture-count {
   position: absolute;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -60%);
+  transform: translate(-50%, -50%);
   border: 3px solid var(--primary-border);
-  background: rgba(38, 33, 26, 0.94);
+  background: rgba(30, 25, 20, 0.92);
+  backdrop-filter: blur(10px);
   color: var(--primary);
   border-radius: 50%;
-  width: 110px;
-  height: 110px;
+  width: 104px;
+  height: 104px;
   display: grid;
   place-items: center;
-  font-size: 64px;
+  font-size: 60px;
   font-weight: 700;
   line-height: 1;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 10px 36px rgba(0, 0, 0, 0.5);
+  z-index: 5;
+  animation: capturePulse 1s ease-in-out infinite;
+}
+
+@keyframes capturePulse {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.05);
+  }
 }
 
 .capture-overlay {
@@ -665,21 +1033,31 @@
   color: var(--text-secondary);
 }
 
+/* Sidebar with Progress, Guidance, Status & Actions */
+.capture-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
 .capture-progress {
   display: flex;
-  gap: 16px;
+  gap: 12px;
   align-items: center;
   justify-content: center;
-  padding: 16px 20px 8px;
+  padding: 12px 16px;
   font-size: 12px;
   color: var(--text-secondary);
-  background: var(--paper);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
 }
 
 .capture-progress > span {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
   font-weight: 500;
 }
 
@@ -694,42 +1072,115 @@
 
 .capture-progress > i {
   height: 1px;
-  width: 50px;
+  width: 32px;
   background: var(--line-strong);
 }
 
-.capture-status {
-  font-size: 12.5px;
-  line-height: 1.7;
-  text-align: center;
-  min-height: 38px;
-  padding: 6px 20px;
+.capture-guide-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.capture-guide-step {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   color: var(--accent-text);
-  font-weight: 500;
-  background: var(--paper);
 }
 
-.capture-session-actions {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  padding: 12px 24px 24px;
-  background: var(--paper);
+.capture-guide-card h2 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.4;
+  margin: 0;
 }
 
-.capture-session-actions > p {
-  flex: 1;
+.capture-guide-card p {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin: 0;
+}
+
+.capture-status-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: 14px 16px;
   display: flex;
-  gap: 8px;
-  justify-content: center;
-  align-items: center;
-  font-size: 13px;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.capture-status-badge-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
   color: var(--text-secondary);
 }
 
+.capture-status-message {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--accent-text);
+  font-weight: 500;
+}
+
+.capture-posture-tips {
+  background: var(--primary-soft);
+  border: 1px solid var(--primary-border);
+  border-radius: var(--radius-card);
+  padding: 12px 14px;
+  font-size: 11.5px;
+  color: var(--accent-text);
+  line-height: 1.6;
+}
+
+.capture-posture-tips strong {
+  display: block;
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+
+.capture-posture-tips p {
+  margin: 0;
+}
+
+.capture-sidebar .capture-session-actions {
+  margin-top: auto;
+  padding: 0;
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.capture-auto-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  padding: 8px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  margin: 0;
+  text-align: center;
+}
+
 .capture-primary {
-  flex: 1;
-  min-height: 50px;
+  min-height: 48px;
+  width: 100%;
   background: var(--primary) !important;
   color: #26211A !important;
   border: 1px solid var(--primary);
@@ -737,7 +1188,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 10px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -760,12 +1211,13 @@
 }
 
 .capture-cancel {
-  min-height: 50px;
+  min-height: 44px;
+  width: 100%;
   border: 1px solid var(--border-strong);
   background: var(--surface);
   color: var(--text-primary);
   border-radius: var(--radius-control);
-  padding: 10px 20px;
+  padding: 8px 16px;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -786,6 +1238,24 @@
   outline-offset: 3px;
 }
 
+@media (max-width: 1023px) {
+  .capture-session-body {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    padding: 14px 16px 16px;
+  }
+  .capture-stage-wrapper {
+    min-height: 360px;
+    max-height: min(68dvh, calc(100dvh - 180px));
+    height: auto;
+  }
+  .capture-live {
+    min-height: 360px;
+    max-height: min(68dvh, calc(100dvh - 180px));
+    height: 100%;
+  }
+}
+
 @media (max-width: 650px) {
   .scan-onboarding {
     padding: 24px 18px;
@@ -802,38 +1272,71 @@
     grid-template-columns: 1fr;
     gap: 16px;
   }
+  .capture-session {
+    overflow-x: hidden;
+  }
+  .capture-session-body {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding: 10px 8px 14px;
+  }
   .capture-session-head {
-    padding: 12px 16px;
+    padding: 10px 14px;
     flex-direction: column;
     align-items: stretch;
-    gap: 10px;
+    gap: 8px;
   }
-  .capture-session-head > div {
+  .capture-session-head-left {
+    display: flex;
+    align-items: center;
     justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .capture-session-head-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+  }
+  .capture-session-head select {
+    flex: 1;
+    min-width: 0;
+    max-width: unset;
+  }
+  .capture-stage-wrapper {
+    min-height: 280px;
+    max-height: min(64dvh, calc(100dvh - 160px));
+    border-radius: var(--radius-control);
   }
   .capture-live {
-    min-height: 320px;
-    max-height: 55dvh;
-  }
-  .capture-instruction h2 {
-    font-size: 17px;
-  }
-  .capture-instruction p {
-    font-size: 11px;
+    min-height: 280px;
+    max-height: min(64dvh, calc(100dvh - 160px));
+    height: 100%;
   }
   .capture-count {
-    width: 88px;
-    height: 88px;
-    font-size: 50px;
+    width: 84px;
+    height: 84px;
+    font-size: 48px;
   }
   .capture-turn h2 {
-    font-size: 24px;
+    font-size: 22px;
   }
-  .capture-session-actions {
-    padding: 10px 16px 18px;
-    flex-direction: column;
+  .capture-turn p {
+    font-size: 12px;
   }
-  .capture-primary, .capture-cancel {
-    width: 100%;
+  .capture-sidebar {
+    gap: 10px;
+  }
+  .capture-guide-card {
+    padding: 12px;
+  }
+  .capture-status-card {
+    padding: 12px;
+  }
+  .capture-posture-tips {
+    padding: 10px 12px;
+    font-size: 11px;
   }
 }

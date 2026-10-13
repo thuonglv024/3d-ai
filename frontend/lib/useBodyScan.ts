@@ -4,11 +4,11 @@ type Health = { ready: boolean; engine: string; message: string };
 type Measurements = { height_cm?: number; chest_cm?: number; waist_cm?: number; hip_cm?: number; shoulder_width_cm?: number; inseam_cm?: number | null };
 export type MeasurementDetail = {key:string;label:string;value_cm:number|null;source:"user_input"|"photo_estimate"|"photo_with_prior"|"template_model"|"unavailable";color:string;points_m:[number,number,number][]};
 type BodyProfile = { capture_mode?:string; measurement_details?:MeasurementDetail[]; fit_status?: string; max_fit_error_cm?: number; note?: string; sections?: {key:string;label:string;target_cm:number;model_cm:number;fit_error_cm:number;points_m:[number,number,number][]}[] };
-export type Job = { id: string; status: "queued" | "processing" | "completed" | "failed"; stage: string; error?: string; model_url?: string; warnings?: string[]; measurements?: Measurements; body_profile?: BodyProfile; elapsed_seconds?: number };
+export type Job = { id: string; status: "queued" | "processing" | "completed" | "failed"; stage: string; error?: string; model_url?: string; warnings?: string[]; measurements?: Measurements; body_profile?: BodyProfile; elapsed_seconds?: number; guest_token?: string; user_id?: string | null };
 type Slot = "front" | "side";
 
-export function useBodyScan(initialJob?: Job | null) {
-  const [captureMode,setCaptureMode]=useState<"upper_body"|"full_body">("upper_body");
+export function useBodyScan(initialJob?: Job | null, initialMode: "upper_body" | "full_body" = "upper_body") {
+  const [captureMode,setCaptureMode]=useState<"upper_body"|"full_body">(initialMode);
   const [front, setFront] = useState<File | null>(null);
   const [side, setSide] = useState<File | null>(null);
   const [height, setHeight] = useState("170");
@@ -89,9 +89,14 @@ export function useBodyScan(initialJob?: Job | null) {
       }
       const body = new FormData(); body.append("front", frontPhoto); body.append("side", sidePhoto); body.append("height_cm", height); body.append("consent", "true");
       body.append("capture_mode",captureMode);
-      const r = await fetch("/api/scans", { method: "POST", body });
+      const r = await fetch("/api/scans", { method: "POST", body, credentials: "include" });
       const data = await r.json();
       if (!r.ok) throw new Error(typeof data.detail === "string" ? data.detail : "Không gửi được ảnh. Hãy kiểm tra dữ liệu và thử lại.");
+      if (typeof window !== "undefined" && data?.id && data?.guest_token) {
+        try {
+          sessionStorage.setItem(`morph_scan_guest_token_${data.id}`, data.guest_token);
+        } catch {}
+      }
       setJob(data); setRotation(false);
     } catch (e) { setError(e instanceof Error ? e.message : "Không kết nối được backend."); }
     finally { setSubmitting(false); }

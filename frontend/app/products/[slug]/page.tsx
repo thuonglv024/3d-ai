@@ -1,7 +1,12 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
-import { getAllProducts, getProductBySlug } from "../../../lib/catalog";
+import { getAllProducts } from "../../../lib/catalog";
+import { fetchProductBySlug } from "../../../lib/catalogApi";
 import ProductDetail from "../../../components/shop/ProductDetail";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const dynamicParams = true;
 
 export async function generateStaticParams() {
   const products = getAllProducts();
@@ -16,7 +21,7 @@ export default async function ProductPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const product = getProductBySlug(slug);
+  const product = await fetchProductBySlug(slug);
 
   if (!product) {
     notFound();

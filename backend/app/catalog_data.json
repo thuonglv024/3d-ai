@@ -61,8 +61,7 @@
       "image": "/products/ao-thun-essential.jpg",
       "gallery": [
         "/products/ao-thun-essential.jpg",
-        "/products/essential-ivory.png",
-        "/products/ao-thun-supima-crewneck.jpg"
+        "/products/ao-thun-essential-detail.jpg"
       ],
       "description": "Áo thun cổ tròn tối giản dệt từ sợi cotton 100% chải kỹ 240gsm. Thiết kế vừa vặn tự nhiên, vai hơi hạ, mang lại cảm giác thoải mái khi mặc cả ngày.",
       "material": "100% Cotton chải kỹ 240gsm, xử lý wash sinh học chống co rút và xù lông.",
@@ -170,7 +169,7 @@
       "image": "/products/ao-thun-oversized-heavyweight.jpg",
       "gallery": [
         "/products/ao-thun-oversized-heavyweight.jpg",
-        "/products/ao-thun-essential.jpg"
+        "/products/ao-thun-oversized-heavyweight-detail.jpg"
       ],
       "description": "Định lượng vải 280gsm tạo phom dáng hộp cứng cáp, vai rơi phóng khoáng. Một lựa chọn hiện đại cho phong cách tối giản streetwear.",
       "material": "100% Cotton chải kỹ 280gsm dệt sợi đôi.",
@@ -267,7 +266,7 @@
       "image": "/products/ao-thun-supima-crewneck.jpg",
       "gallery": [
         "/products/ao-thun-supima-crewneck.jpg",
-        "/products/ao-thun-essential.jpg"
+        "/products/ao-thun-supima-crewneck-detail.jpg"
       ],
       "description": "Được dệt từ bông Supima cao cấp có sợi dài hơn 35% so với cotton thông thường, đem lại cảm giác êm ái, bền màu và giữ phom qua hàng trăm lần giặt.",
       "material": "100% Supima Cotton sợi dài cao cấp.",
@@ -373,7 +372,7 @@
       "image": "/products/ao-thun-waffle-long-sleeve.jpg",
       "gallery": [
         "/products/ao-thun-waffle-long-sleeve.jpg",
-        "/products/ao-thun-essential.jpg"
+        "/products/ao-thun-waffle-long-sleeve-detail.jpg"
       ],
       "description": "Cấu trúc dệt waffle tạo các túi khí nhỏ giữ nhiệt ấm áp tự nhiên nhưng vẫn thông thoáng. Bo tay thun đàn hồi giữ tay áo gọn gàng khi cử động.",
       "material": "95% Cotton waffle, 5% Spandex tăng độ đàn hồi.",
@@ -464,7 +463,7 @@
       "image": "/products/ao-thun-striped-relaxed.jpg",
       "gallery": [
         "/products/ao-thun-striped-relaxed.jpg",
-        "/products/ao-thun-essential.jpg"
+        "/products/ao-thun-striped-relaxed-detail.jpg"
       ],
       "description": "Lấy cảm hứng từ phong cách thủy thủ Pháp, áo thun sọc kẻ mang đến vẻ đẹp thanh lịch vượt thời gian. Họa tiết dệt sợi nhuộm màu bền chặt.",
       "material": "100% Cotton nhuộm sợi tự nhiên.",
@@ -560,7 +559,7 @@
       "image": "/products/so-mi-oxford-classic.jpg",
       "gallery": [
         "/products/so-mi-oxford-classic.jpg",
-        "/products/so-mi-co-tru-minimal.jpg"
+        "/products/so-mi-oxford-classic-detail.jpg"
       ],
       "description": "Sơ mi Oxford dệt cấu trúc hạt râm truyền thống. Phom dáng suông nhẹ nhàng kết hợp khuy cài cổ giữ ve áo ngay ngắn, phù hợp cả công sở lẫn dạo phố.",
       "material": "100% Cotton Oxford 80/2 dệt nổi.",
@@ -656,7 +655,7 @@
       "image": "/products/so-mi-linen-thoang-khi.jpg",
       "gallery": [
         "/products/so-mi-linen-thoang-khi.jpg",
-        "/products/so-mi-oxford-classic.jpg"
+        "/products/so-mi-linen-thoang-khi-detail.jpg"
       ],
       "description": "Chất liệu sợi lanh tự nhiên từ vùng Normandy mát lạnh, có nếp nhăn tự nhiên đặc trưng mang lại vẻ phóng khoáng, thanh lịch không gắng gượng.",
       "material": "100% Linen tự nhiên đã giặt mềm enzym.",
@@ -752,7 +751,7 @@
       "image": "/products/so-mi-cuban-collar.jpg",
       "gallery": [
         "/products/so-mi-cuban-collar.jpg",
-        "/products/so-mi-linen-thoang-khi.jpg"
+        "/products/so-mi-cuban-collar-detail.jpg"
       ],
       "description": "Cổ áo Cuba mở không khuy gài trên cùng mang đến nét cuốn hút đậm chất retro. Vải pha cotton-tencel rủ nhẹ, mượt mà khi chạm vào da.",
       "material": "60% Tencel, 40% Cotton dệt chéo mềm.",
@@ -843,7 +842,7 @@
       "image": "/products/so-mi-denim-nhe.jpg",
       "gallery": [
         "/products/so-mi-denim-nhe.jpg",
-        "/products/so-mi-oxford-classic.jpg"
+        "/products/so-mi-denim-nhe-detail.jpg"
       ],
       "description": "Sơ mi denim định lượng nhẹ 6.5oz được wash đá sinh học tạo sắc chàm mờ cuốn hút. Có thể mặc riêng lẻ hoặc làm áo khoác mỏng nhẹ bên ngoài.",
       "material": "100% Cotton Denim 6.5oz dệt thoi.",
@@ -934,7 +933,7 @@
       "image": "/products/so-mi-co-tru-minimal.jpg",
       "gallery": [
         "/products/so-mi-co-tru-minimal.jpg",
-        "/products/so-mi-oxford-classic.jpg"
+        "/products/so-mi-co-tru-minimal-detail.jpg"
       ],
       "description": "Thiết kế cổ trụ cao 3cm kết hợp hàng nẹp giấu khuy mang đến diện mạo gọn gàng, sạch sẽ tuyệt đối cho người mặc.",
       "material": "80% Cotton Ai Cập, 20% Silk tạo độ óng nhẹ.",
@@ -1030,7 +1029,7 @@
       "image": "/products/ao-khoac-blazer-linen.jpg",
       "gallery": [
         "/products/ao-khoac-blazer-linen.jpg",
-        "/products/ao-khoac-trench-coat-ngan.jpg"
+        "/products/ao-khoac-blazer-linen-detail.jpg"
       ],
       "description": "Áo khoác blazer may đo theo cấu trúc unconstructed tự nhiên, vai không đệm mút dày mang đến phom dáng mềm mại, thanh lịch dễ phối đồ.",
       "material": "Vải Linen pha Cotton nhập khẩu cao cấp, lót lụa habotai nửa thân.",
@@ -1122,7 +1121,7 @@
       "image": "/products/ao-khoac-bomber-minimal.jpg",
       "gallery": [
         "/products/ao-khoac-bomber-minimal.jpg",
-        "/products/ao-khoac-cardigan-len.jpg"
+        "/products/ao-khoac-bomber-minimal-detail.jpg"
       ],
       "description": "Mẫu bomber cổ điển được tái hiện với phong cách tối giản. Vải dù kỹ thuật cao trượt nước nhẹ hạt sen, cản gió tốt trong những ngày chuyển mùa.",
       "material": "100% Nylon trượt nước công nghệ DWR, lót lưới polyester thoáng khí.",
@@ -1213,7 +1212,7 @@
       "image": "/products/ao-khoac-trench-coat-ngan.jpg",
       "gallery": [
         "/products/ao-khoac-trench-coat-ngan.jpg",
-        "/products/ao-khoac-blazer-linen.jpg"
+        "/products/ao-khoac-trench-coat-ngan-detail.jpg"
       ],
       "description": "Phiên bản dáng lửng trẻ trung của mẫu trench coat kinh điển. Chiều dài qua hông vừa phải giúp tôn dáng đôi chân, phối cùng đai thắt eo điều chỉnh linh hoạt.",
       "material": "Vải Gabardine cotton chéo dày dặn cản gió.",
@@ -1293,7 +1292,7 @@
       "image": "/products/ao-khoac-cardigan-len.jpg",
       "gallery": [
         "/products/ao-khoac-cardigan-len.jpg",
-        "/products/ao-khoac-blazer-linen.jpg"
+        "/products/ao-khoac-cardigan-len-detail.jpg"
       ],
       "description": "Cardigan dệt kim gân rib với độ dày dặn vừa phải, êm ái khi tiếp xúc trực tiếp với da mà không gây dặm ngứa. Thiết kế cổ V dễ phối cùng áo thun hay sơ mi bên trong.",
       "material": "60% Sợi len Merino pha 40% Acrylic xơ dài giữ nhiệt.",
@@ -1390,7 +1389,7 @@
       "image": "/products/quan-tay-pleated-wide-leg.jpg",
       "gallery": [
         "/products/quan-tay-pleated-wide-leg.jpg",
-        "/products/quan-khaki-chino-straight.jpg"
+        "/products/quan-tay-pleated-wide-leg-detail.jpg"
       ],
       "description": "Quần âu xếp ly kép với phom dáng suông rộng thời thượng. Chất vải tuyết mưa rủ tự nhiên, đứng phom và ít nhăn suốt ngày dài làm việc.",
       "material": "70% Polyester tái chế, 28% Rayon mềm rủ, 2% Spandex.",
@@ -1498,7 +1497,7 @@
       "image": "/products/quan-khaki-chino-straight.jpg",
       "gallery": [
         "/products/quan-khaki-chino-straight.jpg",
-        "/products/quan-linen-cap-chun.jpg"
+        "/products/quan-khaki-chino-straight-detail.jpg"
       ],
       "description": "Quần chino kinh điển dệt chéo từ cotton 100% bền bỉ. Phom ống đứng chuẩn mực kết hợp xử lý enzyme giúp bề mặt vải mềm mại ngay lần mặc đầu tiên.",
       "material": "98% Cotton Twill 8.5oz, 2% Elastane co giãn nhẹ.",
@@ -1604,7 +1603,7 @@
       "image": "/products/quan-linen-cap-chun.jpg",
       "gallery": [
         "/products/quan-linen-cap-chun.jpg",
-        "/products/quan-tay-pleated-wide-leg.jpg"
+        "/products/quan-linen-cap-chun-detail.jpg"
       ],
       "description": "Được thiết kế cho những ngày nghỉ ngơi hoặc làm việc linh hoạt, quần linen cạp chun đem đến sự thông thoáng tuyệt đối nhờ chất lanh tự nhiên giặt mềm.",
       "material": "100% Linen hữu cơ tự nhiên.",
@@ -1697,7 +1696,7 @@
       "image": "/products/quan-jeans-regular-selvedge.jpg",
       "gallery": [
         "/products/quan-jeans-regular-selvedge.jpg",
-        "/products/quan-khaki-chino-straight.jpg"
+        "/products/quan-jeans-regular-selvedge-detail.jpg"
       ],
       "description": "Quần jeans selvedge dệt trên máy dệt con thoi cổ xưa với đường biên đỏ đặc trưng. Chất vải 13oz đứng phom, sẽ tạo vệt phai tự nhiên độc nhất theo thời gian sử dụng.",
       "material": "100% Cotton Selvedge Denim 13oz dệt thoi.",
@@ -1804,7 +1803,7 @@
       "image": "/products/chan-vay-pleated-midi.jpg",
       "gallery": [
         "/products/chan-vay-pleated-midi.jpg",
-        "/products/chan-vay-chu-a-linen.jpg"
+        "/products/chan-vay-pleated-midi-detail.jpg"
       ],
       "description": "Chân váy midi xếp ly nhuyễn dập nhiệt cố định không bay ly khi giặt. Độ xòe nhẹ nhàng tạo chuyển động thướt tha khi bước đi, tôn lên vẻ nữ tính thanh lịch.",
       "material": "Chiffon tuyết cao cấp dập ly nhiệt, lót lụa habotai kín đáo.",
@@ -1900,7 +1899,7 @@
       "image": "/products/chan-vay-chu-a-linen.jpg",
       "gallery": [
         "/products/chan-vay-chu-a-linen.jpg",
-        "/products/chan-vay-pleated-midi.jpg"
+        "/products/chan-vay-chu-a-linen-detail.jpg"
       ],
       "description": "Chân váy chữ A dài qua đầu gối từ chất lanh mộc mạc. Điểm nhấn hàng khuy gỗ tự nhiên chạy dọc thân trước mang lại cảm giác vintage tinh tế.",
       "material": "100% Linen tự nhiên wash mềm.",
@@ -1995,7 +1994,7 @@
       "image": "/products/dam-suong-linen-minimal.jpg",
       "gallery": [
         "/products/dam-suong-linen-minimal.jpg",
-        "/products/chan-vay-pleated-midi.jpg"
+        "/products/dam-suong-linen-minimal-detail.jpg"
       ],
       "description": "Đầm suông liền thân được may từ vải linen thô mộc. Thiết kế tối giản không chi tiết thừa giúp người mặc cảm thấy tự do và nhẹ nhàng trong từng cử động.",
       "material": "100% Linen sợi tự nhiên cao cấp.",
@@ -2088,7 +2087,7 @@
       "image": "/products/chan-vay-jean-xe-ta.jpg",
       "gallery": [
         "/products/chan-vay-jean-xe-ta.jpg",
-        "/products/chan-vay-chu-a-linen.jpg"
+        "/products/chan-vay-jean-xe-ta-detail.jpg"
       ],
       "description": "Chân váy bò midi cạp cao với đường xẻ tà trước vừa đủ để bước đi thoải mái và kéo dài đôi chân. Vải denim được giặt wash mài nhẹ phong trần.",
       "material": "100% Cotton Denim 11oz wash mài nhẹ.",

@@ -52,11 +52,16 @@ def test_unit_size_advice_bottom_upper_body_missing_hip_returns_insufficient():
     # Upper-body scan has no hip_cm
     measurements = {"height_cm": 175, "chest_cm": 94, "waist_cm": 78, "hip_cm": None}
     res = recommend_size(measurements, chart)
-    assert res == {
-        "status": "insufficient_measurements",
-        "candidates": [],
-        "message": "Chưa đủ số đo để đối chiếu bảng size.",
-    }
+    assert res["status"] == "insufficient_measurements"
+    assert res["candidates"] == []
+    assert res["missing"] == ["hip_cm"]
+    assert "vòng mông" in res["message"]
+    assert len(res["comparisons"]) == len(chart.rows)
+    for comp in res["comparisons"]:
+        assert "min_cm" in comp["checks"]["waist_cm"]
+        assert "max_cm" in comp["checks"]["waist_cm"]
+        assert "value_cm" in comp["checks"]["waist_cm"]
+        assert "within" in comp["checks"]["waist_cm"]
 
 
 def test_unit_size_advice_bottom_full_body_matches_range():
@@ -106,11 +111,12 @@ def test_api_size_advice_flow_upper_and_full_body(monkeypatch, tmp_path):
         # 2. Bottom advice on upper_body scan (hip_cm is None) -> insufficient_measurements
         bottom_res = client.post(f"/api/scans/{upper_key}/size-advice", json=make_bottom_chart())
         assert bottom_res.status_code == 200
-        assert bottom_res.json() == {
-            "status": "insufficient_measurements",
-            "candidates": [],
-            "message": "Chưa đủ số đo để đối chiếu bảng size.",
-        }
+        b_data = bottom_res.json()
+        assert b_data["status"] == "insufficient_measurements"
+        assert b_data["candidates"] == []
+        assert b_data["missing"] == ["hip_cm"]
+        assert "vòng mông" in b_data["message"]
+        assert len(b_data["comparisons"]) == len(make_bottom_chart()["rows"])
 
         # Create a full-body completed job with hip_cm
         full_key = "test-full-job"
@@ -190,3 +196,126 @@ def test_api_catalog_products():
         # Get nonexistent slug
         res_404 = client.get("/api/products/nonexistent-item-xyz")
         assert res_404.status_code == 404
+
+
+# =========================================================================
+# 4. POST /api/sizing/recommend Tests
+# =========================================================================
+
+def test_api_sizing_recommend_with_product_and_measurements():
+    with TestClient(main.app) as client:
+        # Get an active product from catalog
+        p_res = client.get("/api/products")
+        assert p_res.status_code == 200
+        products = p_res.json()
+        assert len(products) > 0
+        product = products[0]
+        prod_id = product["id"]
+
+        # Call /api/sizing/recommend with product_id and measurements
+        rec_res = client.post("/api/sizing/recommend", json={
+            "product_id": prod_id,
+            "measurements": {"chest_cm": 94, "waist_cm": 78, "hip_cm": 98},
+        })
+        assert rec_res.status_code == 200
+        data = rec_res.json()
+        assert data["product_id"] == prod_id
+        assert data["product_name"] == product["name"]
+        assert "chart_name" in data
+        assert "garment" in data
+        assert data["status"] in {"matched", "no_match", "insufficient_measurements"}
+        assert "comparisons" in data
+        assert isinstance(data["comparisons"], list)
+
+
+def test_api_sizing_recommend_with_active_job(tmp_path, monkeypatch):
+    monkeypatch.setattr(main, "DATA", tmp_path)
+    monkeypatch.setattr(main, "readiness", lambda: (True, "Ready"))
+
+    with TestClient(main.app) as client:
+        # Get a product slug
+        products = client.get("/api/products").json()
+        prod = products[0]
+        slug = prod["slug"]
+
+        job_key = "test-job-recommend"
+        main.jobs[job_key] = main.Job(
+            id=job_key,
+            status="completed",
+            stage="Đã dựng hình",
+            measurements={"chest_cm": 94.0, "waist_cm": 78.0, "hip_cm": 96.0},
+        )
+
+        # Call with product_slug and scan_id
+        res = client.post("/api/sizing/recommend", json={
+            "product_slug": slug,
+            "scan_id": job_key,
+        })
+        assert res.status_code == 200
+        data = res.json()
+        assert data["product_name"] == prod["name"]
+        assert data["chart_name"] == prod["chart"]["name"]
+        assert "comparisons" in data
+        assert len(data["comparisons"]) > 0
+
+        # Clean up
+        main.jobs.pop(job_key, None)
+
+
+def test_api_sizing_recommend_insufficient_measurements():
+    with TestClient(main.app) as client:
+        bottom_chart = make_bottom_chart()
+        # Missing hip_cm for a bottom garment
+        res = client.post("/api/sizing/recommend", json={
+            "chart": bottom_chart,
+            "measurements": {"waist_cm": 75, "hip_cm": None},
+        })
+        assert res.status_code == 200
+        data = res.json()
+        assert data["status"] == "insufficient_measurements"
+        assert data["missing"] == ["hip_cm"]
+        assert "vòng mông" in data["message"]
+        assert len(data["comparisons"]) == len(bottom_chart["rows"])
+
+
+def test_api_sizing_recommend_guest_token_access():
+    with TestClient(main.app) as client:
+        job_key = "test-guest-recommend-job"
+        guest_token = "valid_secret_guest_token_123"
+        main.jobs[job_key] = main.Job(
+            id=job_key,
+            guest_token=guest_token,
+            status="completed",
+            stage="Đã dựng hình",
+            measurements={"chest_cm": 94.0, "waist_cm": 78.0, "hip_cm": 96.0},
+        )
+
+        top_chart = make_top_chart()
+
+        # 1. Access with matching guest_token in json body -> 200
+        res_ok_body = client.post("/api/sizing/recommend", json={
+            "chart": top_chart,
+            "scan_id": job_key,
+            "guest_token": guest_token,
+        })
+        assert res_ok_body.status_code == 200
+        assert res_ok_body.json()["status"] == "matched"
+
+        # 2. Access with matching guest_token in header -> 200
+        res_ok_header = client.post(
+            "/api/sizing/recommend",
+            json={"chart": top_chart, "scan_id": job_key},
+            headers={"X-Guest-Token": guest_token},
+        )
+        assert res_ok_header.status_code == 200
+
+        # 3. Access with wrong guest_token -> 403
+        res_bad = client.post(
+            "/api/sizing/recommend",
+            json={"chart": top_chart, "scan_id": job_key, "guest_token": "wrong_guest_token"},
+        )
+        assert res_bad.status_code == 403
+
+        # Clean up
+        main.jobs.pop(job_key, None)
+

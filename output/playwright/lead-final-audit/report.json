@@ -1,0 +1,74 @@
+{
+  "timestamp": "2026-10-13T11:31:51.881Z",
+  "tests": [
+    {
+      "name": "Mobile Popover is portaled directly to document.body",
+      "passed": true,
+      "isAttachedToBody": true
+    },
+    {
+      "name": "Mobile Popover is fully visible within viewport (not top: -412px)",
+      "passed": true,
+      "top": 199.546875,
+      "bottom": 844,
+      "viewportHeight": 844
+    },
+    {
+      "name": "Mobile Popover renders dedicated backdrop overlay and locks body scroll",
+      "passed": true,
+      "hasBackdrop": true,
+      "bodyOverflow": "hidden"
+    },
+    {
+      "name": "Escape key closes mobile popover and restores focus to trigger",
+      "passed": true,
+      "focusRestored": true
+    },
+    {
+      "name": "Navbar has luxury rounded inset style (radius ~22px, gold border & shadow)",
+      "passed": true,
+      "borderRadius": "18px",
+      "boxShadow": "rgba(44, 38, 30, 0.05) 0px 4px 20px 0px, rgba(198, 161, 91, 0.08) 0px 1px 4px 0px"
+    },
+    {
+      "name": "Tablet 820px has ZERO horizontal scroll overflow",
+      "passed": true,
+      "docWidth": 820,
+      "scrollWidth": 820
+    },
+    {
+      "name": "ProductCards have entrance animation with staggered delays",
+      "passed": true,
+      "animations": [
+        {
+          "stagger": "0",
+          "delay": "0s",
+          "name": "productCardEntrance"
+        },
+        {
+          "stagger": "1",
+          "delay": "0.035s",
+          "name": "productCardEntrance"
+        },
+        {
+          "stagger": "2",
+          "delay": "0.07s",
+          "name": "productCardEntrance"
+        },
+        {
+          "stagger": "3",
+          "delay": "0.105s",
+          "name": "productCardEntrance"
+        }
+      ]
+    },
+    {
+      "name": "ProductCard disables animation and remains fully visible on prefers-reduced-motion: reduce",
+      "passed": true,
+      "reducedMotionResult": {
+        "animationName": "none",
+        "opacity": "1"
+      }
+    }
+  ]
+}

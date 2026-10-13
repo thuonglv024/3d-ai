@@ -452,3 +452,209 @@ def test_order_access_denied_without_or_wrong_token(client):
     res_non_existent = client.get("/api/orders/MPH-99999999-0000?token=any_token_string")
     assert res_non_existent.status_code == 404
     assert res_non_existent.json()["detail"] == expected_error_detail
+
+
+# 6. Upgraded Orders & Checkout Tests
+def test_order_variant_stock_insufficient(client, isolated_orders_db):
+    """Verifies 400 error when ordered quantity exceeds available variant stock."""
+    payload = {
+        "customer": {
+            "name": "Nguyễn Văn Test",
+            "phone": "0912345678",
+            "address": "123 Đường Nguyễn Trãi, Quận 1, TP.HCM",
+        },
+        "items": [
+            {
+                "productId": "ao-thun-essential",
+                "color": "Trắng ngà",
+                "size": "M",
+                "quantity": 99999,  # Far exceeds stock
+            }
+        ],
+    }
+    res = client.post("/api/orders", json=payload)
+    assert res.status_code == 400
+    assert "tồn kho" in res.json()["detail"].lower()
+
+
+def test_order_multi_item_variant_aggregation(client, isolated_orders_db):
+    """Verifies that multiple lines of the same variant are aggregated before stock check."""
+    # Find variant stock (default is 10)
+    payload = {
+        "customer": {
+            "name": "Nguyễn Văn Test",
+            "phone": "0912345678",
+            "address": "123 Đường Nguyễn Trãi, Quận 1, TP.HCM",
+        },
+        "items": [
+            {
+                "productId": "ao-thun-essential",
+                "color": "Trắng ngà",
+                "size": "M",
+                "quantity": 10,
+            },
+            {
+                "productId": "ao-thun-essential",
+                "color": "Trắng ngà",
+                "size": "M",
+                "quantity": 10,  # 10 + 10 = 20 > 15
+            },
+        ],
+    }
+    res = client.post("/api/orders", json=payload)
+    assert res.status_code == 400
+
+    assert "tồn kho" in res.json()["detail"].lower()
+
+
+def test_order_atomic_stock_deduction_and_oversell_prevention(client, isolated_orders_db):
+    """Verifies that creating an order deducts variant stock in DB and prevents overselling."""
+    # 1. Get initial stock
+    with get_db_connection(isolated_orders_db) as conn:
+        row = conn.execute(
+            """
+            SELECT id, stock FROM product_variants
+            WHERE product_id = 'ao-thun-essential' AND LOWER(color_name) = 'trắng ngà' AND UPPER(size) = 'S'
+            """
+        ).fetchone()
+        assert row is not None
+        initial_stock = row["stock"]
+        variant_id = row["id"]
+
+    # 2. Order 2 items
+    payload = {
+        "customer": {
+            "name": "Trần Thị C",
+            "phone": "0987654321",
+            "address": "456 Đường CMT8, Quận 3, TP.HCM",
+        },
+        "items": [
+            {
+                "productId": "ao-thun-essential",
+                "color": "Trắng ngà",
+                "size": "S",
+                "quantity": 2,
+            }
+        ],
+    }
+    res1 = client.post("/api/orders", json=payload)
+    assert res1.status_code == 201
+
+    # 3. Verify stock is reduced by 2
+    with get_db_connection(isolated_orders_db) as conn:
+        stock_after = conn.execute(
+            "SELECT stock FROM product_variants WHERE id = ?", (variant_id,)
+        ).fetchone()["stock"]
+        assert stock_after == initial_stock - 2
+
+    # 4. Try ordering remaining + 1 (oversell attempt)
+    oversell_payload = {
+        "customer": {
+            "name": "Người mua muộn",
+            "phone": "0900000000",
+            "address": "789 Phố Huế, Hà Nội",
+        },
+        "items": [
+            {
+                "productId": "ao-thun-essential",
+                "color": "Trắng ngà",
+                "size": "S",
+                "quantity": stock_after + 1,
+            }
+        ],
+    }
+    res2 = client.post("/api/orders", json=oversell_payload)
+    assert res2.status_code == 400
+    assert "tồn kho" in res2.json()["detail"].lower()
+
+
+def test_order_idempotency_payload_fingerprint_conflict(client, isolated_orders_db):
+    """Verifies that reusing the same idempotency key with a DIFFERENT payload returns 409 Conflict."""
+    idem_key = "test-fingerprint-conflict-key-1234"
+    payload1 = {
+        "idempotency_key": idem_key,
+        "customer": {
+            "name": "Khách Hàng Ban Đầu",
+            "phone": "0911223344",
+            "address": "12 Lê Lợi, TP Huế",
+        },
+        "items": [
+            {
+                "productId": "ao-thun-essential",
+                "color": "Trắng ngà",
+                "size": "M",
+                "quantity": 1,
+            }
+        ],
+    }
+    res1 = client.post("/api/orders", json=payload1)
+    assert res1.status_code == 201
+
+    # Same key, DIFFERENT customer name / items -> 409 Conflict
+    payload2 = {
+        "idempotency_key": idem_key,
+        "customer": {
+            "name": "Khách Hàng Khác Nhau",
+            "phone": "0911223344",
+            "address": "12 Lê Lợi, TP Huế",
+        },
+        "items": [
+            {
+                "productId": "ao-thun-essential",
+                "color": "Trắng ngà",
+                "size": "M",
+                "quantity": 2,
+            }
+        ],
+    }
+    res2 = client.post("/api/orders", json=payload2)
+    assert res2.status_code == 409
+    assert "idempotency" in res2.json()["detail"].lower()
+
+
+def test_order_customer_notes_and_note_unification(client, isolated_orders_db):
+    """Verifies that either 'notes' or 'note' is accepted and both are returned."""
+    payload = {
+        "customer": {
+            "name": "Nguyễn Ghi Chú",
+            "phone": "0944556677",
+            "address": "34 Trần Hưng Đạo, Quận Hoàn Kiếm, Hà Nội",
+            "notes": "Giao giờ hành chính, gọi trước khi đến",
+        },
+        "items": [
+            {
+                "productId": "ao-thun-essential",
+                "color": "Trắng ngà",
+                "size": "M",
+                "quantity": 1,
+            }
+        ],
+    }
+    res = client.post("/api/orders", json=payload)
+    assert res.status_code == 201
+    order = res.json()["order"]
+    assert order["customer"]["note"] == "Giao giờ hành chính, gọi trước khi đến"
+    assert order["customer"]["notes"] == "Giao giờ hành chính, gọi trước khi đến"
+
+
+def test_quote_calculates_real_db_price(client, isolated_orders_db):
+    """Verifies quote calculates price strictly from DB products and ignores client spoofed price."""
+    payload = {
+        "items": [
+            {
+                "productId": "ao-thun-essential",
+                "color": "Trắng ngà",
+                "size": "M",
+                "quantity": 1,
+                "price": 999,  # Spoofed price
+                "unit_price": 999,
+                "subtotal": 999,
+            }
+        ]
+    }
+    res = client.post("/api/orders/quote", json=payload)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["items"][0]["unit_price_vnd"] == 390000
+    assert data["subtotal_vnd"] == 390000
+

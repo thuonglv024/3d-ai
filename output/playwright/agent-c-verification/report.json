@@ -1,0 +1,106 @@
+{
+  "timestamp": "2026-10-13T09:31:55.399Z",
+  "tests": [
+    {
+      "name": "ProductCard Media Aspect Ratio is 3:4 Portrait",
+      "passed": true,
+      "width": 311.203125,
+      "height": 414.9375,
+      "ratio": "0.750",
+      "expected": "0.750 (3:4)",
+      "aspectRatioCss": "3 / 4",
+      "objectFit": "cover"
+    },
+    {
+      "name": "ProductCard Hover Effect Smooth on Warm Ivory",
+      "passed": true,
+      "transform": "matrix(1, 0, 0, 1, 0, -4)",
+      "borderColor": "rgb(198, 161, 91)",
+      "boxShadow": "rgba(44, 38, 30, 0.08) 0px 12px 32px 0px, rgba(198, 161, 91, 0.1) 0px 2px 8px 0px",
+      "imgTransform": "matrix(1.035, 0, 0, 1.035, 0, 0)"
+    },
+    {
+      "name": "PDP Main Photo Aspect Ratio is 3:4 Portrait",
+      "passed": true,
+      "width": 666.09375,
+      "height": 888.125,
+      "ratio": "0.750",
+      "expected": "0.750 (3:4)",
+      "naturalDimensions": "800x1199"
+    },
+    {
+      "name": "PDP Detail Thumbnail Exists",
+      "passed": true,
+      "thumbsCount": 2,
+      "labels": [
+        "Ảnh chính",
+        "Ảnh phóng to chi tiết"
+      ]
+    },
+    {
+      "name": "Clicking Detail Thumbnail Switches Main Image to Detail Photo",
+      "passed": true,
+      "newSrc": "http://127.0.0.1:3000/products/so-mi-oxford-classic-detail.jpg",
+      "activeThumb": "Ảnh phóng to chi tiết",
+      "naturalWidth": 800,
+      "naturalHeight": 1067
+    },
+    {
+      "name": "Clicking Main Thumbnail Switches Back",
+      "passed": true,
+      "revertedSrc": "/products/so-mi-oxford-classic.jpg"
+    },
+    {
+      "name": "\"Khung chụp\" CustomSelect Opens Gold + Ivory Dropdown with 12px Radius & Checkmark",
+      "passed": true,
+      "menuData": {
+        "visible": true,
+        "borderRadius": "12px",
+        "borderColor": "rgb(198, 161, 91)",
+        "backgroundColor": "rgb(255, 253, 250)",
+        "optionsCount": 2,
+        "hasCheckmark": true,
+        "optionsText": [
+          "Webcam · từ đầu đến cạp quầnĐầu, hai vai, eo & cạp quần",
+          "Camera · toàn thânTừ đầu đến gót chân"
+        ]
+      }
+    },
+    {
+      "name": "\"Khung chụp\" Select Updates Value Smoothly",
+      "passed": true,
+      "updatedTriggerText": "Camera · toàn thân· Từ đầu đến gót chân"
+    },
+    {
+      "name": "Cart Displays CustomSelect for Color & Size Variants",
+      "passed": true,
+      "customSelectsFound": 4,
+      "values": [
+        "Trắng ngọc",
+        "S",
+        "Trắng ngọc",
+        "S"
+      ]
+    },
+    {
+      "name": "Cart Size CustomSelect Menu Opens Elegantly",
+      "passed": true,
+      "cartMenuData": {
+        "visible": true,
+        "borderRadius": "12px",
+        "options": [
+          "S",
+          "M",
+          "L",
+          "XL"
+        ]
+      }
+    },
+    {
+      "name": "ScanCompareModal & Delete Confirmation Modals Have Full CSS in commerce.css",
+      "passed": true,
+      "totalChecked": 14,
+      "missing": []
+    }
+  ]
+}

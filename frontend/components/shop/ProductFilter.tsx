@@ -60,10 +60,18 @@ export default function ProductFilter({
   totalResults: number;
 }) {
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const [draftFilters, setDraftFilters] = useState<FilterState>(filters);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const mobileFilterPanelRef = useRef<HTMLDivElement>(null);
   const [, startTransition] = useTransition();
+
+  // Synchronize draft filters whenever the mobile drawer opens
+  useEffect(() => {
+    if (mobileDrawerOpen) {
+      setDraftFilters(filters);
+    }
+  }, [mobileDrawerOpen, filters]);
 
   useDrawerA11y(mobileDrawerOpen, () => setMobileDrawerOpen(false), mobileFilterPanelRef);
 
@@ -81,6 +89,28 @@ export default function ProductFilter({
     });
   };
 
+  const updateDraft = (key: keyof FilterState, value: string) => {
+    setDraftFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleApplyMobile = () => {
+    startTransition(() => {
+      onChange(draftFilters);
+    });
+    setMobileDrawerOpen(false);
+  };
+
+  const handleResetMobile = () => {
+    setDraftFilters({
+      q: "",
+      category: "",
+      priceRange: "all",
+      color: "",
+      size: "",
+      sort: "featured",
+    });
+  };
+
   // Close dropdown on click outside or escape key
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -91,6 +121,7 @@ export default function ProductFilter({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setOpenDropdown(null);
+        activeTriggerRef.current?.focus();
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -101,9 +132,114 @@ export default function ProductFilter({
     };
   }, []);
 
-  const toggleDropdown = (name: string) => {
+  const [dropdownPosition, setDropdownPosition] = useState<{
+    flipUp: boolean;
+    alignRight: boolean;
+    maxHeight: number;
+  }>({
+    flipUp: false,
+    alignRight: false,
+    maxHeight: 360,
+  });
+
+  const activeMenuRef = useRef<HTMLDivElement>(null);
+  const activeTriggerRef = useRef<HTMLButtonElement | null>(null);
+
+  const selectAndClose = (fn: () => void) => {
+    fn();
+    setOpenDropdown(null);
+    activeTriggerRef.current?.focus();
+  };
+
+  const toggleDropdown = (name: string, e?: React.MouseEvent<HTMLButtonElement>) => {
+    if (e) {
+      activeTriggerRef.current = e.currentTarget;
+    }
     setOpenDropdown((prev) => (prev === name ? null : name));
   };
+
+  // Measure and adjust positioning when dropdown opens or window changes
+  useEffect(() => {
+    if (!openDropdown || !activeTriggerRef.current) return;
+
+    const measure = () => {
+      const trigger = activeTriggerRef.current;
+      const menu = activeMenuRef.current;
+      if (!trigger) return;
+
+      const tRect = trigger.getBoundingClientRect();
+      const vWidth = window.innerWidth;
+      const vHeight = window.innerHeight;
+
+      const menuHeight = menu ? menu.offsetHeight : 240;
+      const menuWidth = menu ? menu.offsetWidth : 210;
+
+      const spaceBelow = vHeight - tRect.bottom;
+      const spaceAbove = tRect.top;
+
+      // Flip up if bottom space is insufficient and there is more room above
+      const flipUp = spaceBelow < menuHeight && spaceAbove > spaceBelow;
+
+      // Shift/align right if opening towards the right overflows viewport edge
+      const alignRight = tRect.left + menuWidth > vWidth - 16 || openDropdown === "sort";
+
+      const availableHeight = flipUp ? spaceAbove - 20 : spaceBelow - 20;
+
+      setDropdownPosition({
+        flipUp,
+        alignRight,
+        maxHeight: Math.max(160, Math.min(380, availableHeight)),
+      });
+    };
+
+    measure();
+    const handleScrollResize = () => measure();
+    window.addEventListener("resize", handleScrollResize);
+    window.addEventListener("scroll", handleScrollResize, true);
+    return () => {
+      window.removeEventListener("resize", handleScrollResize);
+      window.removeEventListener("scroll", handleScrollResize, true);
+    };
+  }, [openDropdown]);
+
+  // Keyboard navigation inside dropdown menu
+  const handleDropdownKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!activeMenuRef.current) return;
+    const focusable = activeMenuRef.current.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    );
+    if (!focusable.length) return;
+
+    const items = Array.from(focusable);
+    const currentIndex = items.indexOf(document.activeElement as HTMLElement);
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      const nextIndex = (currentIndex + 1) % items.length;
+      items[nextIndex].focus();
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      const prevIndex = (currentIndex - 1 + items.length) % items.length;
+      items[prevIndex].focus();
+    } else if (e.key === "Home") {
+      e.preventDefault();
+      items[0].focus();
+    } else if (e.key === "End") {
+      e.preventDefault();
+      items[items.length - 1].focus();
+    } else if (e.key === "Tab") {
+      setOpenDropdown(null);
+    }
+  };
+
+  useEffect(() => {
+    if (openDropdown && activeMenuRef.current) {
+      const selected =
+        activeMenuRef.current.querySelector<HTMLElement>(".selected") ||
+        activeMenuRef.current.querySelector<HTMLElement>("button");
+      selected?.focus();
+    }
+  }, [openDropdown]);
 
   // Helpers to get active display labels
   const selectedPriceOption =
@@ -164,7 +300,7 @@ export default function ProductFilter({
             <button
               type="button"
               className={`custom-dropdown-trigger ${filters.priceRange !== "all" ? "has-selection" : ""} ${openDropdown === "price" ? "is-open" : ""}`}
-              onClick={() => toggleDropdown("price")}
+              onClick={(e) => toggleDropdown("price", e)}
               aria-expanded={openDropdown === "price"}
               aria-haspopup="listbox"
             >
@@ -174,16 +310,19 @@ export default function ProductFilter({
             </button>
 
             {openDropdown === "price" && (
-              <div className="custom-dropdown-menu" role="listbox">
+              <div
+                ref={activeMenuRef}
+                className={`custom-dropdown-menu ${dropdownPosition.flipUp ? "is-flipped-up" : ""} ${dropdownPosition.alignRight ? "is-align-right" : ""}`}
+                style={{ maxHeight: `${dropdownPosition.maxHeight}px`, overflowY: "auto" }}
+                onKeyDown={handleDropdownKeyDown}
+                role="listbox"
+              >
                 {PRICE_OPTIONS.map((opt) => (
                   <button
                     key={opt.id}
                     type="button"
                     className={`dropdown-option-item ${filters.priceRange === opt.id ? "selected" : ""}`}
-                    onClick={() => {
-                      update("priceRange", opt.id);
-                      setOpenDropdown(null);
-                    }}
+                    onClick={() => selectAndClose(() => update("priceRange", opt.id))}
                     role="option"
                     aria-selected={filters.priceRange === opt.id}
                   >
@@ -216,7 +355,7 @@ export default function ProductFilter({
             <button
               type="button"
               className={`custom-dropdown-trigger ${filters.color ? "has-selection" : ""} ${openDropdown === "color" ? "is-open" : ""}`}
-              onClick={() => toggleDropdown("color")}
+              onClick={(e) => toggleDropdown("color", e)}
               aria-expanded={openDropdown === "color"}
               aria-haspopup="listbox"
             >
@@ -234,16 +373,19 @@ export default function ProductFilter({
             </button>
 
             {openDropdown === "color" && (
-              <div className="custom-dropdown-menu" role="listbox">
+              <div
+                ref={activeMenuRef}
+                className={`custom-dropdown-menu ${dropdownPosition.flipUp ? "is-flipped-up" : ""} ${dropdownPosition.alignRight ? "is-align-right" : ""}`}
+                style={{ maxHeight: `${dropdownPosition.maxHeight}px`, overflowY: "auto" }}
+                onKeyDown={handleDropdownKeyDown}
+                role="listbox"
+              >
                 {COMMON_COLORS.map((c) => (
                   <button
                     key={c.value}
                     type="button"
                     className={`dropdown-option-item ${filters.color === c.value ? "selected" : ""}`}
-                    onClick={() => {
-                      update("color", c.value);
-                      setOpenDropdown(null);
-                    }}
+                    onClick={() => selectAndClose(() => update("color", c.value))}
                     role="option"
                     aria-selected={filters.color === c.value}
                   >
@@ -288,7 +430,7 @@ export default function ProductFilter({
             <button
               type="button"
               className={`custom-dropdown-trigger ${filters.size ? "has-selection" : ""} ${openDropdown === "size" ? "is-open" : ""}`}
-              onClick={() => toggleDropdown("size")}
+              onClick={(e) => toggleDropdown("size", e)}
               aria-expanded={openDropdown === "size"}
               aria-haspopup="listbox"
             >
@@ -297,14 +439,17 @@ export default function ProductFilter({
             </button>
 
             {openDropdown === "size" && (
-              <div className="custom-dropdown-menu size-dropdown-menu" role="listbox">
+              <div
+                ref={activeMenuRef}
+                className={`custom-dropdown-menu size-dropdown-menu ${dropdownPosition.flipUp ? "is-flipped-up" : ""} ${dropdownPosition.alignRight ? "is-align-right" : ""}`}
+                style={{ maxHeight: `${dropdownPosition.maxHeight}px`, overflowY: "auto" }}
+                onKeyDown={handleDropdownKeyDown}
+                role="listbox"
+              >
                 <button
                   type="button"
                   className={`dropdown-option-item ${!filters.size ? "selected" : ""}`}
-                  onClick={() => {
-                    update("size", "");
-                    setOpenDropdown(null);
-                  }}
+                  onClick={() => selectAndClose(() => update("size", ""))}
                   role="option"
                   aria-selected={!filters.size}
                 >
@@ -318,10 +463,7 @@ export default function ProductFilter({
                       key={s}
                       type="button"
                       className={`dropdown-size-btn ${filters.size === s ? "selected" : ""}`}
-                      onClick={() => {
-                        update("size", filters.size === s ? "" : s);
-                        setOpenDropdown(null);
-                      }}
+                      onClick={() => selectAndClose(() => update("size", filters.size === s ? "" : s))}
                     >
                       {s}
                     </button>
@@ -352,7 +494,7 @@ export default function ProductFilter({
             <button
               type="button"
               className={`custom-dropdown-trigger sort-trigger ${filters.sort !== "featured" ? "has-selection" : ""} ${openDropdown === "sort" ? "is-open" : ""}`}
-              onClick={() => toggleDropdown("sort")}
+              onClick={(e) => toggleDropdown("sort", e)}
               aria-expanded={openDropdown === "sort"}
               aria-haspopup="listbox"
             >
@@ -362,16 +504,19 @@ export default function ProductFilter({
             </button>
 
             {openDropdown === "sort" && (
-              <div className="custom-dropdown-menu sort-dropdown-menu" role="listbox">
+              <div
+                ref={activeMenuRef}
+                className={`custom-dropdown-menu sort-dropdown-menu ${dropdownPosition.flipUp ? "is-flipped-up" : ""} is-align-right`}
+                style={{ maxHeight: `${dropdownPosition.maxHeight}px`, overflowY: "auto" }}
+                onKeyDown={handleDropdownKeyDown}
+                role="listbox"
+              >
                 {SORT_OPTIONS.map((opt) => (
                   <button
                     key={opt.id}
                     type="button"
                     className={`dropdown-option-item ${filters.sort === opt.id ? "selected" : ""}`}
-                    onClick={() => {
-                      update("sort", opt.id);
-                      setOpenDropdown(null);
-                    }}
+                    onClick={() => selectAndClose(() => update("sort", opt.id))}
                     role="option"
                     aria-selected={filters.sort === opt.id}
                   >
@@ -440,6 +585,7 @@ export default function ProductFilter({
             className="filter-drawer-panel"
             onClick={(e) => e.stopPropagation()}
           >
+            <div className="sheet-handle-bar" aria-hidden="true" />
             <div className="filter-drawer-header">
               <h3>
                 <Filter size={18} /> Bộ lọc sản phẩm
@@ -459,16 +605,16 @@ export default function ProductFilter({
                 <label>Danh mục</label>
                 <div className="drawer-pills">
                   <button
-                    className={`drawer-pill ${!filters.category ? "active" : ""}`}
-                    onClick={() => update("category", "")}
+                    className={`drawer-pill ${!draftFilters.category ? "active" : ""}`}
+                    onClick={() => updateDraft("category", "")}
                   >
                     Tất cả
                   </button>
                   {CATEGORIES.map((cat) => (
                     <button
                       key={cat.key}
-                      className={`drawer-pill ${filters.category === cat.key ? "active" : ""}`}
-                      onClick={() => update("category", cat.key)}
+                      className={`drawer-pill ${draftFilters.category === cat.key ? "active" : ""}`}
+                      onClick={() => updateDraft("category", cat.key)}
                     >
                       {cat.name}
                     </button>
@@ -482,8 +628,8 @@ export default function ProductFilter({
                   {PRICE_OPTIONS.map((opt) => (
                     <button
                       key={opt.id}
-                      className={`drawer-pill ${filters.priceRange === opt.id ? "active" : ""}`}
-                      onClick={() => update("priceRange", opt.id)}
+                      className={`drawer-pill ${draftFilters.priceRange === opt.id ? "active" : ""}`}
+                      onClick={() => updateDraft("priceRange", opt.id)}
                     >
                       {opt.label}
                     </button>
@@ -497,8 +643,8 @@ export default function ProductFilter({
                   {COMMON_COLORS.map((c) => (
                     <button
                       key={c.value}
-                      className={`drawer-pill color-drawer-pill ${filters.color === c.value ? "active" : ""}`}
-                      onClick={() => update("color", c.value)}
+                      className={`drawer-pill color-drawer-pill ${draftFilters.color === c.value ? "active" : ""}`}
+                      onClick={() => updateDraft("color", c.value)}
                     >
                       {c.hex && (
                         <span
@@ -521,8 +667,8 @@ export default function ProductFilter({
                   {COMMON_SIZES.map((s) => (
                     <button
                       key={s}
-                      className={`drawer-pill ${filters.size === s ? "active" : ""}`}
-                      onClick={() => update("size", filters.size === s ? "" : s)}
+                      className={`drawer-pill ${draftFilters.size === s ? "active" : ""}`}
+                      onClick={() => updateDraft("size", draftFilters.size === s ? "" : s)}
                     >
                       {s}
                     </button>
@@ -536,8 +682,8 @@ export default function ProductFilter({
                   {SORT_OPTIONS.map((opt) => (
                     <button
                       key={opt.id}
-                      className={`drawer-pill ${filters.sort === opt.id ? "active" : ""}`}
-                      onClick={() => update("sort", opt.id)}
+                      className={`drawer-pill ${draftFilters.sort === opt.id ? "active" : ""}`}
+                      onClick={() => updateDraft("sort", opt.id)}
                     >
                       {opt.label}
                     </button>
@@ -548,19 +694,18 @@ export default function ProductFilter({
 
             <div className="filter-drawer-footer">
               <button
+                type="button"
                 className="shop-secondary"
-                onClick={() => {
-                  onReset();
-                  setMobileDrawerOpen(false);
-                }}
+                onClick={handleResetMobile}
               >
                 Xóa tất cả
               </button>
               <button
+                type="button"
                 className="shop-primary"
-                onClick={() => setMobileDrawerOpen(false)}
+                onClick={handleApplyMobile}
               >
-                Áp dụng ({totalResults} kết quả)
+                Áp dụng bộ lọc
               </button>
             </div>
           </div>

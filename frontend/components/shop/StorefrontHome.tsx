@@ -1,10 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useState, Suspense } from "react";
+import { useEffect, useState, useTransition, Suspense, useRef } from "react";
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowDown, ArrowRight, ScanLine, ShieldCheck, Sparkles } from "lucide-react";
-import { getAllProducts, type Product, essential } from "../../lib/catalog";
+import {
+  ArrowDown,
+  ArrowRight,
+  ChevronLeft,
+  ChevronRight,
+  ScanLine,
+  Sparkles,
+} from "lucide-react";
+import { type Product, essential } from "../../lib/catalog";
+import { fetchProducts, type PaginatedProducts } from "../../lib/catalogApi";
 import Header from "./Header";
 import Footer from "./Footer";
 import ProductCard from "./ProductCard";
@@ -19,12 +27,127 @@ const FitExperience = dynamic(() => import("./FitExperience"), {
   loading: () => <div className="fit-lazy">Đang mở phòng tìm size…</div>,
 });
 
+const PAGE_SIZE = 24;
+
+function ProductGridSkeleton({ count = 8 }: { count?: number }) {
+  return (
+    <div className="product-grid" aria-busy="true" aria-label="Đang tải sản phẩm...">
+      {Array.from({ length: count }).map((_, idx) => (
+        <div key={idx} className="product-card skeleton-card">
+          <div className="product-card-media skeleton-media">
+            <div className="skeleton-shimmer" />
+          </div>
+          <div className="product-card-body skeleton-body">
+            <div className="skeleton-line skeleton-meta" />
+            <div className="skeleton-line skeleton-title" />
+            <div className="skeleton-line skeleton-price" />
+            <div className="skeleton-line skeleton-sizes" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PaginationControls({
+  currentPage,
+  totalPages,
+  total,
+  limit,
+  onPageChange,
+}: {
+  currentPage: number;
+  totalPages: number;
+  total: number;
+  limit: number;
+  onPageChange: (page: number) => void;
+}) {
+  const start = total === 0 ? 0 : (currentPage - 1) * limit + 1;
+  const end = Math.min(total, currentPage * limit);
+
+  // Generate page numbers with ellipsis
+  const pages: (number | "ellipsis")[] = [];
+  if (totalPages <= 7) {
+    for (let i = 1; i <= totalPages; i++) pages.push(i);
+  } else {
+    pages.push(1);
+    if (currentPage > 3) pages.push("ellipsis");
+    const startPage = Math.max(2, currentPage - 1);
+    const endPage = Math.min(totalPages - 1, currentPage + 1);
+    for (let i = startPage; i <= endPage; i++) {
+      if (!pages.includes(i)) pages.push(i);
+    }
+    if (currentPage < totalPages - 2) pages.push("ellipsis");
+    if (!pages.includes(totalPages)) pages.push(totalPages);
+  }
+
+  return (
+    <div className="catalog-pagination-wrap" aria-label="Điều hướng phân trang sản phẩm">
+      <div className="pagination-status" role="status">
+        Hiển thị <strong>{start}</strong> – <strong>{end}</strong> trong <strong>{total}</strong> sản phẩm
+      </div>
+
+      {totalPages > 1 && (
+        <nav className="pagination-controls" aria-label="Danh sách trang">
+          <button
+            type="button"
+            className="pagination-btn pagination-nav-btn prev-btn"
+            disabled={currentPage <= 1}
+            onClick={() => onPageChange(currentPage - 1)}
+            aria-label="Về trang trước"
+          >
+            <ChevronLeft size={16} />
+            <span>Trước</span>
+          </button>
+
+          <div className="pagination-pages">
+            {pages.map((p, idx) =>
+              p === "ellipsis" ? (
+                <span key={`ellipsis-${idx}`} className="pagination-ellipsis" aria-hidden="true">
+                  …
+                </span>
+              ) : (
+                <button
+                  key={p}
+                  type="button"
+                  className={`pagination-btn page-num-btn ${p === currentPage ? "active" : ""}`}
+                  aria-current={p === currentPage ? "page" : undefined}
+                  aria-label={`Trang ${p}`}
+                  onClick={() => onPageChange(p)}
+                >
+                  {p}
+                </button>
+              )
+            )}
+          </div>
+
+          <button
+            type="button"
+            className="pagination-btn pagination-nav-btn next-btn"
+            disabled={currentPage >= totalPages}
+            onClick={() => onPageChange(currentPage + 1)}
+            aria-label="Sang trang sau"
+          >
+            <span>Sau</span>
+            <ChevronRight size={16} />
+          </button>
+        </nav>
+      )}
+    </div>
+  );
+}
+
 function StorefrontHomeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { job } = useScan();
+  const [, startTransition] = useTransition();
 
-  const allProducts = useMemo(() => getAllProducts(), []);
+  // Page state
+  const [currentPage, setCurrentPage] = useState<number>(() => {
+    const p = Number(searchParams?.get("page"));
+    return Number.isFinite(p) && p > 0 ? p : 1;
+  });
 
   // Filter state initialized from URL
   const [filters, setFilters] = useState<FilterState>(() => ({
@@ -36,8 +159,16 @@ function StorefrontHomeContent() {
     sort: searchParams?.get("sort") || "featured",
   }));
 
-  // Sync filters whenever searchParams changes from outside
+  // Catalog response state
+  const [products, setProducts] = useState<Product[]>([]);
+  const [total, setTotal] = useState<number>(0);
+  const [totalPages, setTotalPages] = useState<number>(1);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  // Sync state if URL searchParams changes externally
   useEffect(() => {
+    const pageFromUrl = Number(searchParams?.get("page")) || 1;
+    setCurrentPage(pageFromUrl);
     setFilters({
       q: searchParams?.get("q") || "",
       category: searchParams?.get("category") || "",
@@ -48,24 +179,74 @@ function StorefrontHomeContent() {
     });
   }, [searchParams]);
 
-  // Update URL when filters change
-  const handleFilterChange = (newFilters: FilterState) => {
-    setFilters(newFilters);
+  // Synchronize URL query parameters with active filters and page
+  const updateUrl = (newFilters: FilterState, newPage: number) => {
     const params = new URLSearchParams();
+    if (newPage > 1) params.set("page", String(newPage));
     if (newFilters.q) params.set("q", newFilters.q);
     if (newFilters.category) params.set("category", newFilters.category);
-    if (newFilters.priceRange && newFilters.priceRange !== "all")
+    if (newFilters.priceRange && newFilters.priceRange !== "all") {
       params.set("priceRange", newFilters.priceRange);
+    }
     if (newFilters.color) params.set("color", newFilters.color);
     if (newFilters.size) params.set("size", newFilters.size);
-    if (newFilters.sort && newFilters.sort !== "featured")
+    if (newFilters.sort && newFilters.sort !== "featured") {
       params.set("sort", newFilters.sort);
+    }
 
     const qs = params.toString();
     const url = qs ? `/?${qs}#catalog` : "/#catalog";
     window.history.replaceState(null, "", url);
   };
 
+  // Fetch products whenever filters or page change
+  useEffect(() => {
+    let isCancelled = false;
+    setIsLoading(true);
+
+    fetchProducts({
+      page: currentPage,
+      limit: PAGE_SIZE,
+      category: filters.category,
+      search: filters.q,
+      sort: filters.sort,
+      priceRange: filters.priceRange,
+      color: filters.color,
+      size: filters.size,
+    })
+      .then((data: PaginatedProducts) => {
+        if (!isCancelled) {
+          setProducts(data.items);
+          setTotal(data.total);
+          setTotalPages(data.totalPages);
+        }
+      })
+      .catch(() => {
+        if (!isCancelled) {
+          setProducts([]);
+          setTotal(0);
+          setTotalPages(1);
+        }
+      })
+      .finally(() => {
+        if (!isCancelled) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [currentPage, filters]);
+
+  // Update filters and reset page to 1
+  const handleFilterChange = (newFilters: FilterState) => {
+    setFilters(newFilters);
+    setCurrentPage(1);
+    updateUrl(newFilters, 1);
+  };
+
+  // Reset all filters to default
   const handleResetFilters = () => {
     const emptyFilters: FilterState = {
       q: "",
@@ -78,59 +259,19 @@ function StorefrontHomeContent() {
     handleFilterChange(emptyFilters);
   };
 
-  // Filter and sort products
-  const filteredProducts = useMemo(() => {
-    return allProducts
-      .filter((p) => {
-        // Query search
-        if (filters.q) {
-          const query = filters.q.toLowerCase().trim();
-          const matchName = p.name.toLowerCase().includes(query);
-          const matchSub = p.subtitle.toLowerCase().includes(query);
-          const matchCat = p.categoryName.toLowerCase().includes(query);
-          const matchMat = p.material.toLowerCase().includes(query);
-          if (!matchName && !matchSub && !matchCat && !matchMat) return false;
-        }
+  // Handle page navigation with smooth scroll back to catalog
+  const handlePageChange = (newPage: number) => {
+    if (newPage < 1 || newPage > totalPages || newPage === currentPage) return;
+    startTransition(() => {
+      setCurrentPage(newPage);
+      updateUrl(filters, newPage);
+    });
 
-        // Category
-        if (filters.category && p.category !== filters.category) {
-          return false;
-        }
-
-        // Price range
-        if (filters.priceRange === "under-500" && p.price >= 500000) return false;
-        if (
-          filters.priceRange === "500-1000" &&
-          (p.price < 500000 || p.price > 1000000)
-        )
-          return false;
-        if (filters.priceRange === "over-1000" && p.price <= 1000000) return false;
-
-        // Color
-        if (filters.color) {
-          const cQuery = filters.color.toLowerCase();
-          const hasColor = p.colors.some((c) => c.name.toLowerCase().includes(cQuery));
-          if (!hasColor) return false;
-        }
-
-        // Size
-        if (filters.size && !p.sizes.includes(filters.size)) {
-          return false;
-        }
-
-        return true;
-      })
-      .sort((a, b) => {
-        if (filters.sort === "price_asc") return a.price - b.price;
-        if (filters.sort === "price_desc") return b.price - a.price;
-        // Default featured: isFeatured and isNew first
-        if (a.isFeatured && !b.isFeatured) return -1;
-        if (!a.isFeatured && b.isFeatured) return 1;
-        if (a.isNew && !b.isNew) return -1;
-        if (!a.isNew && b.isNew) return 1;
-        return 0;
-      });
-  }, [allProducts, filters]);
+    const catalogEl = document.getElementById("catalog");
+    if (catalogEl) {
+      catalogEl.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
 
   // Modal for quick scan from home page
   const [scanOpen, setScanOpen] = useState(false);
@@ -231,16 +372,29 @@ function StorefrontHomeContent() {
             filters={filters}
             onChange={handleFilterChange}
             onReset={handleResetFilters}
-            totalResults={filteredProducts.length}
+            totalResults={total}
           />
 
-          {/* Product Grid */}
-          {filteredProducts.length > 0 ? (
-            <div className="product-grid">
-              {filteredProducts.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
+          {/* Product Grid / Skeleton / Empty State */}
+          {isLoading ? (
+            <ProductGridSkeleton count={8} />
+          ) : products.length > 0 ? (
+            <>
+              <div className="product-grid">
+                {products.map((product, idx) => (
+                  <ProductCard key={product.id} product={product} index={idx} />
+                ))}
+              </div>
+
+              {/* Pagination Controls */}
+              <PaginationControls
+                currentPage={currentPage}
+                totalPages={totalPages}
+                total={total}
+                limit={PAGE_SIZE}
+                onPageChange={handlePageChange}
+              />
+            </>
           ) : (
             <div className="catalog-empty-state">
               <div className="empty-icon-wrap">
@@ -251,7 +405,7 @@ function StorefrontHomeContent() {
                 Không có món đồ nào khớp với bộ lọc bạn đã chọn. Hãy thử xóa bớt bộ lọc hoặc tìm kiếm với từ khóa khác.
               </p>
               <button className="shop-primary" onClick={handleResetFilters}>
-                Xóa tất cả bộ lọc
+                Xóa bộ lọc
               </button>
             </div>
           )}
