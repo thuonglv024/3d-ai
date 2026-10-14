@@ -1,0 +1,72 @@
+{
+  "probe_mode": "decomposed",
+  "engine": "mediapipe-two-photo-fit-v4",
+  "cold_import_ms": 5364.45,
+  "cold_detector_load_ms": 9923.9,
+  "cold_template_load_ms": 1118.14,
+  "first_capture_feedback_ms": 162.25,
+  "first_reconstruct_after_preload_ms": 3391.55,
+  "total_cold_init_plus_first_reconstruct_ms": 19798.04,
+  "memory_checkpoints": {
+    "boot": {
+      "os": {
+        "rss_mb": 41.86,
+        "peak_rss_mb": 41.86,
+        "pagefile_mb": 255.88,
+        "peak_pagefile_mb": 255.88
+      },
+      "python_heap": {
+        "current_mb": 0.01,
+        "peak_mb": 0.02
+      }
+    },
+    "after_import": {
+      "os": {
+        "rss_mb": 105.36,
+        "peak_rss_mb": 105.36,
+        "pagefile_mb": 538.44,
+        "peak_pagefile_mb": 538.44
+      },
+      "python_heap": {
+        "current_mb": 27.48,
+        "peak_mb": 27.52
+      }
+    },
+    "after_detector_load": {
+      "os": {
+        "rss_mb": 265.12,
+        "peak_rss_mb": 265.12,
+        "pagefile_mb": 749.55,
+        "peak_pagefile_mb": 749.58
+      },
+      "python_heap": {
+        "current_mb": 58.34,
+        "peak_mb": 58.35
+      }
+    },
+    "after_template_load": {
+      "os": {
+        "rss_mb": 279.92,
+        "peak_rss_mb": 307.51,
+        "pagefile_mb": 765.05,
+        "peak_pagefile_mb": 793.61
+      },
+      "python_heap": {
+        "current_mb": 59.28,
+        "peak_mb": 70.11
+      }
+    },
+    "after_first_reconstruct": {
+      "os": {
+        "rss_mb": 303.96,
+        "peak_rss_mb": 315.07,
+        "pagefile_mb": 817.28,
+        "peak_pagefile_mb": 826.47
+      },
+      "python_heap": {
+        "current_mb": 68.56,
+        "peak_mb": 81.66
+      }
+    }
+  }
+}

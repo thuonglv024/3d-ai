@@ -1,0 +1,186 @@
+{
+  "viewer_page_init_ms": 3700.75,
+  "page_errors": [],
+  "runs": [
+    {
+      "glb_bytes": 696948,
+      "glb_size_kb": 680.61,
+      "mesh_count": 1,
+      "vertex_count": 13380,
+      "bbox_height_m": 1.74,
+      "center_pixel_rgba": [
+        90,
+        91,
+        81,
+        255
+      ],
+      "non_empty_frame": true,
+      "browser_fetch_glb_ms": 18,
+      "three_gltf_parse_ms": 7.1,
+      "webgl_first_frame_render_ms": 553.4,
+      "browser_glb_parse_and_render_ms": 578.5,
+      "run_index": 0,
+      "is_first_shader_compile": true
+    },
+    {
+      "glb_bytes": 696948,
+      "glb_size_kb": 680.61,
+      "mesh_count": 1,
+      "vertex_count": 13380,
+      "bbox_height_m": 1.74,
+      "center_pixel_rgba": [
+        90,
+        91,
+        81,
+        255
+      ],
+      "non_empty_frame": true,
+      "browser_fetch_glb_ms": 18.3,
+      "three_gltf_parse_ms": 1.2,
+      "webgl_first_frame_render_ms": 37.4,
+      "browser_glb_parse_and_render_ms": 56.9,
+      "run_index": 1,
+      "is_first_shader_compile": false
+    },
+    {
+      "glb_bytes": 696948,
+      "glb_size_kb": 680.61,
+      "mesh_count": 1,
+      "vertex_count": 13380,
+      "bbox_height_m": 1.74,
+      "center_pixel_rgba": [
+        90,
+        91,
+        81,
+        255
+      ],
+      "non_empty_frame": true,
+      "browser_fetch_glb_ms": 15.8,
+      "three_gltf_parse_ms": 1.1,
+      "webgl_first_frame_render_ms": 17.8,
+      "browser_glb_parse_and_render_ms": 34.7,
+      "run_index": 2,
+      "is_first_shader_compile": false
+    },
+    {
+      "glb_bytes": 696948,
+      "glb_size_kb": 680.61,
+      "mesh_count": 1,
+      "vertex_count": 13380,
+      "bbox_height_m": 1.74,
+      "center_pixel_rgba": [
+        90,
+        91,
+        81,
+        255
+      ],
+      "non_empty_frame": true,
+      "browser_fetch_glb_ms": 13.3,
+      "three_gltf_parse_ms": 0.7,
+      "webgl_first_frame_render_ms": 13.8,
+      "browser_glb_parse_and_render_ms": 27.8,
+      "run_index": 3,
+      "is_first_shader_compile": false
+    },
+    {
+      "glb_bytes": 696948,
+      "glb_size_kb": 680.61,
+      "mesh_count": 1,
+      "vertex_count": 13380,
+      "bbox_height_m": 1.74,
+      "center_pixel_rgba": [
+        90,
+        91,
+        81,
+        255
+      ],
+      "non_empty_frame": true,
+      "browser_fetch_glb_ms": 14,
+      "three_gltf_parse_ms": 1.4,
+      "webgl_first_frame_render_ms": 18.2,
+      "browser_glb_parse_and_render_ms": 33.6,
+      "run_index": 4,
+      "is_first_shader_compile": false
+    },
+    {
+      "glb_bytes": 696948,
+      "glb_size_kb": 680.61,
+      "mesh_count": 1,
+      "vertex_count": 13380,
+      "bbox_height_m": 1.74,
+      "center_pixel_rgba": [
+        90,
+        91,
+        81,
+        255
+      ],
+      "non_empty_frame": true,
+      "browser_fetch_glb_ms": 16.3,
+      "three_gltf_parse_ms": 0.8,
+      "webgl_first_frame_render_ms": 14.3,
+      "browser_glb_parse_and_render_ms": 31.4,
+      "run_index": 5,
+      "is_first_shader_compile": false
+    },
+    {
+      "glb_bytes": 696952,
+      "glb_size_kb": 680.62,
+      "mesh_count": 1,
+      "vertex_count": 13380,
+      "bbox_height_m": 1.71,
+      "center_pixel_rgba": [
+        85,
+        87,
+        77,
+        255
+      ],
+      "non_empty_frame": true,
+      "browser_fetch_glb_ms": 19.9,
+      "three_gltf_parse_ms": 1.1,
+      "webgl_first_frame_render_ms": 14.8,
+      "browser_glb_parse_and_render_ms": 35.8,
+      "run_index": 6,
+      "is_first_shader_compile": false
+    },
+    {
+      "glb_bytes": 696952,
+      "glb_size_kb": 680.62,
+      "mesh_count": 1,
+      "vertex_count": 13380,
+      "bbox_height_m": 1.71,
+      "center_pixel_rgba": [
+        85,
+        87,
+        77,
+        255
+      ],
+      "non_empty_frame": true,
+      "browser_fetch_glb_ms": 19.4,
+      "three_gltf_parse_ms": 0.9,
+      "webgl_first_frame_render_ms": 15.2,
+      "browser_glb_parse_and_render_ms": 35.5,
+      "run_index": 7,
+      "is_first_shader_compile": false
+    },
+    {
+      "glb_bytes": 696952,
+      "glb_size_kb": 680.62,
+      "mesh_count": 1,
+      "vertex_count": 13380,
+      "bbox_height_m": 1.71,
+      "center_pixel_rgba": [
+        85,
+        87,
+        77,
+        255
+      ],
+      "non_empty_frame": true,
+      "browser_fetch_glb_ms": 62.2,
+      "three_gltf_parse_ms": 0.8,
+      "webgl_first_frame_render_ms": 21.5,
+      "browser_glb_parse_and_render_ms": 84.5,
+      "run_index": 8,
+      "is_first_shader_compile": false
+    }
+  ]
+}

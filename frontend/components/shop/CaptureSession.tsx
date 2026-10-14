@@ -21,13 +21,41 @@ import {
   extractGeometryPreservingFrame,
   mapCameraDeviceError,
   pushCandidateFrame,
+  resolveThresholds,
   selectBestFrameFromWindow,
+  type CameraQualityThresholds,
   type CandidateFrame,
   type CaptureCheckFeedback,
   type ClientFrameQualityEvaluation,
 } from "../../lib/captureQuality";
 
 type Pair = { front: File; side: File };
+
+type CaptureWindowTestHooks = {
+  __MORPH_TEST_CAMERA_THRESHOLDS__?: Partial<CameraQualityThresholds>;
+  __MORPH_TEST_TURN_DURATION_MS__?: number;
+  __TEST_CAMERA_CONTROL__?: {
+    onCandidateBuffered?: (info: {
+      view: "front" | "side";
+      candidateCount: number;
+      remainingMs: number;
+      frameQualityScore: number;
+      brightness: number;
+      sharpness: number;
+      motion: number;
+    }) => void;
+  };
+};
+
+function getActiveThresholds(): CameraQualityThresholds {
+  if (typeof window !== "undefined") {
+    const win = window as unknown as CaptureWindowTestHooks;
+    if (win.__MORPH_TEST_CAMERA_THRESHOLDS__) {
+      return resolveThresholds(win.__MORPH_TEST_CAMERA_THRESHOLDS__);
+    }
+  }
+  return CAMERA_QUALITY_THRESHOLDS;
+}
 
 export default function CaptureSession({
   mode,
@@ -238,13 +266,18 @@ export default function CaptureSession({
 
   useEffect(() => {
     if (phase !== "turn") return;
+    const win = typeof window !== "undefined" ? (window as unknown as CaptureWindowTestHooks) : null;
+    const turnDurationMs =
+      typeof win?.__MORPH_TEST_TURN_DURATION_MS__ === "number"
+        ? win.__MORPH_TEST_TURN_DURATION_MS__
+        : 4000;
     const timer = setTimeout(() => {
       clearSessionBuffers();
       setPhase("running");
       setFeedback(null);
       setQualityEval(null);
       setStatusNotice("");
-    }, 4000);
+    }, turnDurationMs);
     return () => clearTimeout(timer);
   }, [phase, clearSessionBuffers]);
 
@@ -319,6 +352,7 @@ export default function CaptureSession({
         setFeedback(result);
         setError("");
 
+        const activeThresholds = getActiveThresholds();
         const evaluation = evaluateClientFrameQuality(
           {
             pixelMetrics,
@@ -328,7 +362,7 @@ export default function CaptureSession({
             mode,
             view,
           },
-          CAMERA_QUALITY_THRESHOLDS
+          activeThresholds
         );
         setQualityEval(evaluation);
 
@@ -342,8 +376,8 @@ export default function CaptureSession({
           stable++;
           setStatusNotice("");
           const now = Date.now();
-          if (stable >= CAMERA_QUALITY_THRESHOLDS.minStableFramesBeforeCountdown && !deadline) {
-            deadline = now + CAMERA_QUALITY_THRESHOLDS.countdownDurationMs;
+          if (stable >= activeThresholds.minStableFramesBeforeCountdown && !deadline) {
+            deadline = now + activeThresholds.countdownDurationMs;
             candidateBufferRef.current = [];
           }
 
@@ -352,7 +386,7 @@ export default function CaptureSession({
             setCount(Math.max(1, Math.ceil(remainingMs / 1000)));
 
             // Within the final bestFrameWindowMs (1.6s), buffer full-resolution candidate frames
-            if (remainingMs <= CAMERA_QUALITY_THRESHOLDS.bestFrameWindowMs) {
+            if (remainingMs <= activeThresholds.bestFrameWindowMs) {
               const fullExtracted = extractGeometryPreservingFrame(el, { maxDimension: null });
               const candidateBlob = await new Promise<Blob | null>((r) =>
                 fullExtracted.canvas.toBlob(r, "image/jpeg", 0.92)
@@ -373,8 +407,19 @@ export default function CaptureSession({
                     payload: candidateBlob,
                   },
                   deadline,
-                  CAMERA_QUALITY_THRESHOLDS
+                  activeThresholds
                 );
+                if (typeof window !== "undefined") {
+                  (window as unknown as CaptureWindowTestHooks).__TEST_CAMERA_CONTROL__?.onCandidateBuffered?.({
+                    view,
+                    candidateCount: candidateBufferRef.current.length,
+                    remainingMs,
+                    frameQualityScore: evaluation.frameQualityScore,
+                    brightness: evaluation.brightness,
+                    sharpness: evaluation.sharpness,
+                    motion: evaluation.motion,
+                  });
+                }
               }
             }
 
@@ -383,7 +428,7 @@ export default function CaptureSession({
               const bestCandidate = selectBestFrameFromWindow(candidateBufferRef.current, {
                 nowMs: Date.now(),
                 deadlineMs: deadline,
-                overrides: CAMERA_QUALITY_THRESHOLDS,
+                overrides: activeThresholds,
               });
 
               let captured: Blob | null = bestCandidate?.payload ?? null;
@@ -425,8 +470,8 @@ export default function CaptureSession({
           deadline = 0;
           candidateBufferRef.current = [];
           setCount(null);
-          setStatusNotice(
-            wasCountingDown
+          setStatusNotice((prev) =>
+            wasCountingDown || prev.startsWith("Đã tạm dừng đếm ngược:")
               ? `Đã tạm dừng đếm ngược: ${evaluation.message}`
               : evaluation.message
           );

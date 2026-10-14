@@ -28,58 +28,55 @@ Tài liệu này tổng hợp trạng thái hiện tại của dự án **MORPH 
 
 ---
 
-## 2. Các lỗi & nâng cấp Product Readiness vừa hoàn thành (Đã kiểm thử 100%)
+## 2. Trạng thái Nghiệm thu Nâng cấp Scan (`run-20261014-v2`)
 
-Xem báo cáo nghiệm thu đầy đủ tại [**`SCAN_PRODUCT_READINESS.md`**](file:///d:/MORPH-AI/SCAN_PRODUCT_READINESS.md):
+Xem báo cáo nghiệm thu chi tiết tại [**`SCAN_PRODUCT_READINESS.md`**](file:///d:/MORPH-AI/SCAN_PRODUCT_READINESS.md) và thư mục bằng chứng [`output/runs/run-20261014-v2/`](file:///d:/MORPH-AI/output/runs/run-20261014-v2/):
 
-1. **Vá lỗ hổng bỏ qua `guest_token` & chống rò rỉ token ([`backend/app/main.py`](file:///d:/MORPH-AI/backend/app/main.py), [`backend/app/history.py`](file:///d:/MORPH-AI/backend/app/history.py))**:
-   - Bắt buộc mọi request tới phiên quét khách (`GET /api/scans/{id}`, `/measurements`, `/model`, `/size-advice`, `POST /api/sizing/recommend`, `DELETE /api/scans/{id}`) phải cung cấp `guest_token` hợp lệ (so khớp qua `secrets.compare_digest`), nếu thiếu hoặc sai đều trả về `403 Forbidden`.
-   - Khi người dùng đăng nhập và nhận (claim) phiên quét qua `POST /api/user/scans/save`, gán `job.user_id` và xóa `job.guest_token = None`, ẩn `guest_token` trong response của user.
-2. **Loại bỏ `template_model` / `unavailable` khỏi luồng gợi ý size từ DB ([`backend/app/sizing.py`](file:///d:/MORPH-AI/backend/app/sizing.py), [`backend/app/main.py`](file:///d:/MORPH-AI/backend/app/main.py), [`backend/app/history.py`](file:///d:/MORPH-AI/backend/app/history.py))**:
-   - Bổ sung `VALID_SIZING_SOURCES = {"photo_estimate", "photo_with_prior", "user_input"}` và `filter_valid_sizing_measurements()`.
-   - Đảm bảo scan `upper_body` đã lưu trong SQLite (có `hip_cm` mang `source = "template_model"`) trả về `status = "insufficient_measurements"` (`missing = ["hip_cm"]`) đối với sản phẩm quần/chân váy hoặc đầm cần vòng mông, nhất quán 100% với khi job còn trong RAM.
-   - Lọc bỏ `template_model` khỏi `key_measurements` trong `GET /api/user/scans` và giữ `null` là thiếu dữ liệu (không biến thành `0`, không đưa vào `BodyChart`).
-3. **Kiểm soát chất lượng đầu vào Camera, Chọn Best-Frame & Bảo toàn Hình học ([`frontend/lib/captureQuality.ts`](file:///d:/MORPH-AI/frontend/lib/captureQuality.ts), [`CaptureSession.tsx`](file:///d:/MORPH-AI/frontend/components/shop/CaptureSession.tsx), [`FitExperience.tsx`](file:///d:/MORPH-AI/frontend/components/shop/FitExperience.tsx))**:
-   - Kiểm tra độ sáng (`45..235`), độ nét Laplacian (`>= 14.0`), độ đứng yên đa khung hình (`motion < 0.018`), và độ lệch tỷ lệ khoảng cách đứng giữa 2 góc (`<= 18%`).
-   - Lưu `candidateBuffer` trong `1600ms` cuối của đếm ngược và chọn frame có `frameQualityScore` cao nhất thay vì lấy ngẫu nhiên 1 frame tại `t = 0`.
-   - Hủy đếm ngược tức thì khi mất điều kiện kèm lý do tiếng Việt cụ thể; bảo toàn tỷ lệ khung hình (`aspectRatioDelta < 0.002`).
+- **Phân loại rõ 4 trạng thái nghiệm thu**:
+  1. **Implementation & Security Verification**: **PASSED** (`pytest` Backend `N = 107` tests; Unit Quality `N = 16` checks; Browser E2E `CaptureSession` `N = 8` kịch bản DOM/Network trên Chromium; TypeScript `0` lỗi).
+  2. **Synthetic / Geometric Validation**: **PASSED (Trong phạm vi Hình học Tổng hợp)** (`N_cal = 12` subjects / `36` scans, `N_eval = 10` held-out subjects / `30` scans, LOSO-CV `N = 13` archetypes, `N = 10` kịch bản nhiễu/từ chối, `N = 160` sản phẩm catalog).
+  3. **API Lifecycle & Bounded Concurrent Load Test**: **EXECUTED (Trong phạm vi Local Single-Worker CPU)** (Tách riêng In-Process `reconstruct()` Cold/Warm start với Full HTTP Lifecycle + Browser WebGL Render; chạy tải đồng thời `Concurrency = 1, 2, 4, 10` với `MAX_ACTIVE_JOBS = 8`; đo tách biệt `OS Working Set RSS` `279–309 MB` với `Python Heap tracemalloc` `71–93 MB`).
+  4. **Real-Human Anthropometric Accuracy**: **CHƯA XÁC NHẬN / CHƯA NGHIỆM THU (`MISSING_EMPIRICAL_COHORT`, `N_human = 0`)** — Chỉ được kết luận Product-Ready về độ chính xác nhân trắc học sau khi có tập dữ liệu người thật có đồng ý sử dụng vượt qua các cổng mục tiêu tại [`docs/ANTHROPOMETRIC_VALIDATION_PROTOCOL.md`](file:///d:/MORPH-AI/docs/ANTHROPOMETRIC_VALIDATION_PROTOCOL.md).
+
+### Các hạng mục kỹ thuật đã hoàn tất:
+1. **Bảo vệ `guest_token` & chống rò rỉ token ([`backend/app/main.py`](file:///d:/MORPH-AI/backend/app/main.py), [`backend/app/history.py`](file:///d:/MORPH-AI/backend/app/history.py))**:
+   - Bắt buộc đối chiếu `guest_token` qua `secrets.compare_digest` trên 6 endpoints phiên khách (`403 Forbidden` khi thiếu/sai token); xóa `job.guest_token = None` sau khi user claim scan (`POST /api/user/scans/save`).
+2. **Lọc nguồn `VALID_SIZING_SOURCES` đồng bộ giữa RAM và SQLite ([`backend/app/sizing.py`](file:///d:/MORPH-AI/backend/app/sizing.py), [`backend/app/main.py`](file:///d:/MORPH-AI/backend/app/main.py), [`backend/app/history.py`](file:///d:/MORPH-AI/backend/app/history.py))**:
+   - Loại bỏ `template_model` và `unavailable` khi đọc từ `body_measurements`, đảm bảo scan `upper_body` luôn trả về `insufficient_measurements` (`missing = ["hip_cm"]`) cho `78/160` sản phẩm quần/chân váy cần vòng mông.
+3. **Kiểm soát chất lượng Camera, Chọn Best-Frame & Kiểm thử Hành vi Trình duyệt ([`frontend/lib/captureQuality.ts`](file:///d:/MORPH-AI/frontend/lib/captureQuality.ts), [`CaptureSession.tsx`](file:///d:/MORPH-AI/frontend/components/shop/CaptureSession.tsx), [`test_capture_session_e2e.cjs`](file:///d:/MORPH-AI/verification/scripts/test_capture_session_e2e.cjs))**:
+   - Kiểm chứng thực tế trên trình duyệt Chromium (`8/8` kịch bản): hủy đếm ngược khi mất điều kiện, chọn đúng frame có `frameQualityScore` cao nhất trong cửa sổ `1600ms` (kiểm tra bằng giải mã pixel JPEG từ `POST /api/scans`), chuyển `front → turn → side`, chặn lệch khoảng cách đứng `> 18%`, đổi thiết bị camera, mất kết nối giữa chừng (`onended`), đóng phiên và retry (`0` track bị rò rỉ).
 4. **Chuẩn hóa Provenance từng Metric & Kiểm định lưới `.glb` ([`backend/app/report.py`](file:///d:/MORPH-AI/backend/app/report.py), [`backend/app/measurements.py`](file:///d:/MORPH-AI/backend/app/measurements.py))**:
-   - Bổ sung `observed_region`, `valid_for_sizing`, `valid_for_tracking`, `quality_warnings`, `engine_version`, `uncertainty_cm: None` trên từng chỉ số.
-   - Bổ sung `validate_glb_mesh()` kiểm tra đơn vị mét, chiều cao, trục tọa độ, không có đỉnh `NaN/Inf` hay mặt suy biến, và vị trí các vòng đo trước khi xuất `.glb`.
-5. **Quản lý vòng đời Job, Chống hiển thị kết quả cũ khi lỗi API & Đồng bộ thông điệp Quyền riêng tư**:
-   - Bổ sung `JOB_PROCESSING_TIMEOUT_SECONDS = 120` và `MAX_STORED_JOBS = 50` trong `main.py`.
-   - Xóa `job` cũ ngay trước khi gửi `POST /api/scans` mới trong `useBodyScan.ts`.
-   - Cập nhật thông điệp tại `/auth/login`, `/auth/register` và `FitExperience.tsx` trung thực với kiến trúc xử lý ảnh tại backend.
-6. **Khắc phục lỗi Wishlist cộng đôi số lượng & phím `Escape` trong `CustomSelect` ([`WishlistDrawer.tsx`](file:///d:/MORPH-AI/frontend/components/shop/WishlistDrawer.tsx), [`CustomSelect.tsx`](file:///d:/MORPH-AI/frontend/components/shop/CustomSelect.tsx), [`useDrawerA11y.ts`](file:///d:/MORPH-AI/frontend/lib/useDrawerA11y.ts))**.
+   - Bổ sung `observed_region`, `valid_for_sizing`, `valid_for_tracking`, `quality_warnings`, `engine_version`, `uncertainty_cm: None` và hàm `validate_glb_mesh()`.
+5. **Quản lý Hàng đợi (`MAX_ACTIVE_JOBS = 8`), Timeout (`120s`), TTL (`MAX_STORED_JOBS = 50`) & Sửa lỗi Wishlist/Escape**.
 
 ---
 
-## 3. Tài liệu & Bộ Harness Kiểm Định Mới
+## 3. Tài liệu & Bộ Harness Kiểm Định Hiện Có
 
-- [**`SCAN_PRODUCT_READINESS.md`**](file:///d:/MORPH-AI/SCAN_PRODUCT_READINESS.md): Báo cáo nghiệm thu kỹ thuật, baseline vs after, độ nhạy, latency P50/P95 và điều kiện mở Pilot.
-- [**`docs/ANTHROPOMETRIC_VALIDATION_PROTOCOL.md`**](file:///d:/MORPH-AI/docs/ANTHROPOMETRIC_VALIDATION_PROTOCOL.md): Quy trình lấy số đo chuẩn bằng thước dây (ISO 8559-1:2017), chia tập `calibration_split` / `evaluation_split` độc lập theo `subject_id` và tiêu chuẩn nghiệm thu Pilot.
-- [**`verification/scripts/benchmark_scan_product_readiness.py`**](file:///d:/MORPH-AI/verification/scripts/benchmark_scan_product_readiness.py) & [**`verification/scripts/test_capture_quality.cjs`**](file:///d:/MORPH-AI/verification/scripts/test_capture_quality.cjs).
+- [**`SCAN_PRODUCT_READINESS.md`**](file:///d:/MORPH-AI/SCAN_PRODUCT_READINESS.md): Báo cáo nghiệm thu tổng hợp, ma trận trạng thái, kết quả E2E/Load/Validation và các cổng gating trước khi mở Pilot.
+- [**`docs/ANTHROPOMETRIC_VALIDATION_PROTOCOL.md`**](file:///d:/MORPH-AI/docs/ANTHROPOMETRIC_VALIDATION_PROTOCOL.md): Đối chiếu vị trí đo ISO 7250-1:2017 / ISO 8559-1:2017 với mốc MediaPipe (bao gồm độ chệch mốc vai `11–12` so với *Acromion*), các ngưỡng mục tiêu đề xuất cho Pilot (*Proposed Pilot Target Thresholds*), và phương pháp hiệu chuẩn khoảng dự đoán **Split Conformal Prediction / Empirical Residual Quantiles**.
+- **Bộ script kiểm định trong `verification/scripts/`**:
+  - [`test_capture_session_e2e.cjs`](file:///d:/MORPH-AI/verification/scripts/test_capture_session_e2e.cjs) (Browser E2E cho `CaptureSession`)
+  - [`test_capture_quality.cjs`](file:///d:/MORPH-AI/verification/scripts/test_capture_quality.cjs) (Unit test logic chất lượng khung hình & hình học)
+  - [`benchmark_scan_api_and_load.py`](file:///d:/MORPH-AI/verification/scripts/benchmark_scan_api_and_load.py) (Benchmark tách biệt `reconstruct()`, toàn trình API, WebGL render, tải đồng thời & bộ nhớ RSS/Heap)
+  - [`evaluate_human_validation_cohort.py`](file:///d:/MORPH-AI/verification/scripts/evaluate_human_validation_cohort.py) & [`benchmark_scan_product_readiness.py`](file:///d:/MORPH-AI/verification/scripts/benchmark_scan_product_readiness.py) (Harness kiểm định nhân trắc học & khoảng dự đoán Split Conformal).
 
 ---
 
-## 4. Giới hạn kỹ thuật & Ranh giới trung thực (Không được tuyên bố sai)
+## 4. Giới hạn kỹ thuật còn lại (Không được tuyên bố vượt phạm vi)
 
-1. **Không phải SAM 3D Body / MHR hay quét laser LiDAR**:
-   - Mô hình 3D `.glb` là lưới cơ thể chuẩn MakeHuman được biến dạng mượt theo biên dạng 2D từ MediaPipe và khớp số đo 3 vòng bằng nội suy PCHIP.
-   - Khuôn mặt, tóc và chi tiết bàn tay/bàn chân là của lưới mẫu, không tái tạo diện mạo cá nhân.
-2. **Chưa có kiểm chứng lâm sàng trên tập người thật đa dạng**:
-   - Dù sai số toán học nội bộ của thuật toán biến dạng và khớp lưới đã giảm về `0.00 cm`, độ chính xác ngoài đời thực vẫn phụ thuộc vào quần áo bó/rộng, khoảng cách đứng và ánh sáng webcam.
-3. ** Lưu trữ phiên quét trong RAM**:
-   - Dict `jobs` trong [`backend/app/main.py`](file:///d:/MORPH-AI/backend/app/main.py) lưu trạng thái tiến trình quét trong bộ nhớ RAM (tối đa 50 job gần nhất); các phiên quét đã được người dùng đăng nhập bấm lưu (`POST /api/user/scans/save`) mới được ghi bền vững vào bảng `body_scans` trong SQLite.
+1. **Chưa có tập dữ liệu kiểm định trên người thật (`N_human = 0`)**: Độ chính xác nhân trắc học trên cơ thể người thật chưa được xác nhận; `uncertainty_cm` giữ giá trị `None`.
+2. **Chưa kiểm chứng tự động trên phần cứng camera vật lý đa thiết bị**: Bài test trình duyệt dùng `canvas.captureStream(30)` xác định; các yếu tố ISP auto-exposure, rolling shutter blur trong phòng tối, méo quang học góc rộng và lỗi driver USB/OS cần kiểm thử thực địa.
+3. **Độ chệch mốc vai MediaPipe `11–12` vs *Acromion* (`~2.4–4.4 cm`), độ nhạy trang phục rộng (`+8.7..+9.1 cm` khi phình `+6 px`), và độ nhạy chiều cao tự nhập (`±2.2..±3.0 cm` khi lệch `±5 cm`)**.
+4. **Kiến trúc `ThreadPoolExecutor(max_workers=1)` & in-memory `jobs`**: Dưới tải đồng thời `C >= 4`, thời gian chờ hàng đợi `queue_wait_ms P95` tăng lên `12.39s – 20.90s`; vượt quá `MAX_ACTIVE_JOBS = 8` trả về `HTTP 429`.
 
 ---
 
 ## 5. Công việc đề xuất tiếp theo (Next Steps)
 
-1. **Thực nghiệm đối chiếu số đo thực tế (Real-Human Tape Validation)**:
-   - Xây dựng tập dữ liệu kiểm thử gồm 10–20 tình nguyện viên có số đo thước dây thực tế (Ngực, Eo, Hông, Vai) chụp qua webcam ở khoảng cách 1.5–2.5m để tinh chỉnh thêm hệ số `ANATOMICAL_SECTION_FACTORS` và bù trừ độ dày trang phục.
-2. **Tăng cường bảo mật Production cho Auth & Order**:
-   - Khi triển khai lên môi trường HTTPS thực tế, bật biến môi trường `MORPH_COOKIE_SECURE=1` cho cookie `morph_session`.
-   - Cân nhắc lưu trạng thái rate-limit đăng nhập vào SQLite/Redis thay vì dict in-memory nếu chạy đa tiến trình (`workers > 1`).
-3. **Bền vững hóa trạng thái Scan Job**:
-   - Nếu cần giữ kết quả quét khách qua các lần khởi động lại backend server, đồng bộ metadata của `jobs` vào một bảng tạm trong SQLite kèm cơ chế dọn dẹp theo TTL.
+1. **Thu thập & Kiểm định Tập dữ liệu Người thật có Đồng ý (`N >= 35` người)**:
+   - Thực hiện đo thước dây (2 người đo $\times$ 2 lần) theo [`docs/ANTHROPOMETRIC_VALIDATION_PROTOCOL.md`](file:///d:/MORPH-AI/docs/ANTHROPOMETRIC_VALIDATION_PROTOCOL.md), nạp vào `verification/datasets/real_human_pilot/` và chạy [`evaluate_human_validation_cohort.py`](file:///d:/MORPH-AI/verification/scripts/evaluate_human_validation_cohort.py) để hiệu chuẩn khoảng dự đoán Split Conformal thực nghiệm.
+2. **Kiểm thử Thực địa Camera Phần cứng**:
+   - Đo kiểm trên các dòng webcam laptop (720p/1080p) và điện thoại thực tế dưới nhiều mức ánh sáng (`150–500 lux`).
+3. **Tăng cường cấu hình Production**:
+   - Bật `MORPH_COOKIE_SECURE=1` khi chạy HTTPS; chuyển lưu trữ trạng thái job/rate-limit sang SQLite/Redis nếu mở rộng nhiều worker process.

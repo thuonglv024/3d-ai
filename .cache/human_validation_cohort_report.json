@@ -1,0 +1,2027 @@
+{
+  "report_type": "MORPH_AI_ANTHROPOMETRIC_VALIDATION_AND_CONFORMAL_CALIBRATION_REPORT",
+  "timestamp_utc": "2026-10-14T09:50:31.258723+00:00",
+  "engine_version": "mediapipe-two-photo-fit-v4",
+  "REAL_HUMAN_DATASET_STATUS": "MISSING_EMPIRICAL_COHORT",
+  "human_accuracy_validation_status": "NOT_ACCEPTED_NO_EMPIRICAL_DATASET",
+  "empirical_accuracy_claim_allowed": false,
+  "conclusion": "CHƯA THỂ NGHIỆM THU ĐỘ CHÍNH XÁC TRÊN NGƯỜI THẬT (Human accuracy cannot be accepted yet because no consented real-human dataset is present).",
+  "iso_vs_algorithm_measurement_crosswalk": {
+    "height_cm": {
+      "iso_standards": [
+        "ISO 7250-1:2017 Clause 6.1.1 (Stature / Body height)",
+        "ISO 8559-1:2017 Clause 5.1.1 (Stature)"
+      ],
+      "anatomical_definition": "Khoảng cách thẳng đứng từ mặt sàn (standing surface) đến điểm cao nhất của hộp sọ (Vertex) khi đầu định hướng trên mặt phẳng Frankfort, đi chân trần.",
+      "algorithm_implementation": "Người dùng tự nhập (`source = 'user_input'`), không suy đoán từ camera 2D thiếu chiều sâu. Dùng làm hệ số quy đổi toàn cục từ chiều cao pixel đồng bộ (`shared_height`) sang cm và scale trục Y của lưới MakeHuman (`vertices *= height_cm / 100`).",
+      "code_references": [
+        "backend/app/measurements.py:estimate_from_profiles (line 47)",
+        "backend/app/reconstruction.py:deform_template (line 358)"
+      ],
+      "structural_offset_and_validation_note": "Sai số tự nhập chiều cao Delta_H kéo theo sai số tỷ lệ tuyến tính (~Delta_H / H) trên mọi số đo. Trong nghiệm thu Pilot, phải đo Stadiometer chuẩn tới 0.1 cm làm đầu vào基准 (baseline)."
+    },
+    "shoulder_width_cm": {
+      "iso_standards": [
+        "ISO 7250-1:2017 Clause 6.2.1 (Biacromial breadth)",
+        "ISO 8559-1:2017 Clause 5.4.1 (Shoulder width / Back shoulder width)",
+        "ISO 7250-1:2017 Clause 6.2.2 (Bideltoid breadth)"
+      ],
+      "anatomical_definition": "ISO 7250-1 (6.2.1): Khoảng cách thẳng giữa hai mỏm cùng vai xương bả vai (Acromion) đo bằng thước kẹp. ISO 8559-1 (5.4.1): Khoảng cách qua bề mặt lưng hoặc giữa hai mỏm Acromion.",
+      "algorithm_implementation": "Tính `shoulder_width_cm = round(shoulder_ratio * height_cm, 1)` với `shoulder_ratio = abs(frontal.points[11, 0] - frontal.points[12, 0]) / shared_height` (khoảng cách ngang Euclidean 2D giữa hai mốc MediaPipe Pose Landmarks 11 và 12).",
+      "code_references": [
+        "backend/app/reconstruction.py:reconstruct (line 373)",
+        "backend/app/measurements.py:estimate_from_profiles (line 47)"
+      ],
+      "structural_offset_and_validation_note": "LANDMARK OFFSET BIAS: Mốc MediaPipe 11 & 12 là tâm khớp vai 2D (glenohumeral joint centers) suy từ ảnh RGB, nằm thấp hơn và dịch vào trong (medial) khoảng 1.2–2.2 cm mỗi bên (tổng ~2.4–4.4 cm) so với mỏm xương Acromion ngoài da. Khi đo kiểm trên người thật bắt buộc ghi nhận cả `shoulder_biacromial_gt_cm` (Acromion) và `shoulder_joint_gt_cm` (liên tâm khớp vai) để lượng hóa và khử độ chệch mốc này."
+    },
+    "chest_cm": {
+      "iso_standards": [
+        "ISO 8559-1:2017 Clause 5.3.4 (Chest girth / Bust girth)",
+        "ISO 7250-1:2017 Clause 6.4.6 (Chest circumference)"
+      ],
+      "anatomical_definition": "Chu vi thân ngang đo bằng thước dây đi qua điểm nhô cao nhất của bầu ngực (Thelion / Bustpoint) hoặc mức xương ức giữa (Mesosternale — khoang liên sườn 4), song song với mặt sàn ở cuối thì thở ra bình thường.",
+      "algorithm_implementation": "Tìm chu vi mặt cắt ngang lớn nhất (`choice = 'max'`) trong dải tỷ lệ thân `fractions in [0.30, 0.44]` (ánh xạ vào mức chiều cao lưới `level = 0.805 - 0.290 * f in [0.6774*H, 0.7180*H]`, thuộc dải ngực `~0.68*H .. 0.79*H` tính từ mặt đất trên lưới MakeHuman đã biến dạng), nhân hệ số bù lõm giải phẫu `ANATOMICAL_SECTION_FACTORS['chest_cm'] = 1 / (1 - 0.074710) = 1.08074` (+8.07%).",
+      "code_references": [
+        "backend/app/measurements.py:ANATOMICAL_SECTION_FACTORS (line 21)",
+        "backend/app/measurements.py:estimate_from_profiles (lines 46-67)",
+        "backend/app/measurements.py:fit_measurement_targets (lines 208-250)"
+      ],
+      "structural_offset_and_validation_note": "Đòi hỏi hai cánh tay tách khỏi sườn 15°–25° ở ảnh chính diện để `center_run_width` không gộp bóng nách vào ngực."
+    },
+    "waist_cm": {
+      "iso_standards": [
+        "ISO 8559-1:2017 Clause 5.3.10 (Waist girth / Natural waist)",
+        "ISO 7250-1:2017 Clause 6.4.7 (Waist circumference)"
+      ],
+      "anatomical_definition": "Chu vi ngang nhỏ nhất của phần thân tự nhiên nằm giữa bờ dưới xương sườn thứ 10 (10th rib) và bờ trên mào chậu (Iliocristale), thước dây song song với mặt sàn.",
+      "algorithm_implementation": "Tìm chu vi mặt cắt ngang nhỏ nhất (`choice = 'min'`) trong dải tỷ lệ thân `fractions in [0.52, 0.78]` (ánh xạ vào mức chiều cao lưới `level = 0.805 - 0.290 * f in [0.5788*H, 0.6542*H]`, thuộc dải eo `0.56*H .. 0.66*H` tính từ sàn), nhân hệ số bù lõm giải phẫu `ANATOMICAL_SECTION_FACTORS['waist_cm'] = 1 / (1 - 0.031088) = 1.03209` (+3.21%).",
+      "code_references": [
+        "backend/app/measurements.py:ANATOMICAL_SECTION_FACTORS (line 22)",
+        "backend/app/measurements.py:estimate_from_profiles (lines 46-67)"
+      ],
+      "structural_offset_and_validation_note": "Tương thích trực tiếp với định nghĩa Natural Waist (chu vi thân nhỏ nhất) của ISO 8559-1 Clause 5.3.10."
+    },
+    "hip_cm": {
+      "iso_standards": [
+        "ISO 8559-1:2017 Clause 5.3.13 (Hip girth / Seat girth)",
+        "ISO 7250-1:2017 Clause 6.4.8 (Hip circumference)"
+      ],
+      "anatomical_definition": "Chu vi ngang lớn nhất đi qua vùng nhô cao nhất của cơ mông phía sau (Gluteal prominence / Buttock protrusion) song song với mặt sàn, hai bàn chân khép sát.",
+      "algorithm_implementation": "Tìm chu vi mặt cắt ngang lớn nhất (`choice = 'max'`) trong dải tỷ lệ thân `fractions in [0.95, 1.12]` (ánh xạ vào mức chiều cao lưới `level = 0.805 - 0.290 * f in [0.4802*H, 0.5295*H]`, thuộc dải mông `0.48*H .. 0.54*H` tính từ sàn), nhân hệ số `ANATOMICAL_SECTION_FACTORS['hip_cm'] = 1 / (1 - 0.058685) = 1.06234` (+6.23%). Khi `capture_mode == 'upper_body'`, khóa cứng `hip_cm = None` (`source = 'template_model'`).",
+      "code_references": [
+        "backend/app/measurements.py:ANATOMICAL_SECTION_FACTORS (line 23)",
+        "backend/app/measurements.py:estimate_from_profiles (lines 46-67)",
+        "backend/app/reconstruction.py:reconstruct (lines 383-404)"
+      ],
+      "structural_offset_and_validation_note": "Chỉ đo từ ảnh trong chế độ `full_body`. Trong chế độ `upper_body`, `hip_cm` bị khóa `None` và bị chặn khỏi gợi ý size."
+    }
+  },
+  "proposed_pilot_target_thresholds": {
+    "threshold_classification": "PROPOSED_PILOT_ENGINEERING_TARGETS",
+    "is_iso_international_mandate": false,
+    "is_empirically_proven_on_humans": false,
+    "derivation_rationale": "Đề xuất kỹ thuật nội bộ cho giai đoạn Pilot dựa trên nửa bước nhảy bảng size may sẵn (Ready-to-Wear grade step = 4.0-8.0 cm, bán kính nửa bậc size = ±2.0-4.0 cm). ISO 8559-1:2017 và ISO 7250-1:2017 chỉ chuẩn hóa vị trí mốc đo, không quy định các ngưỡng sai số này.",
+    "ground_truth_tem_quality_gates": {
+      "intra_observer_tem_max_cm": 0.4,
+      "inter_observer_tem_max_cm": 0.6,
+      "relative_tem_max_pct": 1.0
+    },
+    "full_body_proposed_targets": {
+      "chest_cm": {
+        "mae_max_cm": 2.5,
+        "abs_bias_max_cm": 1.0,
+        "p90_max_cm": 4.0,
+        "p95_max_cm": 5.0,
+        "repeatability_sd_max_cm": 0.8
+      },
+      "waist_cm": {
+        "mae_max_cm": 2.5,
+        "abs_bias_max_cm": 1.0,
+        "p90_max_cm": 4.0,
+        "p95_max_cm": 5.0,
+        "repeatability_sd_max_cm": 0.8
+      },
+      "hip_cm": {
+        "mae_max_cm": 2.5,
+        "abs_bias_max_cm": 1.0,
+        "p90_max_cm": 4.0,
+        "p95_max_cm": 5.0,
+        "repeatability_sd_max_cm": 0.8
+      },
+      "shoulder_width_cm": {
+        "mae_max_cm": 1.8,
+        "abs_bias_max_cm": 1.0,
+        "p90_max_cm": 3.2,
+        "p95_max_cm": 4.0,
+        "repeatability_sd_max_cm": 0.6
+      },
+      "size_agreement_min_pct": 85.0,
+      "true_rejection_rate_min_pct": 95.0
+    },
+    "upper_body_proposed_targets": {
+      "chest_cm": {
+        "mae_max_cm": 3.0,
+        "abs_bias_max_cm": 1.2,
+        "p90_max_cm": 4.5,
+        "p95_max_cm": 5.5,
+        "repeatability_sd_max_cm": 1.0
+      },
+      "waist_cm": {
+        "mae_max_cm": 3.0,
+        "abs_bias_max_cm": 1.2,
+        "p90_max_cm": 4.5,
+        "p95_max_cm": 5.5,
+        "repeatability_sd_max_cm": 1.0
+      },
+      "hip_cm": {
+        "status": "BLOCKED_NONE",
+        "coverage_target_pct": 0.0
+      },
+      "shoulder_width_cm": {
+        "mae_max_cm": 2.0,
+        "abs_bias_max_cm": 1.2,
+        "p90_max_cm": 3.5,
+        "p95_max_cm": 4.5,
+        "repeatability_sd_max_cm": 0.8
+      },
+      "size_agreement_top_only_min_pct": 82.0,
+      "true_rejection_rate_min_pct": 95.0
+    }
+  },
+  "real_human_pilot_evaluation": {
+    "REAL_HUMAN_DATASET_STATUS": "MISSING_EMPIRICAL_COHORT",
+    "human_accuracy_validation_status": "NOT_ACCEPTED_NO_EMPIRICAL_DATASET",
+    "empirical_accuracy_claim_allowed": false,
+    "dataset_dir": "D:\\MORPH-AI\\verification\\datasets\\real_human_pilot",
+    "manifest_path": "D:\\MORPH-AI\\verification\\datasets\\real_human_pilot\\manifest.json",
+    "manifest_exists": false,
+    "consented_subjects_total": 0,
+    "calibration_subjects_count": 0,
+    "evaluation_subjects_count": 0,
+    "conclusion": "CHƯA THỂ NGHIỆM THU ĐỘ CHÍNH XÁC TRÊN NGƯỜI THẬT (Human accuracy cannot be accepted yet because no consented real-human dataset is present).",
+    "required_next_steps": [
+      "Thu thập tối thiểu N >= 35 tình nguyện viên có ký Informed Consent (N_cal >= 15, N_eval >= 20 tách biệt theo subject_id) theo docs/ANTHROPOMETRIC_VALIDATION_PROTOCOL.md.",
+      "Đo thước dây lặp 2 người đo x 2 lần đạt TEM_intra <= 0.4 cm, TEM_inter <= 0.6 cm; ghi nhận cả Biacromial Breadth và Joint-Center Breadth cho vai.",
+      "Đặt manifest.json và ảnh chụp vào verification/datasets/real_human_pilot/ và chạy lại script này để xuất Empirical Coverage & Interval Width trên người thật."
+    ]
+  },
+  "synthetic_disjoint_conformal_calibration_verification": {
+    "methodology": "NON_PARAMETRIC_SPLIT_CONFORMAL_AND_EMPIRICAL_QUANTILE_INTERVALS",
+    "deprecated_parametric_formula_removed": "±1.96 * RMSE (Removed due to non-Gaussian clothing skew & heteroscedasticity)",
+    "subject_disjoint_split": {
+      "disjoint_verified": true,
+      "calibration_subject_count": 12,
+      "evaluation_subject_count": 10,
+      "overlapping_subjects": [],
+      "calibration_subjects": [
+        "subj_cal_001_neutral_template_170",
+        "subj_cal_002_female_ref_162",
+        "subj_cal_003_male_ref_176",
+        "subj_cal_004_petite_short_torso_154",
+        "subj_cal_005_slim_long_torso_167",
+        "subj_cal_006_curvy_female_164",
+        "subj_cal_007_short_torso_male_171",
+        "subj_cal_008_long_torso_male_180",
+        "subj_cal_009_broad_plus_male_177",
+        "subj_cal_010_slim_male_168",
+        "subj_cal_011_plus_long_torso_173",
+        "subj_cal_012_athletic_female_166"
+      ],
+      "evaluation_subjects": [
+        "subj_eval_001_slim_petite_155",
+        "subj_eval_002_standard_female_163",
+        "subj_eval_003_pear_lower_165",
+        "subj_eval_004_hourglass_168",
+        "subj_eval_005_short_torso_166",
+        "subj_eval_006_compact_male_169",
+        "subj_eval_007_athletic_male_175",
+        "subj_eval_008_long_torso_178",
+        "subj_eval_009_broad_male_182",
+        "subj_eval_010_high_whr_plus_172"
+      ]
+    },
+    "tem_gate_verification_test": {
+      "n_subjects": 10,
+      "grand_mean_cm": 93.47,
+      "tem_intra_measurer_a_cm": 0.171,
+      "tem_intra_measurer_b_cm": 0.1635,
+      "tem_intra_pooled_cm": 0.1673,
+      "tem_inter_cm": 0.1342,
+      "relative_tem_intra_pct": 0.179,
+      "relative_tem_inter_pct": 0.1436,
+      "passes_protocol_gate": true
+    },
+    "modes": {
+      "full_body": {
+        "calibration_subjects_count": 12,
+        "calibration_records_count": 36,
+        "evaluation_subjects_count": 10,
+        "evaluation_records_count": 30,
+        "metrics": {
+          "chest_cm": {
+            "calibration_parameters": {
+              "n_calibration": 36,
+              "calibration_bias_correction_cm": -0.415,
+              "calibration_mae_raw_cm": 0.49,
+              "calibration_mae_bias_corrected_cm": 0.43,
+              "intervals": {
+                "ci_90": {
+                  "target_coverage_pct": 90.0,
+                  "alpha": 0.1,
+                  "n_calibration_samples": 36,
+                  "conformal_quantile_level": 0.94444,
+                  "split_conformal_bias_corrected": {
+                    "bias_correction_cm": -0.415,
+                    "half_width_cm": 0.757,
+                    "interval_width_cm": 1.514,
+                    "formula": "y_hat + bias_correction_cm ± half_width_cm"
+                  },
+                  "asymmetric_empirical_quantile": {
+                    "lower_offset_cm": -1.18,
+                    "upper_offset_cm": 0.28,
+                    "interval_width_cm": 1.46,
+                    "formula": "[y_hat + lower_offset_cm, y_hat + upper_offset_cm]"
+                  }
+                },
+                "ci_95": {
+                  "target_coverage_pct": 95.0,
+                  "alpha": 0.05,
+                  "n_calibration_samples": 36,
+                  "conformal_quantile_level": 1.0,
+                  "split_conformal_bias_corrected": {
+                    "bias_correction_cm": -0.415,
+                    "half_width_cm": 0.935,
+                    "interval_width_cm": 1.869,
+                    "formula": "y_hat + bias_correction_cm ± half_width_cm"
+                  },
+                  "asymmetric_empirical_quantile": {
+                    "lower_offset_cm": -1.228,
+                    "upper_offset_cm": 0.281,
+                    "interval_width_cm": 1.509,
+                    "formula": "[y_hat + lower_offset_cm, y_hat + upper_offset_cm]"
+                  }
+                }
+              }
+            },
+            "held_out_evaluation": {
+              "n_eval_samples": 30,
+              "raw_mae_cm": 0.56,
+              "raw_signed_bias_cm": 0.44,
+              "raw_p90_abs_error_cm": 1.1,
+              "raw_p95_abs_error_cm": 1.26,
+              "bias_corrected_mae_cm": 0.46,
+              "bias_corrected_p90_abs_error_cm": 0.8,
+              "bias_corrected_p95_abs_error_cm": 0.88,
+              "calibrated_intervals": {
+                "ci_90": {
+                  "target_coverage_pct": 90.0,
+                  "split_conformal_bias_corrected": {
+                    "empirical_coverage_pct": 86.67,
+                    "covered_count": 26,
+                    "total_eval_count": 30,
+                    "half_width_cm": 0.76,
+                    "mean_interval_width_cm": 1.51,
+                    "median_interval_width_cm": 1.51
+                  },
+                  "asymmetric_empirical_quantile": {
+                    "empirical_coverage_pct": 83.33,
+                    "covered_count": 25,
+                    "total_eval_count": 30,
+                    "lower_offset_cm": -1.18,
+                    "upper_offset_cm": 0.28,
+                    "mean_interval_width_cm": 1.46,
+                    "median_interval_width_cm": 1.46
+                  }
+                },
+                "ci_95": {
+                  "target_coverage_pct": 95.0,
+                  "split_conformal_bias_corrected": {
+                    "empirical_coverage_pct": 96.67,
+                    "covered_count": 29,
+                    "total_eval_count": 30,
+                    "half_width_cm": 0.94,
+                    "mean_interval_width_cm": 1.87,
+                    "median_interval_width_cm": 1.87
+                  },
+                  "asymmetric_empirical_quantile": {
+                    "empirical_coverage_pct": 86.67,
+                    "covered_count": 26,
+                    "total_eval_count": 30,
+                    "lower_offset_cm": -1.23,
+                    "upper_offset_cm": 0.28,
+                    "mean_interval_width_cm": 1.51,
+                    "median_interval_width_cm": 1.51
+                  }
+                }
+              }
+            }
+          },
+          "waist_cm": {
+            "calibration_parameters": {
+              "n_calibration": 36,
+              "calibration_bias_correction_cm": -1.165,
+              "calibration_mae_raw_cm": 1.165,
+              "calibration_mae_bias_corrected_cm": 0.366,
+              "intervals": {
+                "ci_90": {
+                  "target_coverage_pct": 90.0,
+                  "alpha": 0.1,
+                  "n_calibration_samples": 36,
+                  "conformal_quantile_level": 0.94444,
+                  "split_conformal_bias_corrected": {
+                    "bias_correction_cm": -1.165,
+                    "half_width_cm": 0.769,
+                    "interval_width_cm": 1.539,
+                    "formula": "y_hat + bias_correction_cm ± half_width_cm"
+                  },
+                  "asymmetric_empirical_quantile": {
+                    "lower_offset_cm": -1.893,
+                    "upper_offset_cm": -0.613,
+                    "interval_width_cm": 1.28,
+                    "formula": "[y_hat + lower_offset_cm, y_hat + upper_offset_cm]"
+                  }
+                },
+                "ci_95": {
+                  "target_coverage_pct": 95.0,
+                  "alpha": 0.05,
+                  "n_calibration_samples": 36,
+                  "conformal_quantile_level": 1.0,
+                  "split_conformal_bias_corrected": {
+                    "bias_correction_cm": -1.165,
+                    "half_width_cm": 0.855,
+                    "interval_width_cm": 1.71,
+                    "formula": "y_hat + bias_correction_cm ± half_width_cm"
+                  },
+                  "asymmetric_empirical_quantile": {
+                    "lower_offset_cm": -1.94,
+                    "upper_offset_cm": -0.476,
+                    "interval_width_cm": 1.464,
+                    "formula": "[y_hat + lower_offset_cm, y_hat + upper_offset_cm]"
+                  }
+                }
+              }
+            },
+            "held_out_evaluation": {
+              "n_eval_samples": 30,
+              "raw_mae_cm": 1.19,
+              "raw_signed_bias_cm": 1.19,
+              "raw_p90_abs_error_cm": 1.82,
+              "raw_p95_abs_error_cm": 1.93,
+              "bias_corrected_mae_cm": 0.43,
+              "bias_corrected_p90_abs_error_cm": 0.83,
+              "bias_corrected_p95_abs_error_cm": 0.92,
+              "calibrated_intervals": {
+                "ci_90": {
+                  "target_coverage_pct": 90.0,
+                  "split_conformal_bias_corrected": {
+                    "empirical_coverage_pct": 86.67,
+                    "covered_count": 26,
+                    "total_eval_count": 30,
+                    "half_width_cm": 0.77,
+                    "mean_interval_width_cm": 1.54,
+                    "median_interval_width_cm": 1.54
+                  },
+                  "asymmetric_empirical_quantile": {
+                    "empirical_coverage_pct": 80.0,
+                    "covered_count": 24,
+                    "total_eval_count": 30,
+                    "lower_offset_cm": -1.89,
+                    "upper_offset_cm": -0.61,
+                    "mean_interval_width_cm": 1.28,
+                    "median_interval_width_cm": 1.28
+                  }
+                },
+                "ci_95": {
+                  "target_coverage_pct": 95.0,
+                  "split_conformal_bias_corrected": {
+                    "empirical_coverage_pct": 90.0,
+                    "covered_count": 27,
+                    "total_eval_count": 30,
+                    "half_width_cm": 0.85,
+                    "mean_interval_width_cm": 1.71,
+                    "median_interval_width_cm": 1.71
+                  },
+                  "asymmetric_empirical_quantile": {
+                    "empirical_coverage_pct": 83.33,
+                    "covered_count": 25,
+                    "total_eval_count": 30,
+                    "lower_offset_cm": -1.94,
+                    "upper_offset_cm": -0.48,
+                    "mean_interval_width_cm": 1.46,
+                    "median_interval_width_cm": 1.46
+                  }
+                }
+              }
+            }
+          },
+          "hip_cm": {
+            "calibration_parameters": {
+              "n_calibration": 36,
+              "calibration_bias_correction_cm": 0.156,
+              "calibration_mae_raw_cm": 0.522,
+              "calibration_mae_bias_corrected_cm": 0.478,
+              "intervals": {
+                "ci_90": {
+                  "target_coverage_pct": 90.0,
+                  "alpha": 0.1,
+                  "n_calibration_samples": 36,
+                  "conformal_quantile_level": 0.94444,
+                  "split_conformal_bias_corrected": {
+                    "bias_correction_cm": 0.156,
+                    "half_width_cm": 0.971,
+                    "interval_width_cm": 1.942,
+                    "formula": "y_hat + bias_correction_cm ± half_width_cm"
+                  },
+                  "asymmetric_empirical_quantile": {
+                    "lower_offset_cm": -0.835,
+                    "upper_offset_cm": 0.858,
+                    "interval_width_cm": 1.693,
+                    "formula": "[y_hat + lower_offset_cm, y_hat + upper_offset_cm]"
+                  }
+                },
+                "ci_95": {
+                  "target_coverage_pct": 95.0,
+                  "alpha": 0.05,
+                  "n_calibration_samples": 36,
+                  "conformal_quantile_level": 1.0,
+                  "split_conformal_bias_corrected": {
+                    "bias_correction_cm": 0.156,
+                    "half_width_cm": 1.156,
+                    "interval_width_cm": 2.311,
+                    "formula": "y_hat + bias_correction_cm ± half_width_cm"
+                  },
+                  "asymmetric_empirical_quantile": {
+                    "lower_offset_cm": -0.921,
+                    "upper_offset_cm": 0.932,
+                    "interval_width_cm": 1.854,
+                    "formula": "[y_hat + lower_offset_cm, y_hat + upper_offset_cm]"
+                  }
+                }
+              }
+            },
+            "held_out_evaluation": {
+              "n_eval_samples": 30,
+              "raw_mae_cm": 0.51,
+              "raw_signed_bias_cm": -0.17,
+              "raw_p90_abs_error_cm": 0.83,
+              "raw_p95_abs_error_cm": 0.9,
+              "bias_corrected_mae_cm": 0.48,
+              "bias_corrected_p90_abs_error_cm": 0.76,
+              "bias_corrected_p95_abs_error_cm": 0.83,
+              "calibrated_intervals": {
+                "ci_90": {
+                  "target_coverage_pct": 90.0,
+                  "split_conformal_bias_corrected": {
+                    "empirical_coverage_pct": 96.67,
+                    "covered_count": 29,
+                    "total_eval_count": 30,
+                    "half_width_cm": 0.97,
+                    "mean_interval_width_cm": 1.94,
+                    "median_interval_width_cm": 1.94
+                  },
+                  "asymmetric_empirical_quantile": {
+                    "empirical_coverage_pct": 90.0,
+                    "covered_count": 27,
+                    "total_eval_count": 30,
+                    "lower_offset_cm": -0.83,
+                    "upper_offset_cm": 0.86,
+                    "mean_interval_width_cm": 1.69,
+                    "median_interval_width_cm": 1.69
+                  }
+                },
+                "ci_95": {
+                  "target_coverage_pct": 95.0,
+                  "split_conformal_bias_corrected": {
+                    "empirical_coverage_pct": 100.0,
+                    "covered_count": 30,
+                    "total_eval_count": 30,
+                    "half_width_cm": 1.16,
+                    "mean_interval_width_cm": 2.31,
+                    "median_interval_width_cm": 2.31
+                  },
+                  "asymmetric_empirical_quantile": {
+                    "empirical_coverage_pct": 96.67,
+                    "covered_count": 29,
+                    "total_eval_count": 30,
+                    "lower_offset_cm": -0.92,
+                    "upper_offset_cm": 0.93,
+                    "mean_interval_width_cm": 1.85,
+                    "median_interval_width_cm": 1.85
+                  }
+                }
+              }
+            }
+          },
+          "shoulder_width_cm": {
+            "calibration_parameters": {
+              "n_calibration": 36,
+              "calibration_bias_correction_cm": 0.05,
+              "calibration_mae_raw_cm": 0.167,
+              "calibration_mae_bias_corrected_cm": 0.169,
+              "intervals": {
+                "ci_90": {
+                  "target_coverage_pct": 90.0,
+                  "alpha": 0.1,
+                  "n_calibration_samples": 36,
+                  "conformal_quantile_level": 0.94444,
+                  "split_conformal_bias_corrected": {
+                    "bias_correction_cm": 0.05,
+                    "half_width_cm": 0.45,
+                    "interval_width_cm": 0.9,
+                    "formula": "y_hat + bias_correction_cm ± half_width_cm"
+                  },
+                  "asymmetric_empirical_quantile": {
+                    "lower_offset_cm": -0.225,
+                    "upper_offset_cm": 0.425,
+                    "interval_width_cm": 0.65,
+                    "formula": "[y_hat + lower_offset_cm, y_hat + upper_offset_cm]"
+                  }
+                },
+                "ci_95": {
+                  "target_coverage_pct": 95.0,
+                  "alpha": 0.05,
+                  "n_calibration_samples": 36,
+                  "conformal_quantile_level": 1.0,
+                  "split_conformal_bias_corrected": {
+                    "bias_correction_cm": 0.05,
+                    "half_width_cm": 0.45,
+                    "interval_width_cm": 0.9,
+                    "formula": "y_hat + bias_correction_cm ± half_width_cm"
+                  },
+                  "asymmetric_empirical_quantile": {
+                    "lower_offset_cm": -0.313,
+                    "upper_offset_cm": 0.5,
+                    "interval_width_cm": 0.813,
+                    "formula": "[y_hat + lower_offset_cm, y_hat + upper_offset_cm]"
+                  }
+                }
+              }
+            },
+            "held_out_evaluation": {
+              "n_eval_samples": 30,
+              "raw_mae_cm": 0.19,
+              "raw_signed_bias_cm": -0.05,
+              "raw_p90_abs_error_cm": 0.41,
+              "raw_p95_abs_error_cm": 0.5,
+              "bias_corrected_mae_cm": 0.19,
+              "bias_corrected_p90_abs_error_cm": 0.45,
+              "bias_corrected_p95_abs_error_cm": 0.45,
+              "calibrated_intervals": {
+                "ci_90": {
+                  "target_coverage_pct": 90.0,
+                  "split_conformal_bias_corrected": {
+                    "empirical_coverage_pct": 96.67,
+                    "covered_count": 29,
+                    "total_eval_count": 30,
+                    "half_width_cm": 0.45,
+                    "mean_interval_width_cm": 0.9,
+                    "median_interval_width_cm": 0.9
+                  },
+                  "asymmetric_empirical_quantile": {
+                    "empirical_coverage_pct": 83.33,
+                    "covered_count": 25,
+                    "total_eval_count": 30,
+                    "lower_offset_cm": -0.23,
+                    "upper_offset_cm": 0.42,
+                    "mean_interval_width_cm": 0.65,
+                    "median_interval_width_cm": 0.65
+                  }
+                },
+                "ci_95": {
+                  "target_coverage_pct": 95.0,
+                  "split_conformal_bias_corrected": {
+                    "empirical_coverage_pct": 96.67,
+                    "covered_count": 29,
+                    "total_eval_count": 30,
+                    "half_width_cm": 0.45,
+                    "mean_interval_width_cm": 0.9,
+                    "median_interval_width_cm": 0.9
+                  },
+                  "asymmetric_empirical_quantile": {
+                    "empirical_coverage_pct": 93.33,
+                    "covered_count": 28,
+                    "total_eval_count": 30,
+                    "lower_offset_cm": -0.31,
+                    "upper_offset_cm": 0.5,
+                    "mean_interval_width_cm": 0.81,
+                    "median_interval_width_cm": 0.81
+                  }
+                }
+              }
+            },
+            "iso_biacromial_landmark_offset_analysis": {
+              "description": "Đối chiếu khoảng cách MediaPipe Landmarks 11-12 (tâm khớp vai 2D) với Biacromial Breadth (mỏm cùng vai Acromion theo ISO 7250-1 Clause 6.2.1).",
+              "mean_landmark_offset_bias_cm": 3.27,
+              "uncalibrated_mae_vs_biacromial_cm": 3.33,
+              "bias_corrected_mae_vs_biacromial_cm": 0.28,
+              "conformal_90_coverage_after_offset_correction_pct": 83.33,
+              "conformal_90_half_width_cm": 0.53
+            }
+          }
+        },
+        "subgroup_breakdown": {
+          "by_torso_ratio_group": {
+            "short_torso": {
+              "n_eval_records": 9,
+              "metrics": {
+                "chest_cm": {
+                  "n_eval_samples": 9,
+                  "raw_mae_cm": 0.56,
+                  "bias_corrected_mae_cm": 0.42,
+                  "raw_signed_bias_cm": 0.45,
+                  "conformal_90_coverage_pct": 88.89,
+                  "conformal_90_width_cm": 1.51,
+                  "conformal_95_coverage_pct": 100.0,
+                  "conformal_95_width_cm": 1.87,
+                  "asymmetric_90_coverage_pct": 77.78,
+                  "asymmetric_90_width_cm": 1.46
+                },
+                "waist_cm": {
+                  "n_eval_samples": 9,
+                  "raw_mae_cm": 1.28,
+                  "bias_corrected_mae_cm": 0.42,
+                  "raw_signed_bias_cm": 1.28,
+                  "conformal_90_coverage_pct": 88.89,
+                  "conformal_90_width_cm": 1.54,
+                  "conformal_95_coverage_pct": 100.0,
+                  "conformal_95_width_cm": 1.71,
+                  "asymmetric_90_coverage_pct": 88.89,
+                  "asymmetric_90_width_cm": 1.28
+                },
+                "hip_cm": {
+                  "n_eval_samples": 9,
+                  "raw_mae_cm": 0.58,
+                  "bias_corrected_mae_cm": 0.53,
+                  "raw_signed_bias_cm": -0.3,
+                  "conformal_90_coverage_pct": 100.0,
+                  "conformal_90_width_cm": 1.94,
+                  "conformal_95_coverage_pct": 100.0,
+                  "conformal_95_width_cm": 2.31,
+                  "asymmetric_90_coverage_pct": 88.89,
+                  "asymmetric_90_width_cm": 1.69
+                },
+                "shoulder_width_cm": {
+                  "n_eval_samples": 9,
+                  "raw_mae_cm": 0.18,
+                  "bias_corrected_mae_cm": 0.17,
+                  "raw_signed_bias_cm": -0.07,
+                  "conformal_90_coverage_pct": 100.0,
+                  "conformal_90_width_cm": 0.9,
+                  "conformal_95_coverage_pct": 100.0,
+                  "conformal_95_width_cm": 0.9,
+                  "asymmetric_90_coverage_pct": 88.89,
+                  "asymmetric_90_width_cm": 0.65
+                }
+              }
+            },
+            "medium_torso": {
+              "n_eval_records": 12,
+              "metrics": {
+                "chest_cm": {
+                  "n_eval_samples": 12,
+                  "raw_mae_cm": 0.58,
+                  "bias_corrected_mae_cm": 0.48,
+                  "raw_signed_bias_cm": 0.4,
+                  "conformal_90_coverage_pct": 83.33,
+                  "conformal_90_width_cm": 1.51,
+                  "conformal_95_coverage_pct": 91.67,
+                  "conformal_95_width_cm": 1.87,
+                  "asymmetric_90_coverage_pct": 83.33,
+                  "asymmetric_90_width_cm": 1.46
+                },
+                "waist_cm": {
+                  "n_eval_samples": 12,
+                  "raw_mae_cm": 1.27,
+                  "bias_corrected_mae_cm": 0.37,
+                  "raw_signed_bias_cm": 1.27,
+                  "conformal_90_coverage_pct": 91.67,
+                  "conformal_90_width_cm": 1.54,
+                  "conformal_95_coverage_pct": 91.67,
+                  "conformal_95_width_cm": 1.71,
+                  "asymmetric_90_coverage_pct": 83.33,
+                  "asymmetric_90_width_cm": 1.28
+                },
+                "hip_cm": {
+                  "n_eval_samples": 12,
+                  "raw_mae_cm": 0.46,
+                  "bias_corrected_mae_cm": 0.45,
+                  "raw_signed_bias_cm": -0.2,
+                  "conformal_90_coverage_pct": 100.0,
+                  "conformal_90_width_cm": 1.94,
+                  "conformal_95_coverage_pct": 100.0,
+                  "conformal_95_width_cm": 2.31,
+                  "asymmetric_90_coverage_pct": 91.67,
+                  "asymmetric_90_width_cm": 1.69
+                },
+                "shoulder_width_cm": {
+                  "n_eval_samples": 12,
+                  "raw_mae_cm": 0.18,
+                  "bias_corrected_mae_cm": 0.18,
+                  "raw_signed_bias_cm": -0.12,
+                  "conformal_90_coverage_pct": 100.0,
+                  "conformal_90_width_cm": 0.9,
+                  "conformal_95_coverage_pct": 100.0,
+                  "conformal_95_width_cm": 0.9,
+                  "asymmetric_90_coverage_pct": 91.67,
+                  "asymmetric_90_width_cm": 0.65
+                }
+              }
+            },
+            "long_torso": {
+              "n_eval_records": 9,
+              "metrics": {
+                "chest_cm": {
+                  "n_eval_samples": 9,
+                  "raw_mae_cm": 0.53,
+                  "bias_corrected_mae_cm": 0.46,
+                  "raw_signed_bias_cm": 0.47,
+                  "conformal_90_coverage_pct": 88.89,
+                  "conformal_90_width_cm": 1.51,
+                  "conformal_95_coverage_pct": 100.0,
+                  "conformal_95_width_cm": 1.87,
+                  "asymmetric_90_coverage_pct": 88.89,
+                  "asymmetric_90_width_cm": 1.46
+                },
+                "waist_cm": {
+                  "n_eval_samples": 9,
+                  "raw_mae_cm": 1.0,
+                  "bias_corrected_mae_cm": 0.52,
+                  "raw_signed_bias_cm": 1.0,
+                  "conformal_90_coverage_pct": 77.78,
+                  "conformal_90_width_cm": 1.54,
+                  "conformal_95_coverage_pct": 77.78,
+                  "conformal_95_width_cm": 1.71,
+                  "asymmetric_90_coverage_pct": 66.67,
+                  "asymmetric_90_width_cm": 1.28
+                },
+                "hip_cm": {
+                  "n_eval_samples": 9,
+                  "raw_mae_cm": 0.5,
+                  "bias_corrected_mae_cm": 0.48,
+                  "raw_signed_bias_cm": -0.01,
+                  "conformal_90_coverage_pct": 88.89,
+                  "conformal_90_width_cm": 1.94,
+                  "conformal_95_coverage_pct": 100.0,
+                  "conformal_95_width_cm": 2.31,
+                  "asymmetric_90_coverage_pct": 88.89,
+                  "asymmetric_90_width_cm": 1.69
+                },
+                "shoulder_width_cm": {
+                  "n_eval_samples": 9,
+                  "raw_mae_cm": 0.22,
+                  "bias_corrected_mae_cm": 0.24,
+                  "raw_signed_bias_cm": 0.07,
+                  "conformal_90_coverage_pct": 88.89,
+                  "conformal_90_width_cm": 0.9,
+                  "conformal_95_coverage_pct": 88.89,
+                  "conformal_95_width_cm": 0.9,
+                  "asymmetric_90_coverage_pct": 66.67,
+                  "asymmetric_90_width_cm": 0.65
+                }
+              }
+            }
+          },
+          "by_body_size_tier": {
+            "petite_slim": {
+              "n_eval_records": 9,
+              "metrics": {
+                "chest_cm": {
+                  "n_eval_samples": 9,
+                  "raw_mae_cm": 0.58,
+                  "bias_corrected_mae_cm": 0.47,
+                  "raw_signed_bias_cm": 0.49,
+                  "conformal_90_coverage_pct": 77.78,
+                  "conformal_90_width_cm": 1.51,
+                  "conformal_95_coverage_pct": 100.0,
+                  "conformal_95_width_cm": 1.87,
+                  "asymmetric_90_coverage_pct": 66.67,
+                  "asymmetric_90_width_cm": 1.46
+                },
+                "waist_cm": {
+                  "n_eval_samples": 9,
+                  "raw_mae_cm": 1.17,
+                  "bias_corrected_mae_cm": 0.39,
+                  "raw_signed_bias_cm": 1.17,
+                  "conformal_90_coverage_pct": 100.0,
+                  "conformal_90_width_cm": 1.54,
+                  "conformal_95_coverage_pct": 100.0,
+                  "conformal_95_width_cm": 1.71,
+                  "asymmetric_90_coverage_pct": 88.89,
+                  "asymmetric_90_width_cm": 1.28
+                },
+                "hip_cm": {
+                  "n_eval_samples": 9,
+                  "raw_mae_cm": 0.44,
+                  "bias_corrected_mae_cm": 0.42,
+                  "raw_signed_bias_cm": -0.15,
+                  "conformal_90_coverage_pct": 100.0,
+                  "conformal_90_width_cm": 1.94,
+                  "conformal_95_coverage_pct": 100.0,
+                  "conformal_95_width_cm": 2.31,
+                  "asymmetric_90_coverage_pct": 100.0,
+                  "asymmetric_90_width_cm": 1.69
+                },
+                "shoulder_width_cm": {
+                  "n_eval_samples": 9,
+                  "raw_mae_cm": 0.21,
+                  "bias_corrected_mae_cm": 0.19,
+                  "raw_signed_bias_cm": -0.1,
+                  "conformal_90_coverage_pct": 100.0,
+                  "conformal_90_width_cm": 0.9,
+                  "conformal_95_coverage_pct": 100.0,
+                  "conformal_95_width_cm": 0.9,
+                  "asymmetric_90_coverage_pct": 88.89,
+                  "asymmetric_90_width_cm": 0.65
+                }
+              }
+            },
+            "standard_athletic": {
+              "n_eval_records": 15,
+              "metrics": {
+                "chest_cm": {
+                  "n_eval_samples": 15,
+                  "raw_mae_cm": 0.55,
+                  "bias_corrected_mae_cm": 0.47,
+                  "raw_signed_bias_cm": 0.38,
+                  "conformal_90_coverage_pct": 86.67,
+                  "conformal_90_width_cm": 1.51,
+                  "conformal_95_coverage_pct": 93.33,
+                  "conformal_95_width_cm": 1.87,
+                  "asymmetric_90_coverage_pct": 86.67,
+                  "asymmetric_90_width_cm": 1.46
+                },
+                "waist_cm": {
+                  "n_eval_samples": 15,
+                  "raw_mae_cm": 1.31,
+                  "bias_corrected_mae_cm": 0.36,
+                  "raw_signed_bias_cm": 1.31,
+                  "conformal_90_coverage_pct": 86.67,
+                  "conformal_90_width_cm": 1.54,
+                  "conformal_95_coverage_pct": 93.33,
+                  "conformal_95_width_cm": 1.71,
+                  "asymmetric_90_coverage_pct": 86.67,
+                  "asymmetric_90_width_cm": 1.28
+                },
+                "hip_cm": {
+                  "n_eval_samples": 15,
+                  "raw_mae_cm": 0.56,
+                  "bias_corrected_mae_cm": 0.51,
+                  "raw_signed_bias_cm": -0.28,
+                  "conformal_90_coverage_pct": 100.0,
+                  "conformal_90_width_cm": 1.94,
+                  "conformal_95_coverage_pct": 100.0,
+                  "conformal_95_width_cm": 2.31,
+                  "asymmetric_90_coverage_pct": 86.67,
+                  "asymmetric_90_width_cm": 1.69
+                },
+                "shoulder_width_cm": {
+                  "n_eval_samples": 15,
+                  "raw_mae_cm": 0.14,
+                  "bias_corrected_mae_cm": 0.14,
+                  "raw_signed_bias_cm": -0.07,
+                  "conformal_90_coverage_pct": 100.0,
+                  "conformal_90_width_cm": 0.9,
+                  "conformal_95_coverage_pct": 100.0,
+                  "conformal_95_width_cm": 0.9,
+                  "asymmetric_90_coverage_pct": 93.33,
+                  "asymmetric_90_width_cm": 0.65
+                }
+              }
+            },
+            "broad_plus": {
+              "n_eval_records": 6,
+              "metrics": {
+                "chest_cm": {
+                  "n_eval_samples": 6,
+                  "raw_mae_cm": 0.56,
+                  "bias_corrected_mae_cm": 0.43,
+                  "raw_signed_bias_cm": 0.49,
+                  "conformal_90_coverage_pct": 100.0,
+                  "conformal_90_width_cm": 1.51,
+                  "conformal_95_coverage_pct": 100.0,
+                  "conformal_95_width_cm": 1.87,
+                  "asymmetric_90_coverage_pct": 100.0,
+                  "asymmetric_90_width_cm": 1.46
+                },
+                "waist_cm": {
+                  "n_eval_samples": 6,
+                  "raw_mae_cm": 0.93,
+                  "bias_corrected_mae_cm": 0.64,
+                  "raw_signed_bias_cm": 0.93,
+                  "conformal_90_coverage_pct": 66.67,
+                  "conformal_90_width_cm": 1.54,
+                  "conformal_95_coverage_pct": 66.67,
+                  "conformal_95_width_cm": 1.71,
+                  "asymmetric_90_coverage_pct": 50.0,
+                  "asymmetric_90_width_cm": 1.28
+                },
+                "hip_cm": {
+                  "n_eval_samples": 6,
+                  "raw_mae_cm": 0.49,
+                  "bias_corrected_mae_cm": 0.49,
+                  "raw_signed_bias_cm": 0.07,
+                  "conformal_90_coverage_pct": 83.33,
+                  "conformal_90_width_cm": 1.94,
+                  "conformal_95_coverage_pct": 100.0,
+                  "conformal_95_width_cm": 2.31,
+                  "asymmetric_90_coverage_pct": 83.33,
+                  "asymmetric_90_width_cm": 1.69
+                },
+                "shoulder_width_cm": {
+                  "n_eval_samples": 6,
+                  "raw_mae_cm": 0.3,
+                  "bias_corrected_mae_cm": 0.32,
+                  "raw_signed_bias_cm": 0.1,
+                  "conformal_90_coverage_pct": 83.33,
+                  "conformal_90_width_cm": 0.9,
+                  "conformal_95_coverage_pct": 83.33,
+                  "conformal_95_width_cm": 0.9,
+                  "asymmetric_90_coverage_pct": 50.0,
+                  "asymmetric_90_width_cm": 0.65
+                }
+              }
+            }
+          },
+          "by_sex": {
+            "female": {
+              "n_eval_records": 15,
+              "metrics": {
+                "chest_cm": {
+                  "n_eval_samples": 15,
+                  "raw_mae_cm": 0.55,
+                  "bias_corrected_mae_cm": 0.43,
+                  "raw_signed_bias_cm": 0.42,
+                  "conformal_90_coverage_pct": 93.33,
+                  "conformal_90_width_cm": 1.51,
+                  "conformal_95_coverage_pct": 100.0,
+                  "conformal_95_width_cm": 1.87,
+                  "asymmetric_90_coverage_pct": 86.67,
+                  "asymmetric_90_width_cm": 1.46
+                },
+                "waist_cm": {
+                  "n_eval_samples": 15,
+                  "raw_mae_cm": 1.33,
+                  "bias_corrected_mae_cm": 0.4,
+                  "raw_signed_bias_cm": 1.33,
+                  "conformal_90_coverage_pct": 86.67,
+                  "conformal_90_width_cm": 1.54,
+                  "conformal_95_coverage_pct": 93.33,
+                  "conformal_95_width_cm": 1.71,
+                  "asymmetric_90_coverage_pct": 86.67,
+                  "asymmetric_90_width_cm": 1.28
+                },
+                "hip_cm": {
+                  "n_eval_samples": 15,
+                  "raw_mae_cm": 0.56,
+                  "bias_corrected_mae_cm": 0.51,
+                  "raw_signed_bias_cm": -0.31,
+                  "conformal_90_coverage_pct": 100.0,
+                  "conformal_90_width_cm": 1.94,
+                  "conformal_95_coverage_pct": 100.0,
+                  "conformal_95_width_cm": 2.31,
+                  "asymmetric_90_coverage_pct": 86.67,
+                  "asymmetric_90_width_cm": 1.69
+                },
+                "shoulder_width_cm": {
+                  "n_eval_samples": 15,
+                  "raw_mae_cm": 0.19,
+                  "bias_corrected_mae_cm": 0.18,
+                  "raw_signed_bias_cm": -0.08,
+                  "conformal_90_coverage_pct": 100.0,
+                  "conformal_90_width_cm": 0.9,
+                  "conformal_95_coverage_pct": 100.0,
+                  "conformal_95_width_cm": 0.9,
+                  "asymmetric_90_coverage_pct": 93.33,
+                  "asymmetric_90_width_cm": 0.65
+                }
+              }
+            },
+            "male": {
+              "n_eval_records": 15,
+              "metrics": {
+                "chest_cm": {
+                  "n_eval_samples": 15,
+                  "raw_mae_cm": 0.57,
+                  "bias_corrected_mae_cm": 0.49,
+                  "raw_signed_bias_cm": 0.45,
+                  "conformal_90_coverage_pct": 80.0,
+                  "conformal_90_width_cm": 1.51,
+                  "conformal_95_coverage_pct": 93.33,
+                  "conformal_95_width_cm": 1.87,
+                  "asymmetric_90_coverage_pct": 80.0,
+                  "asymmetric_90_width_cm": 1.46
+                },
+                "waist_cm": {
+                  "n_eval_samples": 15,
+                  "raw_mae_cm": 1.06,
+                  "bias_corrected_mae_cm": 0.46,
+                  "raw_signed_bias_cm": 1.06,
+                  "conformal_90_coverage_pct": 86.67,
+                  "conformal_90_width_cm": 1.54,
+                  "conformal_95_coverage_pct": 86.67,
+                  "conformal_95_width_cm": 1.71,
+                  "asymmetric_90_coverage_pct": 73.33,
+                  "asymmetric_90_width_cm": 1.28
+                },
+                "hip_cm": {
+                  "n_eval_samples": 15,
+                  "raw_mae_cm": 0.45,
+                  "bias_corrected_mae_cm": 0.45,
+                  "raw_signed_bias_cm": -0.03,
+                  "conformal_90_coverage_pct": 93.33,
+                  "conformal_90_width_cm": 1.94,
+                  "conformal_95_coverage_pct": 100.0,
+                  "conformal_95_width_cm": 2.31,
+                  "asymmetric_90_coverage_pct": 93.33,
+                  "asymmetric_90_width_cm": 1.69
+                },
+                "shoulder_width_cm": {
+                  "n_eval_samples": 15,
+                  "raw_mae_cm": 0.2,
+                  "bias_corrected_mae_cm": 0.21,
+                  "raw_signed_bias_cm": -0.01,
+                  "conformal_90_coverage_pct": 93.33,
+                  "conformal_90_width_cm": 0.9,
+                  "conformal_95_coverage_pct": 93.33,
+                  "conformal_95_width_cm": 0.9,
+                  "asymmetric_90_coverage_pct": 73.33,
+                  "asymmetric_90_width_cm": 0.65
+                }
+              }
+            }
+          },
+          "by_perturbation_condition": {
+            "baseline_tight_fit": {
+              "n_eval_records": 10,
+              "metrics": {
+                "chest_cm": {
+                  "n_eval_samples": 10,
+                  "raw_mae_cm": 0.2,
+                  "bias_corrected_mae_cm": 0.59,
+                  "raw_signed_bias_cm": -0.18,
+                  "conformal_90_coverage_pct": 90.0,
+                  "conformal_90_width_cm": 1.51,
+                  "conformal_95_coverage_pct": 90.0,
+                  "conformal_95_width_cm": 1.87,
+                  "asymmetric_90_coverage_pct": 80.0,
+                  "asymmetric_90_width_cm": 1.46
+                },
+                "waist_cm": {
+                  "n_eval_samples": 10,
+                  "raw_mae_cm": 0.69,
+                  "bias_corrected_mae_cm": 0.48,
+                  "raw_signed_bias_cm": 0.69,
+                  "conformal_90_coverage_pct": 90.0,
+                  "conformal_90_width_cm": 1.54,
+                  "conformal_95_coverage_pct": 90.0,
+                  "conformal_95_width_cm": 1.71,
+                  "asymmetric_90_coverage_pct": 70.0,
+                  "asymmetric_90_width_cm": 1.28
+                },
+                "hip_cm": {
+                  "n_eval_samples": 10,
+                  "raw_mae_cm": 0.69,
+                  "bias_corrected_mae_cm": 0.54,
+                  "raw_signed_bias_cm": -0.69,
+                  "conformal_90_coverage_pct": 100.0,
+                  "conformal_90_width_cm": 1.94,
+                  "conformal_95_coverage_pct": 100.0,
+                  "conformal_95_width_cm": 2.31,
+                  "asymmetric_90_coverage_pct": 80.0,
+                  "asymmetric_90_width_cm": 1.69
+                },
+                "shoulder_width_cm": {
+                  "n_eval_samples": 10,
+                  "raw_mae_cm": 0.11,
+                  "bias_corrected_mae_cm": 0.13,
+                  "raw_signed_bias_cm": 0.01,
+                  "conformal_90_coverage_pct": 100.0,
+                  "conformal_90_width_cm": 0.9,
+                  "conformal_95_coverage_pct": 100.0,
+                  "conformal_95_width_cm": 0.9,
+                  "asymmetric_90_coverage_pct": 100.0,
+                  "asymmetric_90_width_cm": 0.65
+                }
+              }
+            },
+            "moderate_pose_jitter": {
+              "n_eval_records": 10,
+              "metrics": {
+                "chest_cm": {
+                  "n_eval_samples": 10,
+                  "raw_mae_cm": 0.4,
+                  "bias_corrected_mae_cm": 0.11,
+                  "raw_signed_bias_cm": 0.4,
+                  "conformal_90_coverage_pct": 100.0,
+                  "conformal_90_width_cm": 1.51,
+                  "conformal_95_coverage_pct": 100.0,
+                  "conformal_95_width_cm": 1.87,
+                  "asymmetric_90_coverage_pct": 100.0,
+                  "asymmetric_90_width_cm": 1.46
+                },
+                "waist_cm": {
+                  "n_eval_samples": 10,
+                  "raw_mae_cm": 1.13,
+                  "bias_corrected_mae_cm": 0.21,
+                  "raw_signed_bias_cm": 1.13,
+                  "conformal_90_coverage_pct": 90.0,
+                  "conformal_90_width_cm": 1.54,
+                  "conformal_95_coverage_pct": 90.0,
+                  "conformal_95_width_cm": 1.71,
+                  "asymmetric_90_coverage_pct": 90.0,
+                  "asymmetric_90_width_cm": 1.28
+                },
+                "hip_cm": {
+                  "n_eval_samples": 10,
+                  "raw_mae_cm": 0.34,
+                  "bias_corrected_mae_cm": 0.25,
+                  "raw_signed_bias_cm": -0.32,
+                  "conformal_90_coverage_pct": 100.0,
+                  "conformal_90_width_cm": 1.94,
+                  "conformal_95_coverage_pct": 100.0,
+                  "conformal_95_width_cm": 2.31,
+                  "asymmetric_90_coverage_pct": 100.0,
+                  "asymmetric_90_width_cm": 1.69
+                },
+                "shoulder_width_cm": {
+                  "n_eval_samples": 10,
+                  "raw_mae_cm": 0.19,
+                  "bias_corrected_mae_cm": 0.19,
+                  "raw_signed_bias_cm": 0.01,
+                  "conformal_90_coverage_pct": 90.0,
+                  "conformal_90_width_cm": 0.9,
+                  "conformal_95_coverage_pct": 90.0,
+                  "conformal_95_width_cm": 0.9,
+                  "asymmetric_90_coverage_pct": 80.0,
+                  "asymmetric_90_width_cm": 0.65
+                }
+              }
+            },
+            "everyday_light_attire": {
+              "n_eval_records": 10,
+              "metrics": {
+                "chest_cm": {
+                  "n_eval_samples": 10,
+                  "raw_mae_cm": 1.08,
+                  "bias_corrected_mae_cm": 0.67,
+                  "raw_signed_bias_cm": 1.08,
+                  "conformal_90_coverage_pct": 70.0,
+                  "conformal_90_width_cm": 1.51,
+                  "conformal_95_coverage_pct": 100.0,
+                  "conformal_95_width_cm": 1.87,
+                  "asymmetric_90_coverage_pct": 70.0,
+                  "asymmetric_90_width_cm": 1.46
+                },
+                "waist_cm": {
+                  "n_eval_samples": 10,
+                  "raw_mae_cm": 1.77,
+                  "bias_corrected_mae_cm": 0.6,
+                  "raw_signed_bias_cm": 1.77,
+                  "conformal_90_coverage_pct": 80.0,
+                  "conformal_90_width_cm": 1.54,
+                  "conformal_95_coverage_pct": 90.0,
+                  "conformal_95_width_cm": 1.71,
+                  "asymmetric_90_coverage_pct": 80.0,
+                  "asymmetric_90_width_cm": 1.28
+                },
+                "hip_cm": {
+                  "n_eval_samples": 10,
+                  "raw_mae_cm": 0.5,
+                  "bias_corrected_mae_cm": 0.65,
+                  "raw_signed_bias_cm": 0.5,
+                  "conformal_90_coverage_pct": 90.0,
+                  "conformal_90_width_cm": 1.94,
+                  "conformal_95_coverage_pct": 100.0,
+                  "conformal_95_width_cm": 2.31,
+                  "asymmetric_90_coverage_pct": 90.0,
+                  "asymmetric_90_width_cm": 1.69
+                },
+                "shoulder_width_cm": {
+                  "n_eval_samples": 10,
+                  "raw_mae_cm": 0.28,
+                  "bias_corrected_mae_cm": 0.26,
+                  "raw_signed_bias_cm": -0.16,
+                  "conformal_90_coverage_pct": 100.0,
+                  "conformal_90_width_cm": 0.9,
+                  "conformal_95_coverage_pct": 100.0,
+                  "conformal_95_width_cm": 0.9,
+                  "asymmetric_90_coverage_pct": 70.0,
+                  "asymmetric_90_width_cm": 0.65
+                }
+              }
+            }
+          }
+        }
+      },
+      "upper_body": {
+        "calibration_subjects_count": 12,
+        "calibration_records_count": 36,
+        "evaluation_subjects_count": 10,
+        "evaluation_records_count": 30,
+        "metrics": {
+          "chest_cm": {
+            "calibration_parameters": {
+              "n_calibration": 36,
+              "calibration_bias_correction_cm": -0.318,
+              "calibration_mae_raw_cm": 0.699,
+              "calibration_mae_bias_corrected_cm": 0.66,
+              "intervals": {
+                "ci_90": {
+                  "target_coverage_pct": 90.0,
+                  "alpha": 0.1,
+                  "n_calibration_samples": 36,
+                  "conformal_quantile_level": 0.94444,
+                  "split_conformal_bias_corrected": {
+                    "bias_correction_cm": -0.318,
+                    "half_width_cm": 1.599,
+                    "interval_width_cm": 3.198,
+                    "formula": "y_hat + bias_correction_cm ± half_width_cm"
+                  },
+                  "asymmetric_empirical_quantile": {
+                    "lower_offset_cm": -1.847,
+                    "upper_offset_cm": 0.907,
+                    "interval_width_cm": 2.755,
+                    "formula": "[y_hat + lower_offset_cm, y_hat + upper_offset_cm]"
+                  }
+                },
+                "ci_95": {
+                  "target_coverage_pct": 95.0,
+                  "alpha": 0.05,
+                  "n_calibration_samples": 36,
+                  "conformal_quantile_level": 1.0,
+                  "split_conformal_bias_corrected": {
+                    "bias_correction_cm": -0.318,
+                    "half_width_cm": 1.692,
+                    "interval_width_cm": 3.384,
+                    "formula": "y_hat + bias_correction_cm ± half_width_cm"
+                  },
+                  "asymmetric_empirical_quantile": {
+                    "lower_offset_cm": -1.94,
+                    "upper_offset_cm": 1.105,
+                    "interval_width_cm": 3.045,
+                    "formula": "[y_hat + lower_offset_cm, y_hat + upper_offset_cm]"
+                  }
+                }
+              }
+            },
+            "held_out_evaluation": {
+              "n_eval_samples": 30,
+              "raw_mae_cm": 0.81,
+              "raw_signed_bias_cm": 0.42,
+              "raw_p90_abs_error_cm": 1.44,
+              "raw_p95_abs_error_cm": 1.61,
+              "bias_corrected_mae_cm": 0.73,
+              "bias_corrected_p90_abs_error_cm": 1.39,
+              "bias_corrected_p95_abs_error_cm": 1.46,
+              "calibrated_intervals": {
+                "ci_90": {
+                  "target_coverage_pct": 90.0,
+                  "split_conformal_bias_corrected": {
+                    "empirical_coverage_pct": 96.67,
+                    "covered_count": 29,
+                    "total_eval_count": 30,
+                    "half_width_cm": 1.6,
+                    "mean_interval_width_cm": 3.2,
+                    "median_interval_width_cm": 3.2
+                  },
+                  "asymmetric_empirical_quantile": {
+                    "empirical_coverage_pct": 90.0,
+                    "covered_count": 27,
+                    "total_eval_count": 30,
+                    "lower_offset_cm": -1.85,
+                    "upper_offset_cm": 0.91,
+                    "mean_interval_width_cm": 2.75,
+                    "median_interval_width_cm": 2.75
+                  }
+                },
+                "ci_95": {
+                  "target_coverage_pct": 95.0,
+                  "split_conformal_bias_corrected": {
+                    "empirical_coverage_pct": 96.67,
+                    "covered_count": 29,
+                    "total_eval_count": 30,
+                    "half_width_cm": 1.69,
+                    "mean_interval_width_cm": 3.38,
+                    "median_interval_width_cm": 3.38
+                  },
+                  "asymmetric_empirical_quantile": {
+                    "empirical_coverage_pct": 93.33,
+                    "covered_count": 28,
+                    "total_eval_count": 30,
+                    "lower_offset_cm": -1.94,
+                    "upper_offset_cm": 1.1,
+                    "mean_interval_width_cm": 3.05,
+                    "median_interval_width_cm": 3.05
+                  }
+                }
+              }
+            }
+          },
+          "waist_cm": {
+            "calibration_parameters": {
+              "n_calibration": 36,
+              "calibration_bias_correction_cm": -1.093,
+              "calibration_mae_raw_cm": 1.101,
+              "calibration_mae_bias_corrected_cm": 0.546,
+              "intervals": {
+                "ci_90": {
+                  "target_coverage_pct": 90.0,
+                  "alpha": 0.1,
+                  "n_calibration_samples": 36,
+                  "conformal_quantile_level": 0.94444,
+                  "split_conformal_bias_corrected": {
+                    "bias_correction_cm": -1.093,
+                    "half_width_cm": 1.29,
+                    "interval_width_cm": 2.58,
+                    "formula": "y_hat + bias_correction_cm ± half_width_cm"
+                  },
+                  "asymmetric_empirical_quantile": {
+                    "lower_offset_cm": -2.392,
+                    "upper_offset_cm": -0.122,
+                    "interval_width_cm": 2.27,
+                    "formula": "[y_hat + lower_offset_cm, y_hat + upper_offset_cm]"
+                  }
+                },
+                "ci_95": {
+                  "target_coverage_pct": 95.0,
+                  "alpha": 0.05,
+                  "n_calibration_samples": 36,
+                  "conformal_quantile_level": 1.0,
+                  "split_conformal_bias_corrected": {
+                    "bias_correction_cm": -1.093,
+                    "half_width_cm": 1.487,
+                    "interval_width_cm": 2.974,
+                    "formula": "y_hat + bias_correction_cm ± half_width_cm"
+                  },
+                  "asymmetric_empirical_quantile": {
+                    "lower_offset_cm": -2.449,
+                    "upper_offset_cm": 0.009,
+                    "interval_width_cm": 2.458,
+                    "formula": "[y_hat + lower_offset_cm, y_hat + upper_offset_cm]"
+                  }
+                }
+              }
+            },
+            "held_out_evaluation": {
+              "n_eval_samples": 30,
+              "raw_mae_cm": 1.2,
+              "raw_signed_bias_cm": 1.16,
+              "raw_p90_abs_error_cm": 2.12,
+              "raw_p95_abs_error_cm": 2.52,
+              "bias_corrected_mae_cm": 0.68,
+              "bias_corrected_p90_abs_error_cm": 1.32,
+              "bias_corrected_p95_abs_error_cm": 1.52,
+              "calibrated_intervals": {
+                "ci_90": {
+                  "target_coverage_pct": 90.0,
+                  "split_conformal_bias_corrected": {
+                    "empirical_coverage_pct": 86.67,
+                    "covered_count": 26,
+                    "total_eval_count": 30,
+                    "half_width_cm": 1.29,
+                    "mean_interval_width_cm": 2.58,
+                    "median_interval_width_cm": 2.58
+                  },
+                  "asymmetric_empirical_quantile": {
+                    "empirical_coverage_pct": 76.67,
+                    "covered_count": 23,
+                    "total_eval_count": 30,
+                    "lower_offset_cm": -2.39,
+                    "upper_offset_cm": -0.12,
+                    "mean_interval_width_cm": 2.27,
+                    "median_interval_width_cm": 2.27
+                  }
+                },
+                "ci_95": {
+                  "target_coverage_pct": 95.0,
+                  "split_conformal_bias_corrected": {
+                    "empirical_coverage_pct": 90.0,
+                    "covered_count": 27,
+                    "total_eval_count": 30,
+                    "half_width_cm": 1.49,
+                    "mean_interval_width_cm": 2.97,
+                    "median_interval_width_cm": 2.97
+                  },
+                  "asymmetric_empirical_quantile": {
+                    "empirical_coverage_pct": 86.67,
+                    "covered_count": 26,
+                    "total_eval_count": 30,
+                    "lower_offset_cm": -2.45,
+                    "upper_offset_cm": 0.01,
+                    "mean_interval_width_cm": 2.46,
+                    "median_interval_width_cm": 2.46
+                  }
+                }
+              }
+            }
+          },
+          "hip_cm": {
+            "status": "BLOCKED_IN_MODE",
+            "coverage_for_sizing_pct": 0.0,
+            "note": "hip_cm is locked to None in upper_body mode."
+          },
+          "shoulder_width_cm": {
+            "calibration_parameters": {
+              "n_calibration": 36,
+              "calibration_bias_correction_cm": 0.069,
+              "calibration_mae_raw_cm": 0.331,
+              "calibration_mae_bias_corrected_cm": 0.331,
+              "intervals": {
+                "ci_90": {
+                  "target_coverage_pct": 90.0,
+                  "alpha": 0.1,
+                  "n_calibration_samples": 36,
+                  "conformal_quantile_level": 0.94444,
+                  "split_conformal_bias_corrected": {
+                    "bias_correction_cm": 0.069,
+                    "half_width_cm": 0.669,
+                    "interval_width_cm": 1.339,
+                    "formula": "y_hat + bias_correction_cm ± half_width_cm"
+                  },
+                  "asymmetric_empirical_quantile": {
+                    "lower_offset_cm": -0.525,
+                    "upper_offset_cm": 0.6,
+                    "interval_width_cm": 1.125,
+                    "formula": "[y_hat + lower_offset_cm, y_hat + upper_offset_cm]"
+                  }
+                },
+                "ci_95": {
+                  "target_coverage_pct": 95.0,
+                  "alpha": 0.05,
+                  "n_calibration_samples": 36,
+                  "conformal_quantile_level": 1.0,
+                  "split_conformal_bias_corrected": {
+                    "bias_correction_cm": 0.069,
+                    "half_width_cm": 0.831,
+                    "interval_width_cm": 1.661,
+                    "formula": "y_hat + bias_correction_cm ± half_width_cm"
+                  },
+                  "asymmetric_empirical_quantile": {
+                    "lower_offset_cm": -0.6,
+                    "upper_offset_cm": 0.638,
+                    "interval_width_cm": 1.237,
+                    "formula": "[y_hat + lower_offset_cm, y_hat + upper_offset_cm]"
+                  }
+                }
+              }
+            },
+            "held_out_evaluation": {
+              "n_eval_samples": 30,
+              "raw_mae_cm": 0.24,
+              "raw_signed_bias_cm": -0.06,
+              "raw_p90_abs_error_cm": 0.5,
+              "raw_p95_abs_error_cm": 0.56,
+              "bias_corrected_mae_cm": 0.24,
+              "bias_corrected_p90_abs_error_cm": 0.47,
+              "bias_corrected_p95_abs_error_cm": 0.58,
+              "calibrated_intervals": {
+                "ci_90": {
+                  "target_coverage_pct": 90.0,
+                  "split_conformal_bias_corrected": {
+                    "empirical_coverage_pct": 93.33,
+                    "covered_count": 28,
+                    "total_eval_count": 30,
+                    "half_width_cm": 0.67,
+                    "mean_interval_width_cm": 1.34,
+                    "median_interval_width_cm": 1.34
+                  },
+                  "asymmetric_empirical_quantile": {
+                    "empirical_coverage_pct": 93.33,
+                    "covered_count": 28,
+                    "total_eval_count": 30,
+                    "lower_offset_cm": -0.53,
+                    "upper_offset_cm": 0.6,
+                    "mean_interval_width_cm": 1.12,
+                    "median_interval_width_cm": 1.12
+                  }
+                },
+                "ci_95": {
+                  "target_coverage_pct": 95.0,
+                  "split_conformal_bias_corrected": {
+                    "empirical_coverage_pct": 100.0,
+                    "covered_count": 30,
+                    "total_eval_count": 30,
+                    "half_width_cm": 0.83,
+                    "mean_interval_width_cm": 1.66,
+                    "median_interval_width_cm": 1.66
+                  },
+                  "asymmetric_empirical_quantile": {
+                    "empirical_coverage_pct": 96.67,
+                    "covered_count": 29,
+                    "total_eval_count": 30,
+                    "lower_offset_cm": -0.6,
+                    "upper_offset_cm": 0.64,
+                    "mean_interval_width_cm": 1.24,
+                    "median_interval_width_cm": 1.24
+                  }
+                }
+              }
+            },
+            "iso_biacromial_landmark_offset_analysis": {
+              "description": "Đối chiếu khoảng cách MediaPipe Landmarks 11-12 (tâm khớp vai 2D) với Biacromial Breadth (mỏm cùng vai Acromion theo ISO 7250-1 Clause 6.2.1).",
+              "mean_landmark_offset_bias_cm": 3.29,
+              "uncalibrated_mae_vs_biacromial_cm": 3.34,
+              "bias_corrected_mae_vs_biacromial_cm": 0.46,
+              "conformal_90_coverage_after_offset_correction_pct": 100.0,
+              "conformal_90_half_width_cm": 1.19
+            }
+          }
+        },
+        "subgroup_breakdown": {
+          "by_torso_ratio_group": {
+            "short_torso": {
+              "n_eval_records": 9,
+              "metrics": {
+                "chest_cm": {
+                  "n_eval_samples": 9,
+                  "raw_mae_cm": 1.07,
+                  "bias_corrected_mae_cm": 0.75,
+                  "raw_signed_bias_cm": 1.07,
+                  "conformal_90_coverage_pct": 88.89,
+                  "conformal_90_width_cm": 3.2,
+                  "conformal_95_coverage_pct": 88.89,
+                  "conformal_95_width_cm": 3.38,
+                  "asymmetric_90_coverage_pct": 88.89,
+                  "asymmetric_90_width_cm": 2.75
+                },
+                "waist_cm": {
+                  "n_eval_samples": 9,
+                  "raw_mae_cm": 1.81,
+                  "bias_corrected_mae_cm": 0.72,
+                  "raw_signed_bias_cm": 1.81,
+                  "conformal_90_coverage_pct": 77.78,
+                  "conformal_90_width_cm": 2.58,
+                  "conformal_95_coverage_pct": 88.89,
+                  "conformal_95_width_cm": 2.97,
+                  "asymmetric_90_coverage_pct": 88.89,
+                  "asymmetric_90_width_cm": 2.27
+                },
+                "hip_cm": {
+                  "status": "BLOCKED_IN_MODE"
+                },
+                "shoulder_width_cm": {
+                  "n_eval_samples": 9,
+                  "raw_mae_cm": 0.19,
+                  "bias_corrected_mae_cm": 0.23,
+                  "raw_signed_bias_cm": 0.14,
+                  "conformal_90_coverage_pct": 100.0,
+                  "conformal_90_width_cm": 1.34,
+                  "conformal_95_coverage_pct": 100.0,
+                  "conformal_95_width_cm": 1.66,
+                  "asymmetric_90_coverage_pct": 100.0,
+                  "asymmetric_90_width_cm": 1.12
+                }
+              }
+            },
+            "medium_torso": {
+              "n_eval_records": 12,
+              "metrics": {
+                "chest_cm": {
+                  "n_eval_samples": 12,
+                  "raw_mae_cm": 0.76,
+                  "bias_corrected_mae_cm": 0.68,
+                  "raw_signed_bias_cm": 0.54,
+                  "conformal_90_coverage_pct": 100.0,
+                  "conformal_90_width_cm": 3.2,
+                  "conformal_95_coverage_pct": 100.0,
+                  "conformal_95_width_cm": 3.38,
+                  "asymmetric_90_coverage_pct": 100.0,
+                  "asymmetric_90_width_cm": 2.75
+                },
+                "waist_cm": {
+                  "n_eval_samples": 12,
+                  "raw_mae_cm": 1.36,
+                  "bias_corrected_mae_cm": 0.53,
+                  "raw_signed_bias_cm": 1.36,
+                  "conformal_90_coverage_pct": 91.67,
+                  "conformal_90_width_cm": 2.58,
+                  "conformal_95_coverage_pct": 91.67,
+                  "conformal_95_width_cm": 2.97,
+                  "asymmetric_90_coverage_pct": 91.67,
+                  "asymmetric_90_width_cm": 2.27
+                },
+                "hip_cm": {
+                  "status": "BLOCKED_IN_MODE"
+                },
+                "shoulder_width_cm": {
+                  "n_eval_samples": 12,
+                  "raw_mae_cm": 0.21,
+                  "bias_corrected_mae_cm": 0.22,
+                  "raw_signed_bias_cm": 0.01,
+                  "conformal_90_coverage_pct": 91.67,
+                  "conformal_90_width_cm": 1.34,
+                  "conformal_95_coverage_pct": 100.0,
+                  "conformal_95_width_cm": 1.66,
+                  "asymmetric_90_coverage_pct": 91.67,
+                  "asymmetric_90_width_cm": 1.12
+                }
+              }
+            },
+            "long_torso": {
+              "n_eval_records": 9,
+              "metrics": {
+                "chest_cm": {
+                  "n_eval_samples": 9,
+                  "raw_mae_cm": 0.61,
+                  "bias_corrected_mae_cm": 0.77,
+                  "raw_signed_bias_cm": -0.41,
+                  "conformal_90_coverage_pct": 100.0,
+                  "conformal_90_width_cm": 3.2,
+                  "conformal_95_coverage_pct": 100.0,
+                  "conformal_95_width_cm": 3.38,
+                  "asymmetric_90_coverage_pct": 77.78,
+                  "asymmetric_90_width_cm": 2.75
+                },
+                "waist_cm": {
+                  "n_eval_samples": 9,
+                  "raw_mae_cm": 0.37,
+                  "bias_corrected_mae_cm": 0.85,
+                  "raw_signed_bias_cm": 0.24,
+                  "conformal_90_coverage_pct": 88.89,
+                  "conformal_90_width_cm": 2.58,
+                  "conformal_95_coverage_pct": 88.89,
+                  "conformal_95_width_cm": 2.97,
+                  "asymmetric_90_coverage_pct": 44.44,
+                  "asymmetric_90_width_cm": 2.27
+                },
+                "hip_cm": {
+                  "status": "BLOCKED_IN_MODE"
+                },
+                "shoulder_width_cm": {
+                  "n_eval_samples": 9,
+                  "raw_mae_cm": 0.34,
+                  "bias_corrected_mae_cm": 0.28,
+                  "raw_signed_bias_cm": -0.34,
+                  "conformal_90_coverage_pct": 88.89,
+                  "conformal_90_width_cm": 1.34,
+                  "conformal_95_coverage_pct": 100.0,
+                  "conformal_95_width_cm": 1.66,
+                  "asymmetric_90_coverage_pct": 88.89,
+                  "asymmetric_90_width_cm": 1.12
+                }
+              }
+            }
+          },
+          "by_body_size_tier": {
+            "petite_slim": {
+              "n_eval_records": 9,
+              "metrics": {
+                "chest_cm": {
+                  "n_eval_samples": 9,
+                  "raw_mae_cm": 1.04,
+                  "bias_corrected_mae_cm": 0.79,
+                  "raw_signed_bias_cm": 0.95,
+                  "conformal_90_coverage_pct": 88.89,
+                  "conformal_90_width_cm": 3.2,
+                  "conformal_95_coverage_pct": 88.89,
+                  "conformal_95_width_cm": 3.38,
+                  "asymmetric_90_coverage_pct": 88.89,
+                  "asymmetric_90_width_cm": 2.75
+                },
+                "waist_cm": {
+                  "n_eval_samples": 9,
+                  "raw_mae_cm": 1.55,
+                  "bias_corrected_mae_cm": 0.66,
+                  "raw_signed_bias_cm": 1.55,
+                  "conformal_90_coverage_pct": 88.89,
+                  "conformal_90_width_cm": 2.58,
+                  "conformal_95_coverage_pct": 88.89,
+                  "conformal_95_width_cm": 2.97,
+                  "asymmetric_90_coverage_pct": 88.89,
+                  "asymmetric_90_width_cm": 2.27
+                },
+                "hip_cm": {
+                  "status": "BLOCKED_IN_MODE"
+                },
+                "shoulder_width_cm": {
+                  "n_eval_samples": 9,
+                  "raw_mae_cm": 0.18,
+                  "bias_corrected_mae_cm": 0.23,
+                  "raw_signed_bias_cm": 0.16,
+                  "conformal_90_coverage_pct": 100.0,
+                  "conformal_90_width_cm": 1.34,
+                  "conformal_95_coverage_pct": 100.0,
+                  "conformal_95_width_cm": 1.66,
+                  "asymmetric_90_coverage_pct": 100.0,
+                  "asymmetric_90_width_cm": 1.12
+                }
+              }
+            },
+            "standard_athletic": {
+              "n_eval_records": 15,
+              "metrics": {
+                "chest_cm": {
+                  "n_eval_samples": 15,
+                  "raw_mae_cm": 0.8,
+                  "bias_corrected_mae_cm": 0.76,
+                  "raw_signed_bias_cm": 0.33,
+                  "conformal_90_coverage_pct": 100.0,
+                  "conformal_90_width_cm": 3.2,
+                  "conformal_95_coverage_pct": 100.0,
+                  "conformal_95_width_cm": 3.38,
+                  "asymmetric_90_coverage_pct": 86.67,
+                  "asymmetric_90_width_cm": 2.75
+                },
+                "waist_cm": {
+                  "n_eval_samples": 15,
+                  "raw_mae_cm": 1.27,
+                  "bias_corrected_mae_cm": 0.65,
+                  "raw_signed_bias_cm": 1.27,
+                  "conformal_90_coverage_pct": 86.67,
+                  "conformal_90_width_cm": 2.58,
+                  "conformal_95_coverage_pct": 93.33,
+                  "conformal_95_width_cm": 2.97,
+                  "asymmetric_90_coverage_pct": 80.0,
+                  "asymmetric_90_width_cm": 2.27
+                },
+                "hip_cm": {
+                  "status": "BLOCKED_IN_MODE"
+                },
+                "shoulder_width_cm": {
+                  "n_eval_samples": 15,
+                  "raw_mae_cm": 0.27,
+                  "bias_corrected_mae_cm": 0.26,
+                  "raw_signed_bias_cm": -0.1,
+                  "conformal_90_coverage_pct": 86.67,
+                  "conformal_90_width_cm": 1.34,
+                  "conformal_95_coverage_pct": 100.0,
+                  "conformal_95_width_cm": 1.66,
+                  "asymmetric_90_coverage_pct": 86.67,
+                  "asymmetric_90_width_cm": 1.12
+                }
+              }
+            },
+            "broad_plus": {
+              "n_eval_records": 6,
+              "metrics": {
+                "chest_cm": {
+                  "n_eval_samples": 6,
+                  "raw_mae_cm": 0.47,
+                  "bias_corrected_mae_cm": 0.55,
+                  "raw_signed_bias_cm": -0.17,
+                  "conformal_90_coverage_pct": 100.0,
+                  "conformal_90_width_cm": 3.2,
+                  "conformal_95_coverage_pct": 100.0,
+                  "conformal_95_width_cm": 3.38,
+                  "asymmetric_90_coverage_pct": 100.0,
+                  "asymmetric_90_width_cm": 2.75
+                },
+                "waist_cm": {
+                  "n_eval_samples": 6,
+                  "raw_mae_cm": 0.49,
+                  "bias_corrected_mae_cm": 0.78,
+                  "raw_signed_bias_cm": 0.31,
+                  "conformal_90_coverage_pct": 83.33,
+                  "conformal_90_width_cm": 2.58,
+                  "conformal_95_coverage_pct": 83.33,
+                  "conformal_95_width_cm": 2.97,
+                  "asymmetric_90_coverage_pct": 50.0,
+                  "asymmetric_90_width_cm": 2.27
+                },
+                "hip_cm": {
+                  "status": "BLOCKED_IN_MODE"
+                },
+                "shoulder_width_cm": {
+                  "n_eval_samples": 6,
+                  "raw_mae_cm": 0.27,
+                  "bias_corrected_mae_cm": 0.2,
+                  "raw_signed_bias_cm": -0.27,
+                  "conformal_90_coverage_pct": 100.0,
+                  "conformal_90_width_cm": 1.34,
+                  "conformal_95_coverage_pct": 100.0,
+                  "conformal_95_width_cm": 1.66,
+                  "asymmetric_90_coverage_pct": 100.0,
+                  "asymmetric_90_width_cm": 1.12
+                }
+              }
+            }
+          },
+          "by_sex": {
+            "female": {
+              "n_eval_records": 15,
+              "metrics": {
+                "chest_cm": {
+                  "n_eval_samples": 15,
+                  "raw_mae_cm": 1.01,
+                  "bias_corrected_mae_cm": 0.78,
+                  "raw_signed_bias_cm": 0.94,
+                  "conformal_90_coverage_pct": 93.33,
+                  "conformal_90_width_cm": 3.2,
+                  "conformal_95_coverage_pct": 93.33,
+                  "conformal_95_width_cm": 3.38,
+                  "asymmetric_90_coverage_pct": 93.33,
+                  "asymmetric_90_width_cm": 2.75
+                },
+                "waist_cm": {
+                  "n_eval_samples": 15,
+                  "raw_mae_cm": 1.75,
+                  "bias_corrected_mae_cm": 0.71,
+                  "raw_signed_bias_cm": 1.75,
+                  "conformal_90_coverage_pct": 80.0,
+                  "conformal_90_width_cm": 2.58,
+                  "conformal_95_coverage_pct": 86.67,
+                  "conformal_95_width_cm": 2.97,
+                  "asymmetric_90_coverage_pct": 86.67,
+                  "asymmetric_90_width_cm": 2.27
+                },
+                "hip_cm": {
+                  "status": "BLOCKED_IN_MODE"
+                },
+                "shoulder_width_cm": {
+                  "n_eval_samples": 15,
+                  "raw_mae_cm": 0.22,
+                  "bias_corrected_mae_cm": 0.24,
+                  "raw_signed_bias_cm": 0.11,
+                  "conformal_90_coverage_pct": 93.33,
+                  "conformal_90_width_cm": 1.34,
+                  "conformal_95_coverage_pct": 100.0,
+                  "conformal_95_width_cm": 1.66,
+                  "asymmetric_90_coverage_pct": 93.33,
+                  "asymmetric_90_width_cm": 1.12
+                }
+              }
+            },
+            "male": {
+              "n_eval_records": 15,
+              "metrics": {
+                "chest_cm": {
+                  "n_eval_samples": 15,
+                  "raw_mae_cm": 0.6,
+                  "bias_corrected_mae_cm": 0.68,
+                  "raw_signed_bias_cm": -0.11,
+                  "conformal_90_coverage_pct": 100.0,
+                  "conformal_90_width_cm": 3.2,
+                  "conformal_95_coverage_pct": 100.0,
+                  "conformal_95_width_cm": 3.38,
+                  "asymmetric_90_coverage_pct": 86.67,
+                  "asymmetric_90_width_cm": 2.75
+                },
+                "waist_cm": {
+                  "n_eval_samples": 15,
+                  "raw_mae_cm": 0.64,
+                  "bias_corrected_mae_cm": 0.65,
+                  "raw_signed_bias_cm": 0.57,
+                  "conformal_90_coverage_pct": 93.33,
+                  "conformal_90_width_cm": 2.58,
+                  "conformal_95_coverage_pct": 93.33,
+                  "conformal_95_width_cm": 2.97,
+                  "asymmetric_90_coverage_pct": 66.67,
+                  "asymmetric_90_width_cm": 2.27
+                },
+                "hip_cm": {
+                  "status": "BLOCKED_IN_MODE"
+                },
+                "shoulder_width_cm": {
+                  "n_eval_samples": 15,
+                  "raw_mae_cm": 0.27,
+                  "bias_corrected_mae_cm": 0.23,
+                  "raw_signed_bias_cm": -0.23,
+                  "conformal_90_coverage_pct": 93.33,
+                  "conformal_90_width_cm": 1.34,
+                  "conformal_95_coverage_pct": 100.0,
+                  "conformal_95_width_cm": 1.66,
+                  "asymmetric_90_coverage_pct": 93.33,
+                  "asymmetric_90_width_cm": 1.12
+                }
+              }
+            }
+          },
+          "by_perturbation_condition": {
+            "baseline_tight_fit": {
+              "n_eval_records": 10,
+              "metrics": {
+                "chest_cm": {
+                  "n_eval_samples": 10,
+                  "raw_mae_cm": 0.53,
+                  "bias_corrected_mae_cm": 0.66,
+                  "raw_signed_bias_cm": -0.23,
+                  "conformal_90_coverage_pct": 100.0,
+                  "conformal_90_width_cm": 3.2,
+                  "conformal_95_coverage_pct": 100.0,
+                  "conformal_95_width_cm": 3.38,
+                  "asymmetric_90_coverage_pct": 90.0,
+                  "asymmetric_90_width_cm": 2.75
+                },
+                "waist_cm": {
+                  "n_eval_samples": 10,
+                  "raw_mae_cm": 0.75,
+                  "bias_corrected_mae_cm": 0.57,
+                  "raw_signed_bias_cm": 0.65,
+                  "conformal_90_coverage_pct": 90.0,
+                  "conformal_90_width_cm": 2.58,
+                  "conformal_95_coverage_pct": 90.0,
+                  "conformal_95_width_cm": 2.97,
+                  "asymmetric_90_coverage_pct": 70.0,
+                  "asymmetric_90_width_cm": 2.27
+                },
+                "hip_cm": {
+                  "status": "BLOCKED_IN_MODE"
+                },
+                "shoulder_width_cm": {
+                  "n_eval_samples": 10,
+                  "raw_mae_cm": 0.18,
+                  "bias_corrected_mae_cm": 0.17,
+                  "raw_signed_bias_cm": -0.04,
+                  "conformal_90_coverage_pct": 100.0,
+                  "conformal_90_width_cm": 1.34,
+                  "conformal_95_coverage_pct": 100.0,
+                  "conformal_95_width_cm": 1.66,
+                  "asymmetric_90_coverage_pct": 100.0,
+                  "asymmetric_90_width_cm": 1.12
+                }
+              }
+            },
+            "moderate_pose_jitter": {
+              "n_eval_records": 10,
+              "metrics": {
+                "chest_cm": {
+                  "n_eval_samples": 10,
+                  "raw_mae_cm": 0.7,
+                  "bias_corrected_mae_cm": 0.56,
+                  "raw_signed_bias_cm": 0.36,
+                  "conformal_90_coverage_pct": 100.0,
+                  "conformal_90_width_cm": 3.2,
+                  "conformal_95_coverage_pct": 100.0,
+                  "conformal_95_width_cm": 3.38,
+                  "asymmetric_90_coverage_pct": 90.0,
+                  "asymmetric_90_width_cm": 2.75
+                },
+                "waist_cm": {
+                  "n_eval_samples": 10,
+                  "raw_mae_cm": 1.12,
+                  "bias_corrected_mae_cm": 0.6,
+                  "raw_signed_bias_cm": 1.12,
+                  "conformal_90_coverage_pct": 100.0,
+                  "conformal_90_width_cm": 2.58,
+                  "conformal_95_coverage_pct": 100.0,
+                  "conformal_95_width_cm": 2.97,
+                  "asymmetric_90_coverage_pct": 80.0,
+                  "asymmetric_90_width_cm": 2.27
+                },
+                "hip_cm": {
+                  "status": "BLOCKED_IN_MODE"
+                },
+                "shoulder_width_cm": {
+                  "n_eval_samples": 10,
+                  "raw_mae_cm": 0.28,
+                  "bias_corrected_mae_cm": 0.29,
+                  "raw_signed_bias_cm": -0.06,
+                  "conformal_90_coverage_pct": 90.0,
+                  "conformal_90_width_cm": 1.34,
+                  "conformal_95_coverage_pct": 100.0,
+                  "conformal_95_width_cm": 1.66,
+                  "asymmetric_90_coverage_pct": 90.0,
+                  "asymmetric_90_width_cm": 1.12
+                }
+              }
+            },
+            "everyday_light_attire": {
+              "n_eval_records": 10,
+              "metrics": {
+                "chest_cm": {
+                  "n_eval_samples": 10,
+                  "raw_mae_cm": 1.19,
+                  "bias_corrected_mae_cm": 0.96,
+                  "raw_signed_bias_cm": 1.11,
+                  "conformal_90_coverage_pct": 90.0,
+                  "conformal_90_width_cm": 3.2,
+                  "conformal_95_coverage_pct": 90.0,
+                  "conformal_95_width_cm": 3.38,
+                  "asymmetric_90_coverage_pct": 90.0,
+                  "asymmetric_90_width_cm": 2.75
+                },
+                "waist_cm": {
+                  "n_eval_samples": 10,
+                  "raw_mae_cm": 1.73,
+                  "bias_corrected_mae_cm": 0.87,
+                  "raw_signed_bias_cm": 1.73,
+                  "conformal_90_coverage_pct": 70.0,
+                  "conformal_90_width_cm": 2.58,
+                  "conformal_95_coverage_pct": 80.0,
+                  "conformal_95_width_cm": 2.97,
+                  "asymmetric_90_coverage_pct": 80.0,
+                  "asymmetric_90_width_cm": 2.27
+                },
+                "hip_cm": {
+                  "status": "BLOCKED_IN_MODE"
+                },
+                "shoulder_width_cm": {
+                  "n_eval_samples": 10,
+                  "raw_mae_cm": 0.27,
+                  "bias_corrected_mae_cm": 0.26,
+                  "raw_signed_bias_cm": -0.07,
+                  "conformal_90_coverage_pct": 90.0,
+                  "conformal_90_width_cm": 1.34,
+                  "conformal_95_coverage_pct": 100.0,
+                  "conformal_95_width_cm": 1.66,
+                  "asymmetric_90_coverage_pct": 90.0,
+                  "asymmetric_90_width_cm": 1.12
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

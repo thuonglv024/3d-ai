@@ -50,54 +50,58 @@ D:\MORPH-AI\backend\.venv\Scripts\python.exe -m pytest D:\MORPH-AI\backend\tests
 
 ## 3. Chạy các kịch bản kiểm thử chuyên biệt trong `verification/scripts/`
 
-### 3.1. Benchmark Product Readiness & Độ chính xác 3D Scan
+### 3.1. Benchmark Product Readiness, API/Load & Kiểm định Khoảng Dự Đoán Split Conformal
 ```powershell
+$env:PATHEXT = ".COM;.EXE;.BAT;.CMD;.VBS;.VBE;.JS;.JSE;.WSF;.WSH;.MSC;.CPL"
 $env:PYTHONIOENCODING = "utf-8"
-D:\MORPH-AI\backend\.venv\Scripts\python.exe D:\MORPH-AI\verification\scripts\benchmark_scan_product_readiness.py
-D:\MORPH-AI\backend\.venv\Scripts\python.exe D:\MORPH-AI\verification\scripts\evaluate_3d_scan_accuracy.py
+& "D:\MORPH-AI\backend\.venv\Scripts\python.exe" "D:\MORPH-AI\verification\scripts\benchmark_scan_api_and_load.py"
+& "D:\MORPH-AI\backend\.venv\Scripts\python.exe" "D:\MORPH-AI\verification\scripts\evaluate_human_validation_cohort.py"
+& "D:\MORPH-AI\backend\.venv\Scripts\python.exe" "D:\MORPH-AI\verification\scripts\benchmark_scan_product_readiness.py"
+& "D:\MORPH-AI\backend\.venv\Scripts\python.exe" "D:\MORPH-AI\verification\scripts\evaluate_3d_scan_accuracy.py"
 ```
-- Đo đầy đủ MAE, Bias, P90/P95, Repeatability SD, Coverage, 10 kịch bản nhiễu/thất bại (`True Rejection Rate = 100%`), kiểm tra tách tập hiệu chỉnh/đánh giá theo `subject_id`, Latency P50/P95 & RAM, và đánh giá gợi ý size trên toàn bộ 160 sản phẩm (xem báo cáo tại [`SCAN_PRODUCT_READINESS.md`](file:///d:/MORPH-AI/SCAN_PRODUCT_READINESS.md) và quy trình đo thực tế tại [`docs/ANTHROPOMETRIC_VALIDATION_PROTOCOL.md`](file:///d:/MORPH-AI/docs/ANTHROPOMETRIC_VALIDATION_PROTOCOL.md)).
+- **[`benchmark_scan_api_and_load.py`](file:///d:/MORPH-AI/verification/scripts/benchmark_scan_api_and_load.py)**: Tách riêng benchmark hàm `reconstruct()` (Cold Start vs Warm Start) với toàn trình API (`POST /api/capture-check`, `POST /api/scans` upload, `queue_wait_ms`, `worker_processing_ms`, tải `.glb` và render WebGL trên Chromium), chạy tải đồng thời có giới hạn (`Concurrency = 1, 2, 4, 10`) và đo tách biệt bộ nhớ `OS Working Set RSS` vs `Python Heap (tracemalloc)`.
+- **[`evaluate_human_validation_cohort.py`](file:///d:/MORPH-AI/verification/scripts/evaluate_human_validation_cohort.py)** & **[`benchmark_scan_product_readiness.py`](file:///d:/MORPH-AI/verification/scripts/benchmark_scan_product_readiness.py)**: Kiểm định tách tập hiệu chỉnh/đánh giá theo `subject_id`, hiệu chuẩn khoảng dự đoán **Split Conformal Prediction / Empirical Residual Quantiles** (đánh giá coverage & độ rộng theo metric, mode và nhóm dữ liệu độc lập), 10 kịch bản nhiễu/từ chối và gợi ý size trên 160 sản phẩm (xem [`SCAN_PRODUCT_READINESS.md`](file:///d:/MORPH-AI/SCAN_PRODUCT_READINESS.md) và [`docs/ANTHROPOMETRIC_VALIDATION_PROTOCOL.md`](file:///d:/MORPH-AI/docs/ANTHROPOMETRIC_VALIDATION_PROTOCOL.md)).
 
 ### 3.2. Kiểm thử nhanh pipeline `upper_body` với fixture chuẩn
 ```powershell
 $env:PYTHONIOENCODING = "utf-8"
-D:\MORPH-AI\backend\.venv\Scripts\python.exe D:\MORPH-AI\verification\scripts\check-upper.py
+& "D:\MORPH-AI\backend\.venv\Scripts\python.exe" "D:\MORPH-AI\verification\scripts\check-upper.py"
 ```
 - Sử dụng cặp ảnh fixture [`verification/scripts/qa/upper-front.png`](file:///d:/MORPH-AI/verification/scripts/qa/upper-front.png) và [`verification/scripts/qa/upper-side.png`](file:///d:/MORPH-AI/verification/scripts/qa/upper-side.png) để kiểm tra toàn trình dựng hình 3D và trích xuất JSON số đo.
 
 ### 3.3. Kiểm thử hồi quy Backend (Auth, Guest Token, Checkout)
 ```powershell
-D:\MORPH-AI\backend\.venv\Scripts\python.exe D:\MORPH-AI\verification\scripts\repro_reported_issues.py
-D:\MORPH-AI\backend\.venv\Scripts\python.exe D:\MORPH-AI\verification\scripts\regression_suite_auth_chart_checkout.py
+& "D:\MORPH-AI\backend\.venv\Scripts\python.exe" "D:\MORPH-AI\verification\scripts\repro_reported_issues.py"
+& "D:\MORPH-AI\backend\.venv\Scripts\python.exe" "D:\MORPH-AI\verification\scripts\regression_suite_auth_chart_checkout.py"
 ```
 
-### 3.4. Kiểm thử Frontend TypeScript, Chất lượng Camera & Logic Hồi quy
+### 3.4. Kiểm thử Frontend TypeScript, Chất lượng Camera, Browser E2E `CaptureSession` & Logic Hồi quy
 ```powershell
-C:\Program Files\nodejs\node.exe D:\MORPH-AI\frontend\node_modules\next\dist\bin\next typegen
-C:\Program Files\nodejs\node.exe D:\MORPH-AI\frontend\node_modules\typescript\bin\tsc --project D:\MORPH-AI\frontend\tsconfig.json --noEmit
-C:\Program Files\nodejs\node.exe D:\MORPH-AI\verification\scripts\test_capture_quality.cjs
-C:\Program Files\nodejs\node.exe D:\MORPH-AI\verification\scripts\wishlist-escape-cart-verification.cjs
-C:\Program Files\nodejs\node.exe D:\MORPH-AI\verification\scripts\regression_frontend_chart_checkout.cjs
+& "C:\Program Files\nodejs\node.exe" "D:\MORPH-AI\frontend\node_modules\next\dist\bin\next" typegen
+& "C:\Program Files\nodejs\node.exe" "D:\MORPH-AI\frontend\node_modules\typescript\bin\tsc" --project "D:\MORPH-AI\frontend\tsconfig.json" --noEmit
+& "C:\Program Files\nodejs\node.exe" "D:\MORPH-AI\verification\scripts\test_capture_quality.cjs"
+& "C:\Program Files\nodejs\node.exe" "D:\MORPH-AI\verification\scripts\test_capture_session_e2e.cjs"
+& "C:\Program Files\nodejs\node.exe" "D:\MORPH-AI\verification\scripts\wishlist-escape-cart-verification.cjs"
+& "C:\Program Files\nodejs\node.exe" "D:\MORPH-AI\verification\scripts\regression_frontend_chart_checkout.cjs"
 ```
+- **[`test_capture_session_e2e.cjs`](file:///d:/MORPH-AI/verification/scripts/test_capture_session_e2e.cjs)**: Thực thi trực tiếp `CaptureSession` trên trình duyệt Chromium với luồng camera xác định (`canvas.captureStream(30)`), kiểm chứng 8 kịch bản hành vi thực tế (hủy countdown khi mất điều kiện, chọn đúng frame có `frameQualityScore` cao nhất trong cửa sổ `1600ms` qua giải mã JPEG gửi lên `POST /api/scans`, chuyển `front → turn → side`, chặn lệch khoảng cách giữa 2 góc, đổi thiết bị camera, mất kết nối giữa chừng, đóng phiên và retry).
 
-### 3.5. Kịch bản E2E Playwright (Yêu cầu đang chạy Backend `:8000` và Frontend `:3000`)
-Các script `.cjs` trong [`verification/scripts/`](file:///d:/MORPH-AI/verification/scripts) phục vụ kiểm thử giao diện tự động khi cần:
-- [`camera-flow-ui.cjs`](file:///d:/MORPH-AI/verification/scripts/camera-flow-ui.cjs), [`camera-layout-verification.cjs`](file:///d:/MORPH-AI/verification/scripts/camera-layout-verification.cjs) & [`overlay-camera-verification.cjs`](file:///d:/MORPH-AI/verification/scripts/overlay-camera-verification.cjs): Kiểm thử luồng webcam tự động (kèm hướng dẫn thoại/overlay) dùng fake media stream từ ảnh trong `verification/scripts/qa/`.
+### 3.5. Các kịch bản E2E Playwright bổ trợ trong `verification/scripts/`
+- [`camera-flow-ui.cjs`](file:///d:/MORPH-AI/verification/scripts/camera-flow-ui.cjs), [`camera-layout-verification.cjs`](file:///d:/MORPH-AI/verification/scripts/camera-layout-verification.cjs) & [`overlay-camera-verification.cjs`](file:///d:/MORPH-AI/verification/scripts/overlay-camera-verification.cjs): Kiểm thử giao diện luồng webcam và overlay.
 - [`upper-ui.cjs`](file:///d:/MORPH-AI/verification/scripts/upper-ui.cjs): Kiểm thử giao diện `/scan` và dark measurement workspace.
 - [`commerce-ui.cjs`](file:///d:/MORPH-AI/verification/scripts/commerce-ui.cjs) & [`popups-ui-verification.cjs`](file:///d:/MORPH-AI/verification/scripts/popups-ui-verification.cjs): Kiểm thử trang chi tiết sản phẩm, custom dropdown, bảng chọn size và giỏ hàng.
 - [`catalog-e2e-verification.cjs`](file:///d:/MORPH-AI/verification/scripts/catalog-e2e-verification.cjs), [`storefront-multi-product-ui.cjs`](file:///d:/MORPH-AI/verification/scripts/storefront-multi-product-ui.cjs) & [`product-images-verification.cjs`](file:///d:/MORPH-AI/verification/scripts/product-images-verification.cjs): Kiểm thử trang chủ, bộ lọc 160 sản phẩm, ảnh sản phẩm và tìm kiếm.
-- [`auth-scan-chart-size-verification.cjs`](file:///d:/MORPH-AI/verification/scripts/auth-scan-chart-size-verification.cjs), [`auth-a11y-verification.cjs`](file:///d:/MORPH-AI/verification/scripts/auth-a11y-verification.cjs) & [`profile-verification.cjs`](file:///d:/MORPH-AI/verification/scripts/profile-verification.cjs): Kiểm thử đăng ký, đăng nhập, lưu phiên quét, hồ sơ số đo và biểu đồ `BodyChart` (cùng helper seed [`seed_test_scans.py`](file:///d:/MORPH-AI/verification/scripts/seed_test_scans.py) và [`seed_demo_scans.py`](file:///d:/MORPH-AI/verification/scripts/seed_demo_scans.py)).
-- [`review-ui.cjs`](file:///d:/MORPH-AI/verification/scripts/review-ui.cjs): Kịch bản chụp ảnh màn hình audit giao diện theo yêu cầu.
+- [`auth-scan-chart-size-verification.cjs`](file:///d:/MORPH-AI/verification/scripts/auth-scan-chart-size-verification.cjs), [`auth-a11y-verification.cjs`](file:///d:/MORPH-AI/verification/scripts/auth-a11y-verification.cjs) & [`profile-verification.cjs`](file:///d:/MORPH-AI/verification/scripts/profile-verification.cjs): Kiểm thử đăng ký, đăng nhập, lưu phiên quét, hồ sơ số đo và biểu đồ `BodyChart`.
 
 ---
 
-## 4. Quy tắc quản lý Fixture và Artifact Kiểm thử
+## 4. Quy tắc quản lý Fixture và Lưu trữ Artifact theo Run ID
 
 1. **Giữ nguyên Fixture (`verification/scripts/qa/`)**:
    - 4 file ảnh PNG trong [`verification/scripts/qa/`](file:///d:/MORPH-AI/verification/scripts/qa) (`rendered-front.png`, `rendered-side.png`, `upper-front.png`, `upper-side.png`) là dữ liệu đầu vào cố định cho các script kiểm thử tự động. **Tuyệt đối không xóa.**
-2. **Không commit Artifact sinh tự động**:
-   - Các thư mục ảnh chụp màn hình và báo cáo tạm sinh ra khi chạy Playwright (`output/playwright/`, `verification/review-*/`, `verification/quality_gate_screenshots/`, `verification/*.png`, `verification/*.json`) đã được đưa vào [`.gitignore`](file:///d:/MORPH-AI/.gitignore) để giữ kho mã nguồn sạch gọn.
-   - Sau khi chạy kiểm thử giao diện có sinh ảnh chụp màn hình, dọn dẹp các file tạm trước khi bàn giao.
+2. **Lưu trữ Log / Screenshot / Báo cáo theo Run ID (`output/runs/<run-id>/`)**:
+   - Toàn bộ bằng chứng thực thi của từng đợt nghiệm thu được lưu theo mã Run ID tại `output/runs/<run-id>/` (ví dụ [`output/runs/run-20261014-v2/`](file:///d:/MORPH-AI/output/runs/run-20261014-v2/) gồm `capture-e2e/`, `benchmark/`, `validation/`, `integration/`).
+   - Không xóa toàn bộ thư mục `output/` để bảo toàn bằng chứng đối chiếu giữa các lần chạy; thư mục `output/runs/` đã được cấu hình trong [`.gitignore`](file:///d:/MORPH-AI/.gitignore) để không đẩy file nhị phân/log lớn lên Git.
 
 ---
 
@@ -106,7 +110,10 @@ Các script `.cjs` trong [`verification/scripts/`](file:///d:/MORPH-AI/verificat
 - **Đợt 1 (10/10 – 12/10/2026)**:
   - Nghiệm thu giao diện Luxury Editorial (**Warm Ivory & Champagne Gold**) và **Dark Measurement Workspace** (`#141312`).
   - Nghiệm thu luồng Camera-Only tự động chụp 2 góc (`upper_body` mặc định & `full_body` tùy chọn), danh mục 160 sản phẩm (80 Nam / 80 Nữ), luồng đặt hàng `/checkout` $\rightarrow$ `/orders/[id]` và tài khoản `/account` + `BodyProfile`.
-- **Đợt 2 (13/10 – 14/10/2026)**:
-  - Khắc phục và kiểm thử hồi quy 3 lỗi trọng yếu: bắt buộc kiểm tra `guest_token` bằng `secrets.compare_digest` cho phiên quét khách (`403 Forbidden` khi thiếu/sai token), chống cộng đôi số lượng khi chuyển sản phẩm từ Wishlist sang Giỏ hàng, và ngăn phím `Escape` trong `CustomSelect` đóng nhầm `WishlistDrawer`.
-  - Triển khai và benchmark **Pipeline Tối ưu hóa 3D Body Scan 3 Tầng**: giảm sai số `obs.height` xuống $\le \pm 1.20\%$, bảo toàn tỷ lệ $D/W$ (`0.00%` sai lệch trước nhiễu mốc hông góc nghiêng), hiệu chuẩn chu vi giải phẫu (`max_fit_error_cm = 0.00 cm` trên 6 dáng người) với thời gian xử lý lõi `~9.67 ms` (`< 15 ms`), đạt **95/95 bài kiểm thử `pytest` PASS**.
+- **Đợt 2 (13/10 – 14/10/2026, Run ID `run-20261014-v2`)**:
+  - **Implementation & Security Verification**: Đạt `107/107` tests `pytest`, `16/16` unit checks `test_capture_quality.cjs`, `8/8` kịch bản hành vi trình duyệt `test_capture_session_e2e.cjs`, và `0` lỗi TypeScript.
+  - **Synthetic / Geometric & Conformal Validation**: Đánh giá trên tập tách biệt theo `subject_id` (`N_cal = 12` subjects / `36` scans, `N_eval = 10` subjects / `30` scans), thay thế `±1.96 × RMSE` bằng khoảng dự đoán **Split Conformal Prediction / Empirical Residual Quantiles**, kiểm tra 10 kịch bản nhiễu/từ chối và 160 sản phẩm catalog.
+  - **API Lifecycle & Bounded Concurrent Load Test**: Đo tách biệt Cold/Warm start in-process `reconstruct()`, toàn trình HTTP API + WebGL render, chạy tải đồng thời `Concurrency = 1, 2, 4, 10` (`MAX_ACTIVE_JOBS = 8`), và đo tách biệt `OS Working Set RSS` với `Python Heap (tracemalloc)`.
+  - **Real-Human Anthropometric Accuracy**: Ghi nhận trung thực trạng thái `MISSING_EMPIRICAL_COHORT` (`N_human = 0`); chưa nghiệm thu độ chính xác trên người thật cho tới khi có tập dữ liệu thực nghiệm có đồng ý sử dụng.
+
 

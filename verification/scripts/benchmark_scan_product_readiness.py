@@ -42,8 +42,12 @@ REAL_HUMAN_DATASET_DIR = ROOT / "verification" / "datasets" / "real_human_pilot"
 CACHE_DIR = ROOT / ".cache"
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 REPORT_JSON_PATH = CACHE_DIR / "scan_product_readiness_benchmark.json"
+VALIDATION_OUTPUT_DIR = ROOT / "output" / "runs" / "run-20261014-v2" / "validation"
+VALIDATION_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+VALIDATION_REPORT_JSON_PATH = VALIDATION_OUTPUT_DIR / "scan_product_readiness_benchmark.json"
 
 sys.path.insert(0, str(BACKEND_DIR))
+sys.path.insert(0, str(ROOT / "verification" / "scripts"))
 
 from app.camera_fusion import (  # noqa: E402
     aligned_torso_landmarks,
@@ -255,12 +259,17 @@ def audit_real_human_dataset(dataset_dir: Path = REAL_HUMAN_DATASET_DIR) -> dict
     if not dataset_dir.is_dir() or not manifest_path.is_file():
         return {
             "REAL_HUMAN_DATASET_STATUS": "MISSING_EMPIRICAL_COHORT",
+            "human_accuracy_validation_status": "NOT_ACCEPTED_NO_EMPIRICAL_DATASET",
             "dataset_dir": str(dataset_dir),
             "manifest_exists": False,
             "consented_subjects_total": 0,
             "calibration_subjects": 0,
             "evaluation_subjects": 0,
             "empirical_accuracy_claim_allowed": False,
+            "conclusion": (
+                "CHƯA THỂ NGHIỆM THU ĐỘ CHÍNH XÁC TRÊN NGƯỜI THẬT "
+                "(Human accuracy cannot be accepted yet because no consented real-human dataset is present)."
+            ),
             "disclosure": (
                 "Chưa có tập dữ liệu người thật đo bằng thước dây kèm đồng ý tham gia nghiên cứu (Informed Consent). "
                 "Mọi chỉ số MAE/Bias/P90/P95 trong báo cáo này thuộc phạm vi KIỂM THỬ HÌNH HỌC / TỔNG HỢP "
@@ -277,12 +286,17 @@ def audit_real_human_dataset(dataset_dir: Path = REAL_HUMAN_DATASET_DIR) -> dict
         if not cal_ids or not eval_ids:
             return {
                 "REAL_HUMAN_DATASET_STATUS": "MISSING_EMPIRICAL_COHORT",
+                "human_accuracy_validation_status": "NOT_ACCEPTED_NO_EMPIRICAL_DATASET",
                 "dataset_dir": str(dataset_dir),
                 "manifest_exists": True,
                 "consented_subjects_total": len(consented),
                 "calibration_subjects": len(cal_ids),
                 "evaluation_subjects": len(eval_ids),
                 "empirical_accuracy_claim_allowed": False,
+                "conclusion": (
+                    "CHƯA THỂ NGHIỆM THU ĐỘ CHÍNH XÁC TRÊN NGƯỜI THẬT "
+                    "(Human accuracy cannot be accepted yet because no consented real-human dataset is present)."
+                ),
                 "disclosure": "Manifest tồn tại nhưng chưa đủ cả 2 tập calibration và evaluation có chữ ký đồng ý.",
             }
         split_check = verify_subject_disjoint_split(cal_ids, eval_ids)
@@ -1585,12 +1599,51 @@ def main() -> None:
         f"Sau khi nhập tay hip_cm=97.0 (source='user_input') -> status='{cd['dress_3dim_after_user_input_hip']['status']}', candidates={cd['dress_3dim_after_user_input_hip']['candidates']}"
     )
 
-    # Save structured JSON report
+    # 6. Calibrated Prediction Intervals (Split Conformal & Asymmetric Residual Quantiles) + Subgroup Breakdown
+    from evaluate_human_validation_cohort import (
+        ISO_VS_ALGORITHM_MEASUREMENT_MAPPING,
+        PROPOSED_PILOT_TARGET_THRESHOLDS,
+        evaluate_calibrated_prediction_intervals_on_synthetic_cohort,
+    )
+
+    print("\n" + "=" * 116)
+    print("[6] KHOẢNG DỰ ĐOÁN HIỆU CHUẨN (SPLIT CONFORMAL & ASYMMETRIC QUANTILES) & PHÂN TÍCH PHÂN NHÓM (SUBGROUP BREAKDOWN)")
+    print("    (Thay thế hoàn toàn ±1.96*RMSE | N_cal = 12 subjects [36 scans] vs N_eval = 10 held-out subjects [30 scans])")
+    print("=" * 116)
+    conformal_report = evaluate_calibrated_prediction_intervals_on_synthetic_cohort(template_mesh, fractions)
+    for mode in ("full_body", "upper_body"):
+        for k, m_data in conformal_report["modes"][mode]["metrics"].items():
+            if m_data.get("status") == "BLOCKED_IN_MODE":
+                print(f"  • {mode:<10} | {k:<18}: BLOCKED (hip_cm=None, Coverage=0%)")
+                continue
+            ev_p = m_data["held_out_evaluation"]
+            ci90 = ev_p["calibrated_intervals"]["ci_90"]["split_conformal_bias_corrected"]
+            ci95 = ev_p["calibrated_intervals"]["ci_95"]["split_conformal_bias_corrected"]
+            print(
+                f"  • {mode:<10} | {k:<18}: BC_MAE={ev_p['bias_corrected_mae_cm']:>4.2f} cm | "
+                f"90% Conformal=±{ci90['half_width_cm']:>4.2f} cm (Width={ci90['mean_interval_width_cm']:>4.2f} cm, Cov={ci90['empirical_coverage_pct']:>5.1f}%) | "
+                f"95% Conformal=±{ci95['half_width_cm']:>4.2f} cm (Width={ci95['mean_interval_width_cm']:>4.2f} cm, Cov={ci95['empirical_coverage_pct']:>5.1f}%)"
+            )
+
+    print("-" * 116)
+    print(f"  • Trạng thái Nghiệm thu Người thật : {real_human_audit.get('human_accuracy_validation_status')}")
+    print(f"  • Kết luận                         : {real_human_audit.get('conclusion')}")
+
+    # Save structured JSON report to both .cache and output/runs/run-20261014-v2/validation
     full_payload = {
-        "benchmark_suite": "MORPH_AI_SCAN_PRODUCT_READINESS_V1",
+        "benchmark_suite": "MORPH_AI_SCAN_PRODUCT_READINESS_V2",
         "verification_scope": "SYNTHETIC_GEOMETRIC_AND_SYSTEM_QA_ONLY",
         "REAL_HUMAN_DATASET_STATUS": real_human_audit["REAL_HUMAN_DATASET_STATUS"],
+        "human_accuracy_validation_status": real_human_audit.get(
+            "human_accuracy_validation_status", "NOT_ACCEPTED_NO_EMPIRICAL_DATASET"
+        ),
+        "conclusion": real_human_audit.get(
+            "conclusion",
+            "CHƯA THỂ NGHIỆM THU ĐỘ CHÍNH XÁC TRÊN NGƯỜI THẬT (Human accuracy cannot be accepted yet because no consented real-human dataset is present).",
+        ),
         "system_environment": sys_env,
+        "iso_vs_algorithm_measurement_crosswalk": ISO_VS_ALGORITHM_MEASUREMENT_MAPPING,
+        "proposed_pilot_target_thresholds": PROPOSED_PILOT_TARGET_THRESHOLDS,
         "split_and_dataset_audit": {
             "subject_disjoint_split": split_check,
             "leakage_trap_verified": leakage_trap_triggered,
@@ -1598,15 +1651,19 @@ def main() -> None:
             "loso_cross_validation": loso_cv,
         },
         "held_out_geometric_cohort_evaluation": cohort_stats,
+        "calibrated_prediction_intervals_and_subgroups": conformal_report,
         "failure_and_perturbation_scenarios": scenario_report,
         "performance_benchmark": perf_report,
         "catalog_sizing_evaluation": sizing_report,
     }
-    REPORT_JSON_PATH.write_text(json.dumps(full_payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    json_text = json.dumps(full_payload, ensure_ascii=False, indent=2)
+    REPORT_JSON_PATH.write_text(json_text, encoding="utf-8")
+    VALIDATION_REPORT_JSON_PATH.write_text(json_text, encoding="utf-8")
     print("\n" + "=" * 116)
-    print(f"ĐÃ XUẤT BÁO CÁO JSON ĐẦY ĐỦ TẠI: {REPORT_JSON_PATH}")
+    print(f"ĐÃ XUẤT BÁO CÁO JSON ĐẦY ĐỦ TẠI:\n  1. {REPORT_JSON_PATH}\n  2. {VALIDATION_REPORT_JSON_PATH}")
     print("=" * 116)
 
 
 if __name__ == "__main__":
     main()
+

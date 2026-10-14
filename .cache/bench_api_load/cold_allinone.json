@@ -1,0 +1,20 @@
+{
+  "probe_mode": "all_in_one",
+  "cold_import_ms": 6264.89,
+  "cold_first_reconstruct_upper_ms": 9199.41,
+  "cold_total_with_import_ms": 15464.3,
+  "second_call_warm_reconstruct_upper_ms": 1436.84,
+  "warm_reconstruct_full_ms": 1467.01,
+  "memory_after_calls": {
+    "os": {
+      "rss_mb": 312.09,
+      "peak_rss_mb": 320.38,
+      "pagefile_mb": 825.15,
+      "peak_pagefile_mb": 833.64
+    },
+    "python_heap": {
+      "current_mb": 68.57,
+      "peak_mb": 82.09
+    }
+  }
+}

@@ -35,6 +35,7 @@ logger = logging.getLogger(__name__)
 lock = threading.RLock()
 executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="morph-scan")
 
+MAX_ACTIVE_JOBS = 8
 MAX_STORED_JOBS = 50
 JOB_PROCESSING_TIMEOUT_SECONDS = 120
 
@@ -49,6 +50,7 @@ class Job:
     status: str = "queued"
     stage: str = "Đang chờ xử lý…"
     created: float = field(default_factory=time.time)
+    started_processing: float | None = None
     finished: float | None = None
     model_url: str | None = None
     error: str | None = None
@@ -194,10 +196,12 @@ async def check_capture(photo: UploadFile = File(...), view: Literal["front", "s
 
 def process(key: str, front_image: np.ndarray, side_image: np.ndarray, height_cm: float, capture_mode: str = "full_body"):
     started = time.perf_counter()
+    started_wall = time.time()
     with lock:
         if key not in jobs or jobs[key].status == "failed":
             return
         jobs[key].status = "processing"
+        jobs[key].started_processing = started_wall
 
     def report(stage: str):
         with lock:
@@ -226,7 +230,7 @@ def process(key: str, front_image: np.ndarray, side_image: np.ndarray, height_cm
             job.warnings = warnings
             job.measurements = measurements
             job.body_profile = profile
-            job.elapsed_seconds = round(time.perf_counter() - started, 2)
+            job.elapsed_seconds = round(time.perf_counter() - started, 4)
             job.finished = time.time()
 
         # Check and trigger auto-persistence for logged-in users
@@ -263,7 +267,7 @@ async def create_scan(
         raise HTTPException(503, message)
     cleanup()
     with lock:
-        if sum(j.status in {"queued", "processing"} for j in jobs.values()) >= 3:
+        if sum(j.status in {"queued", "processing"} for j in jobs.values()) >= MAX_ACTIVE_JOBS:
             raise HTTPException(429, "Demo đang xử lý nhiều ảnh. Hãy thử lại sau ít phút.")
     try:
         front_bytes = await front.read(MAX_UPLOAD + 1)
@@ -289,7 +293,7 @@ async def create_scan(
     key = uuid4().hex
     with lock:
         # Recheck after awaiting uploads: admissions must be atomic.
-        if sum(j.status in {"queued", "processing"} for j in jobs.values()) >= 3:
+        if sum(j.status in {"queued", "processing"} for j in jobs.values()) >= MAX_ACTIVE_JOBS:
             raise HTTPException(429, "Hàng đợi đã đầy. Hãy thử lại sau.")
         jobs[key] = Job(
             id=key,
