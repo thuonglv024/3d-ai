@@ -1,10 +1,32 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { ArrowRight, Camera, Check, LoaderCircle, Maximize2, Minimize2, RotateCcw, ScanLine, X } from "lucide-react";
-import CustomSelect, { type SelectOption } from "./CustomSelect";
+import {
+  AlertTriangle,
+  ArrowRight,
+  Camera,
+  Check,
+  LoaderCircle,
+  Maximize2,
+  Minimize2,
+  RotateCcw,
+  ScanLine,
+  X,
+} from "lucide-react";
+import CustomSelect from "./CustomSelect";
+import {
+  CAMERA_QUALITY_THRESHOLDS,
+  computePixelQualityMetrics,
+  evaluateClientFrameQuality,
+  extractGeometryPreservingFrame,
+  mapCameraDeviceError,
+  pushCandidateFrame,
+  selectBestFrameFromWindow,
+  type CandidateFrame,
+  type CaptureCheckFeedback,
+  type ClientFrameQualityEvaluation,
+} from "../../lib/captureQuality";
 
-type Feedback = { ready: boolean; message: string; landmarks: number[][] };
 type Pair = { front: File; side: File };
 
 export default function CaptureSession({
@@ -18,6 +40,8 @@ export default function CaptureSession({
 }) {
   const video = useRef<HTMLVideoElement>(null);
   const front = useRef<File | null>(null);
+  const frontLandmarks = useRef<number[][] | null>(null);
+  const candidateBufferRef = useRef<Array<CandidateFrame<Blob>>>([]);
   const alive = useRef(true);
   const captureLock = useRef(false);
   const run = useRef(0);
@@ -31,7 +55,9 @@ export default function CaptureSession({
   const [ready, setReady] = useState(false);
   const [error, setError] = useState("");
   const [count, setCount] = useState<number | null>(null);
-  const [feedback, setFeedback] = useState<Feedback | null>(null);
+  const [feedback, setFeedback] = useState<CaptureCheckFeedback | null>(null);
+  const [qualityEval, setQualityEval] = useState<ClientFrameQualityEvaluation | null>(null);
+  const [statusNotice, setStatusNotice] = useState("");
   const [size, setSize] = useState({ w: 1280, h: 720 });
   const [expanded, setExpanded] = useState(false);
 
@@ -54,22 +80,64 @@ export default function CaptureSession({
     return () => window.removeEventListener("keydown", handleKeyDown, true);
   }, [expanded]);
 
+  const clearSessionBuffers = useCallback(() => {
+    candidateBufferRef.current = [];
+  }, []);
+
   const stopTracks = useCallback(() => {
+    clearSessionBuffers();
     if (activeStream.current) {
-      activeStream.current.getTracks().forEach((t) => t.stop());
+      activeStream.current.getTracks().forEach((t) => {
+        t.onended = null;
+        t.stop();
+      });
       activeStream.current = null;
     }
     if (video.current?.srcObject) {
       const ms = video.current.srcObject as MediaStream;
-      ms.getTracks().forEach((t) => t.stop());
+      ms.getTracks().forEach((t) => {
+        t.onended = null;
+        t.stop();
+      });
       video.current.srcObject = null;
     }
-  }, []);
+  }, [clearSessionBuffers]);
 
   const handleCancel = useCallback(() => {
+    front.current = null;
+    frontLandmarks.current = null;
     stopTracks();
     onCancel();
   }, [stopTracks, onCancel]);
+
+  const handleDeviceChange = useCallback(
+    (nextDeviceId: string) => {
+      if (nextDeviceId === device) return;
+      stopTracks();
+      front.current = null;
+      frontLandmarks.current = null;
+      setCount(null);
+      setFeedback(null);
+      setQualityEval(null);
+      setStatusNotice("");
+      setView("front");
+      setPhase("ready");
+      setDevice(nextDeviceId);
+    },
+    [device, stopTracks]
+  );
+
+  const handleRetryCamera = useCallback(() => {
+    stopTracks();
+    front.current = null;
+    frontLandmarks.current = null;
+    setCount(null);
+    setFeedback(null);
+    setQualityEval(null);
+    setStatusNotice("");
+    setError("");
+    setAttempt((n) => n + 1);
+  }, [stopTracks]);
 
   useEffect(() => {
     alive.current = true;
@@ -84,13 +152,17 @@ export default function CaptureSession({
     let stopped = false;
     run.current++;
     captureLock.current = false;
+    clearSessionBuffers();
     setReady(false);
     setError("");
+    setStatusNotice("");
     setPhase("ready");
     setView("front");
     front.current = null;
+    frontLandmarks.current = null;
     setCount(null);
     setFeedback(null);
+    setQualityEval(null);
 
     (async () => {
       try {
@@ -118,31 +190,37 @@ export default function CaptureSession({
         await el.play();
 
         if (stopped) return;
-        setSize({ w: el.videoWidth, h: el.videoHeight });
+        if (el.videoWidth > 0 && el.videoHeight > 0) {
+          setSize({ w: el.videoWidth, h: el.videoHeight });
+        }
         setReady(true);
 
         const videoTrack = stream.getVideoTracks()[0];
         if (videoTrack) {
           videoTrack.onended = () => {
-            if (!stopped) {
+            if (!stopped && alive.current) {
+              clearSessionBuffers();
+              front.current = null;
+              frontLandmarks.current = null;
+              setCount(null);
               setReady(false);
               setPhase("ready");
-              setError("Camera đã ngắt. Kết nối lại và bắt đầu phiên mới.");
+              setQualityEval(null);
+              setError("Camera đã ngắt kết nối giữa chừng. Hãy kiểm tra dây cáp/thiết bị và bấm Thử lại camera.");
             }
           };
         }
 
         try {
           const devs = await navigator.mediaDevices.enumerateDevices();
-          setDevices(devs.filter((d) => d.kind === "videoinput"));
+          if (!stopped) {
+            setDevices(devs.filter((d) => d.kind === "videoinput"));
+          }
         } catch {}
       } catch (e) {
         if (!stopped) {
-          setError(
-            e instanceof DOMException && e.name === "NotAllowedError"
-              ? "Chưa được cấp quyền camera. Cho phép camera trong trình duyệt rồi thử lại."
-              : "Không mở được camera. Đóng ứng dụng đang dùng camera rồi thử lại."
-          );
+          const mapped = mapCameraDeviceError(e);
+          setError(mapped.message);
         }
       }
     })();
@@ -150,19 +228,25 @@ export default function CaptureSession({
     return () => {
       stopped = true;
       run.current++;
-      stream?.getTracks().forEach((t) => t.stop());
+      stream?.getTracks().forEach((t) => {
+        t.onended = null;
+        t.stop();
+      });
       stopTracks();
     };
-  }, [device, attempt, stopTracks]);
+  }, [device, attempt, stopTracks, clearSessionBuffers]);
 
   useEffect(() => {
     if (phase !== "turn") return;
     const timer = setTimeout(() => {
+      clearSessionBuffers();
       setPhase("running");
       setFeedback(null);
+      setQualityEval(null);
+      setStatusNotice("");
     }, 4000);
     return () => clearTimeout(timer);
-  }, [phase]);
+  }, [phase, clearSessionBuffers]);
 
   useEffect(() => {
     if (!ready || phase !== "running") return;
@@ -172,19 +256,36 @@ export default function CaptureSession({
     let previous: number[][] | null = null;
     let stable = 0;
     let deadline = 0;
+    candidateBufferRef.current = [];
     const version = run.current;
 
     async function check() {
       const el = video.current;
       if (stopped || !el || captureLock.current) return;
       try {
-        const canvas = document.createElement("canvas");
-        const scale = Math.min(1, 720 / Math.max(el.videoWidth, el.videoHeight));
-        canvas.width = Math.round(el.videoWidth * scale);
-        canvas.height = Math.round(el.videoHeight * scale);
-        canvas.getContext("2d")?.drawImage(el, 0, 0, canvas.width, canvas.height);
+        if (el.videoWidth <= 0 || el.videoHeight <= 0) {
+          if (!stopped) timer = setTimeout(check, 250);
+          return;
+        }
 
-        const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/jpeg", 0.8));
+        // Synchronize live preview container aspect ratio with actual camera stream dimensions
+        setSize((prev) =>
+          prev.w === el.videoWidth && prev.h === el.videoHeight
+            ? prev
+            : { w: el.videoWidth, h: el.videoHeight }
+        );
+
+        // Extract geometry-preserving 720p frame for /api/capture-check (aspectRatioDelta < 0.002)
+        const previewExtracted = extractGeometryPreservingFrame(el, { maxDimension: 720 });
+        if (!previewExtracted.geometryValid) {
+          throw new Error("Tỷ lệ khung hình camera không đồng nhất. Hãy thử lại.");
+        }
+
+        const pixelMetrics = computePixelQualityMetrics(previewExtracted.canvas);
+
+        const blob = await new Promise<Blob | null>((r) =>
+          previewExtracted.canvas.toBlob(r, "image/jpeg", 0.82)
+        );
         if (!blob || stopped) return;
 
         const body = new FormData();
@@ -197,7 +298,11 @@ export default function CaptureSession({
         const timeout = setTimeout(() => abort?.abort(), 5000);
         let response: Response;
         try {
-          response = await fetch("/api/capture-check", { method: "POST", body, signal: abort.signal });
+          response = await fetch("/api/capture-check", {
+            method: "POST",
+            body,
+            signal: abort.signal,
+          });
         } finally {
           clearTimeout(timeout);
         }
@@ -205,43 +310,93 @@ export default function CaptureSession({
         const data = await response.json();
         if (stopped) return;
         if (!response.ok) {
-          throw new Error(typeof data.detail === "string" ? data.detail : "Không kiểm tra được tư thế.");
+          throw new Error(
+            typeof data.detail === "string" ? data.detail : "Không kiểm tra được tư thế."
+          );
         }
 
-        const result = data as Feedback;
+        const result = data as CaptureCheckFeedback;
         setFeedback(result);
         setError("");
 
-        const visible = (upper ? [0, 11, 12, 23, 24] : [11, 12, 23, 24, 25, 26, 27, 28]).filter(
-          (i) => result.landmarks[i]?.[2] > 0.55 && (previous?.[i]?.[2] || 0) > 0.55
+        const evaluation = evaluateClientFrameQuality(
+          {
+            pixelMetrics,
+            feedback: result,
+            previousLandmarks: previous,
+            frontLandmarks: view === "side" ? frontLandmarks.current : null,
+            mode,
+            view,
+          },
+          CAMERA_QUALITY_THRESHOLDS
         );
-        const motion =
-          previous && visible.length >= 4
-            ? visible.reduce(
-                (n, i) =>
-                  n +
-                  Math.hypot(
-                    result.landmarks[i][0] - previous![i][0],
-                    result.landmarks[i][1] - previous![i][1]
-                  ),
-                0
-              ) / visible.length
-            : Infinity;
+        setQualityEval(evaluation);
 
-        previous = result.ready ? result.landmarks : null;
+        // Update previous landmarks whenever pose is detected so subsequent frame measures inter-frame motion
+        previous =
+          result.ready && Array.isArray(result.landmarks) && result.landmarks.length > 0
+            ? result.landmarks
+            : null;
 
-        if (result.ready && motion < 0.018) {
+        if (evaluation.ok) {
           stable++;
-          if (stable >= 3 && !deadline) deadline = Date.now() + 5000;
+          setStatusNotice("");
+          const now = Date.now();
+          if (stable >= CAMERA_QUALITY_THRESHOLDS.minStableFramesBeforeCountdown && !deadline) {
+            deadline = now + CAMERA_QUALITY_THRESHOLDS.countdownDurationMs;
+            candidateBufferRef.current = [];
+          }
+
           if (deadline) {
-            setCount(Math.max(1, Math.ceil((deadline - Date.now()) / 1000)));
+            const remainingMs = deadline - now;
+            setCount(Math.max(1, Math.ceil(remainingMs / 1000)));
+
+            // Within the final bestFrameWindowMs (1.6s), buffer full-resolution candidate frames
+            if (remainingMs <= CAMERA_QUALITY_THRESHOLDS.bestFrameWindowMs) {
+              const fullExtracted = extractGeometryPreservingFrame(el, { maxDimension: null });
+              const candidateBlob = await new Promise<Blob | null>((r) =>
+                fullExtracted.canvas.toBlob(r, "image/jpeg", 0.92)
+              );
+              if (stopped || !alive.current || version !== run.current) return;
+              if (candidateBlob && fullExtracted.geometryValid) {
+                candidateBufferRef.current = pushCandidateFrame(
+                  candidateBufferRef.current,
+                  {
+                    timestampMs: Date.now(),
+                    frameQualityScore: evaluation.frameQualityScore,
+                    motion: evaluation.motion,
+                    sharpness: evaluation.sharpness,
+                    meanVisibility: evaluation.meanVisibility,
+                    brightness: evaluation.brightness,
+                    ready: true,
+                    landmarks: result.landmarks,
+                    payload: candidateBlob,
+                  },
+                  deadline,
+                  CAMERA_QUALITY_THRESHOLDS
+                );
+              }
+            }
+
             if (Date.now() >= deadline) {
               captureLock.current = true;
-              const full = document.createElement("canvas");
-              full.width = el.videoWidth;
-              full.height = el.videoHeight;
-              full.getContext("2d")?.drawImage(el, 0, 0);
-              const captured = await new Promise<Blob | null>((r) => full.toBlob(r, "image/jpeg", 0.92));
+              const bestCandidate = selectBestFrameFromWindow(candidateBufferRef.current, {
+                nowMs: Date.now(),
+                deadlineMs: deadline,
+                overrides: CAMERA_QUALITY_THRESHOLDS,
+              });
+
+              let captured: Blob | null = bestCandidate?.payload ?? null;
+              const chosenLandmarks = bestCandidate?.landmarks ?? result.landmarks;
+
+              if (!captured) {
+                const fullFallback = extractGeometryPreservingFrame(el, { maxDimension: null });
+                captured = await new Promise<Blob | null>((r) =>
+                  fullFallback.canvas.toBlob(r, "image/jpeg", 0.92)
+                );
+              }
+              candidateBufferRef.current = [];
+
               if (stopped || !alive.current || version !== run.current) return;
               if (!captured) throw new Error("Chưa chụp được ảnh. Hãy thử lại.");
 
@@ -249,8 +404,11 @@ export default function CaptureSession({
               setCount(null);
               if (view === "front") {
                 front.current = file;
+                frontLandmarks.current = chosenLandmarks;
                 setView("side");
                 setFeedback(null);
+                setQualityEval(null);
+                setStatusNotice("");
                 setPhase("turn");
                 captureLock.current = false;
               } else if (front.current) {
@@ -261,9 +419,17 @@ export default function CaptureSession({
             }
           }
         } else {
+          // Immediately cancel countdown and clear candidate buffer if any condition is lost
+          const wasCountingDown = deadline > 0;
           stable = 0;
           deadline = 0;
+          candidateBufferRef.current = [];
           setCount(null);
+          setStatusNotice(
+            wasCountingDown
+              ? `Đã tạm dừng đếm ngược: ${evaluation.message}`
+              : evaluation.message
+          );
         }
       } catch (e) {
         if (stopped) return;
@@ -271,6 +437,7 @@ export default function CaptureSession({
         stable = 0;
         deadline = 0;
         previous = null;
+        candidateBufferRef.current = [];
         setCount(null);
         setError(e instanceof Error ? e.message : "Mất kết nối kiểm tra tư thế.");
       }
@@ -282,8 +449,11 @@ export default function CaptureSession({
       stopped = true;
       abort?.abort();
       clearTimeout(timer);
+      candidateBufferRef.current = [];
     };
   }, [ready, phase, view, mode, upper, onComplete, stopTracks]);
+
+  const isPoseAndQualityReady = Boolean(feedback?.ready && qualityEval?.ok);
 
   return (
     <section
@@ -300,8 +470,8 @@ export default function CaptureSession({
           <CustomSelect
             ariaLabel="Chọn camera"
             value={device}
-            disabled={phase !== "ready"}
-            onChange={(val) => setDevice(val)}
+            disabled={captureLock.current}
+            onChange={handleDeviceChange}
             options={[
               { value: "", label: "Camera mặc định" },
               ...devices.map((d, i) => ({
@@ -337,10 +507,20 @@ export default function CaptureSession({
       <div className="capture-session-body">
         <div className="capture-stage-wrapper">
           <div
-            className={`capture-live ${feedback?.ready ? "pose-ready" : ""}`}
+            className={`capture-live ${isPoseAndQualityReady ? "pose-ready" : ""}`}
             style={{ aspectRatio: `${size.w}/${size.h}` }}
           >
-            <video ref={video} playsInline muted />
+            <video
+              ref={video}
+              playsInline
+              muted
+              onLoadedMetadata={(e) => {
+                const v = e.currentTarget;
+                if (v.videoWidth > 0 && v.videoHeight > 0) {
+                  setSize({ w: v.videoWidth, h: v.videoHeight });
+                }
+              }}
+            />
             <div className="capture-frame-mark" aria-hidden="true" />
             <div className="capture-view-pill" aria-hidden="true">
               <span className="capture-view-pill-dot" />
@@ -350,6 +530,22 @@ export default function CaptureSession({
               <div className="capture-overlay">
                 <LoaderCircle className="spin" size={28} />
                 <p>Đang mở camera…</p>
+              </div>
+            )}
+            {!ready && error && (
+              <div className="capture-overlay capture-overlay-error" role="alert">
+                <AlertTriangle size={28} />
+                <strong>Không thể truy cập camera</strong>
+                <p>{error}</p>
+                <button
+                  className="capture-primary"
+                  type="button"
+                  onClick={handleRetryCamera}
+                  style={{ maxWidth: 220, marginTop: 12 }}
+                >
+                  <RotateCcw size={16} />
+                  Thử lại camera
+                </button>
               </div>
             )}
             {count !== null && (
@@ -363,7 +559,7 @@ export default function CaptureSession({
                 <strong>Đã chụp chính diện</strong>
                 <RotateCcw size={44} />
                 <h2>Xoay người 90°</h2>
-                <p>Giữ nguyên vị trí. Camera sẽ tự đếm ngược khi bạn đứng đúng góc.</p>
+                <p>Giữ nguyên vị trí đứng. Camera sẽ tự đếm ngược khi bạn đứng đúng góc và giữ yên.</p>
               </div>
             )}
           </div>
@@ -390,18 +586,59 @@ export default function CaptureSession({
             </p>
           </div>
 
-          <div className="capture-status capture-status-card" role="status">
-            <span className="capture-status-badge-title">Trạng thái nhận diện AI</span>
+          <div
+            className={`capture-status capture-status-card ${
+              statusNotice && phase === "running" && !isPoseAndQualityReady ? "has-warning" : ""
+            }`}
+            role="status"
+          >
+            <span className="capture-status-badge-title">Trạng thái nhận diện & chất lượng</span>
             <div className="capture-status-message">
               {error ||
                 (phase === "ready"
                   ? "Sẵn sàng? Bấm bắt đầu, sau đó đứng vào giữa khung."
                   : phase === "turn"
-                  ? "Đang chuyển sang góc nghiêng…"
+                  ? "Đang chuyển sang góc nghiêng 90°…"
                   : count !== null
-                  ? `Giữ yên · Chụp sau ${count} giây`
-                  : feedback?.message || "Đang nhận diện tư thế…")}
+                  ? `Giữ yên · Đang chọn khung hình nét nhất (${count}s)`
+                  : statusNotice || feedback?.message || "Đang kiểm tra tư thế và ánh sáng…")}
             </div>
+            {phase === "running" && qualityEval && (
+              <div className="capture-quality-pills" aria-label="Chỉ báo chất lượng khung hình">
+                <span
+                  className={`capture-quality-pill ${
+                    qualityEval.issue === "too_dark" || qualityEval.issue === "too_bright"
+                      ? "is-warn"
+                      : "is-ok"
+                  }`}
+                >
+                  Ánh sáng:{" "}
+                  {qualityEval.issue === "too_dark"
+                    ? "Thiếu sáng"
+                    : qualityEval.issue === "too_bright"
+                    ? "Ngược sáng"
+                    : "Đạt"}
+                </span>
+                <span
+                  className={`capture-quality-pill ${
+                    qualityEval.issue === "too_blurry" || qualityEval.issue === "excessive_motion"
+                      ? "is-warn"
+                      : "is-ok"
+                  }`}
+                >
+                  Độ nét: {qualityEval.ok ? "Ổn định" : "Cần giữ yên"}
+                </span>
+                {view === "side" && (
+                  <span
+                    className={`capture-quality-pill ${
+                      qualityEval.issue === "cross_view_drift" ? "is-warn" : "is-ok"
+                    }`}
+                  >
+                    Khoảng cách: {qualityEval.crossViewCompatible ? "Khớp góc 01" : "Lệch vị trí"}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="capture-posture-tips">
@@ -409,7 +646,7 @@ export default function CaptureSession({
             <p>
               {upper
                 ? "Đặt máy cao ngang ngực hoặc eo, đứng thẳng tự nhiên, không để áo dài trùm che mất cạp quần."
-                : "Đứng thẳng tự nhiên, hai tay thả lỏng, đảm bảo đủ ánh sáng phòng."}
+                : "Đứng thẳng tự nhiên, hai tay thả lỏng, giữ nguyên khoảng cách đứng giữa hai góc chụp."}
             </p>
           </div>
 
@@ -418,7 +655,7 @@ export default function CaptureSession({
               <button
                 className="capture-primary"
                 type="button"
-                onClick={() => setAttempt((n) => n + 1)}
+                onClick={handleRetryCamera}
               >
                 <RotateCcw size={18} />
                 Thử lại camera
@@ -437,7 +674,7 @@ export default function CaptureSession({
             ) : (
               <p className="capture-auto-info">
                 <ScanLine size={18} />
-                Tự chụp hai góc · Không cần bấm thêm
+                Tự chọn frame nét nhất · Không cần bấm thêm
               </p>
             )}
             <button className="capture-cancel" type="button" onClick={handleCancel}>

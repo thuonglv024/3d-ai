@@ -1,0 +1,57 @@
+[
+  {
+    "route": "/",
+    "firstLoadUncompressedJsBytes": 544767,
+    "firstLoadChunkPaths": [
+      ".next-review\\static\\chunks\\3r4narujuhk7q.js",
+      ".next-review\\static\\chunks\\33f_f6nm7wezf.js",
+      ".next-review\\static\\chunks\\3nhmypxce_lln.js",
+      ".next-review\\static\\chunks\\1x6obpmlu1_c2.js",
+      ".next-review\\static\\chunks\\2n86e7h60o0qo.js",
+      ".next-review\\static\\chunks\\3dmm3v_fq28gc.js",
+      ".next-review\\static\\chunks\\06m6x12frggfq.js",
+      ".next-review\\static\\chunks\\turbopack-3-ry682tkyiqk.js"
+    ]
+  },
+  {
+    "route": "/scan",
+    "firstLoadUncompressedJsBytes": 539185,
+    "firstLoadChunkPaths": [
+      ".next-review\\static\\chunks\\3r4narujuhk7q.js",
+      ".next-review\\static\\chunks\\0yqkzzjx5s4ie.js",
+      ".next-review\\static\\chunks\\1ejke95e87ojk.js",
+      ".next-review\\static\\chunks\\1x6obpmlu1_c2.js",
+      ".next-review\\static\\chunks\\2n86e7h60o0qo.js",
+      ".next-review\\static\\chunks\\3dmm3v_fq28gc.js",
+      ".next-review\\static\\chunks\\06m6x12frggfq.js",
+      ".next-review\\static\\chunks\\turbopack-3-ry682tkyiqk.js"
+    ]
+  },
+  {
+    "route": "/products/[slug]",
+    "firstLoadUncompressedJsBytes": 535078,
+    "firstLoadChunkPaths": [
+      ".next-review\\static\\chunks\\3r4narujuhk7q.js",
+      ".next-review\\static\\chunks\\2tcjgkw90j9wp.js",
+      ".next-review\\static\\chunks\\38_ydkwvjqu2o.js",
+      ".next-review\\static\\chunks\\35sdv6l0omrcf.js",
+      ".next-review\\static\\chunks\\1x6obpmlu1_c2.js",
+      ".next-review\\static\\chunks\\2n86e7h60o0qo.js",
+      ".next-review\\static\\chunks\\3dmm3v_fq28gc.js",
+      ".next-review\\static\\chunks\\06m6x12frggfq.js",
+      ".next-review\\static\\chunks\\turbopack-3-ry682tkyiqk.js"
+    ]
+  },
+  {
+    "route": "/_not-found",
+    "firstLoadUncompressedJsBytes": 460814,
+    "firstLoadChunkPaths": [
+      ".next-review\\static\\chunks\\3r4narujuhk7q.js",
+      ".next-review\\static\\chunks\\1x6obpmlu1_c2.js",
+      ".next-review\\static\\chunks\\2n86e7h60o0qo.js",
+      ".next-review\\static\\chunks\\3dmm3v_fq28gc.js",
+      ".next-review\\static\\chunks\\06m6x12frggfq.js",
+      ".next-review\\static\\chunks\\turbopack-3-ry682tkyiqk.js"
+    ]
+  }
+]

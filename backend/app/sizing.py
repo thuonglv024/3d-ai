@@ -57,6 +57,86 @@ class SizeChart(BaseModel):
         return self
 
 
+VALID_SIZING_SOURCES = {"photo_estimate", "photo_with_prior", "user_input"}
+
+
+def filter_valid_sizing_measurements(
+    rows_or_dict,
+    details: Optional[list[dict]] = None,
+    capture_mode: Optional[str] = None,
+) -> dict[str, Optional[float]]:
+    """
+    Filters body measurements so only metrics from VALID_SIZING_SOURCES with positive
+    numeric values are kept. Metrics from 'template_model' or 'unavailable', or with
+    value_cm is None / <= 0, or hip_cm from an upper_body scan (unless user_input)
+    are mapped to None.
+    """
+    if rows_or_dict is None and not details:
+        return {}
+
+    result: dict[str, Optional[float]] = {}
+
+    if isinstance(rows_or_dict, (list, tuple)):
+        for r in rows_or_dict:
+            r_map = dict(r) if not isinstance(r, dict) else r
+            k = r_map.get("metric_key") or r_map.get("key")
+            if not k:
+                continue
+            src = r_map.get("source")
+            val = r_map.get("value_cm")
+            if src not in VALID_SIZING_SOURCES or val is None or isinstance(val, bool):
+                result[k] = None
+                continue
+            try:
+                fval = float(val)
+            except (TypeError, ValueError):
+                result[k] = None
+                continue
+            if fval <= 0:
+                result[k] = None
+                continue
+            if capture_mode == "upper_body" and k == "hip_cm" and src != "user_input":
+                result[k] = None
+                continue
+            result[k] = fval
+        return result
+
+    raw_dict = rows_or_dict if isinstance(rows_or_dict, dict) else {}
+    detail_by_key: dict[str, dict] = {}
+    if details and isinstance(details, (list, tuple)):
+        for item in details:
+            if isinstance(item, dict):
+                k = item.get("key") or item.get("metric_key")
+                if k:
+                    detail_by_key[k] = item
+
+    all_keys = list(dict.fromkeys(list(raw_dict.keys()) + list(detail_by_key.keys())))
+    for k in all_keys:
+        det = detail_by_key.get(k)
+        src = det.get("source") if det else None
+        if src is not None and src not in VALID_SIZING_SOURCES:
+            result[k] = None
+            continue
+        val = raw_dict.get(k) if k in raw_dict else (det.get("value_cm") if det else None)
+        if val is None or isinstance(val, bool):
+            result[k] = None
+            continue
+        try:
+            fval = float(val)
+        except (TypeError, ValueError):
+            result[k] = None
+            continue
+        if fval <= 0:
+            result[k] = None
+            continue
+        if capture_mode == "upper_body" and k == "hip_cm" and src != "user_input":
+            result[k] = None
+            continue
+        result[k] = fval
+
+    return result
+
+
 class SizingRecommendRequest(BaseModel):
     model_config = ConfigDict(extra="ignore")
     product_id: Optional[str] = None
@@ -69,13 +149,24 @@ class SizingRecommendRequest(BaseModel):
 
 
 def recommend_size(measurements: Optional[dict], chart: SizeChart):
-    measurements = measurements or {}
+    raw_measurements = measurements or {}
+    clean_measurements: dict[str, Optional[float]] = {}
+    for k, v in raw_measurements.items():
+        if v is None or isinstance(v, bool):
+            clean_measurements[k] = None
+        else:
+            try:
+                fv = float(v)
+                clean_measurements[k] = fv if fv > 0 else None
+            except (TypeError, ValueError):
+                clean_measurements[k] = None
+
     dimensions = [
         key for key in ("chest_cm", "waist_cm", "hip_cm")
         if any(getattr(row, key) is not None for row in chart.rows)
     ]
 
-    missing = [k for k in dimensions if measurements.get(k) is None]
+    missing = [k for k in dimensions if clean_measurements.get(k) is None]
 
     labels = {
         "chest_cm": "vòng ngực",
@@ -90,7 +181,7 @@ def recommend_size(measurements: Optional[dict], chart: SizeChart):
         for key in ("chest_cm", "waist_cm", "hip_cm"):
             r_range = getattr(row, key)
             if r_range is not None:
-                val = measurements.get(key)
+                val = clean_measurements.get(key)
                 within = bool(val is not None and r_range.min <= val <= r_range.max)
                 checks[key] = {
                     "value_cm": val,

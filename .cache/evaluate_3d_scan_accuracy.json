@@ -1,0 +1,16 @@
+{
+  "benchmark": "MORPH_AI_3TIER_BEFORE_VS_AFTER",
+  "engine_version": "mediapipe-two-photo-fit-v4",
+  "verification_scope": "SYNTHETIC_GEOMETRIC_VERIFICATION_ONLY",
+  "REAL_HUMAN_DATASET_STATUS": "MISSING_EMPIRICAL_COHORT",
+  "tier1_max_height_err_before_pct": 10.345,
+  "tier1_max_height_err_after_pct": 1.204,
+  "tier2_max_dw_err_after_pct": 0.0,
+  "tier2_occluded_hip_dw_err_before_pct": 5.781,
+  "tier2_occluded_hip_dw_err_after_pct": 0.0,
+  "tier3_max_fit_error_after_cm": 0.0,
+  "latency_3tier_math_median_ms": 6.73,
+  "latency_3tier_math_mean_ms": 7.394,
+  "latency_deform_template_median_ms": 64.883,
+  "latency_fit_targets_median_ms": 153.402
+}

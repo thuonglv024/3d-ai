@@ -1,6 +1,11 @@
 import pytest
 from pydantic import ValidationError
-from app.sizing import SizeChart, recommend_size
+from app.sizing import (
+    SizeChart,
+    VALID_SIZING_SOURCES,
+    filter_valid_sizing_measurements,
+    recommend_size,
+)
 
 
 def chart(**changes):
@@ -112,3 +117,29 @@ def test_garment_types_validation():
             garment="bottom",
             rows=[{"size": "30", "waist_cm": {"min": 75, "max": 80}}],
         )
+
+
+def test_filter_valid_sizing_measurements_excludes_template_model_and_non_positive():
+    assert VALID_SIZING_SOURCES == {"photo_estimate", "photo_with_prior", "user_input"}
+    db_rows = [
+        {"metric_key": "height_cm", "value_cm": 170.0, "source": "user_input"},
+        {"metric_key": "chest_cm", "value_cm": 92.0, "source": "photo_with_prior"},
+        {"metric_key": "waist_cm", "value_cm": 74.0, "source": "photo_with_prior"},
+        {"metric_key": "hip_cm", "value_cm": 94.5, "source": "template_model"},
+        {"metric_key": "arm_length_cm", "value_cm": None, "source": "unavailable"},
+    ]
+    filtered = filter_valid_sizing_measurements(db_rows, capture_mode="upper_body")
+    assert filtered["chest_cm"] == 92.0
+    assert filtered["waist_cm"] == 74.0
+    assert filtered["hip_cm"] is None
+    assert filtered["arm_length_cm"] is None
+
+    # Non-positive values in recommend_size are treated as missing (None), never 0
+    bottom_chart = SizeChart(
+        name="Quần test",
+        garment="bottom",
+        rows=[{"size": "M", "waist_cm": {"min": 70, "max": 80}, "hip_cm": {"min": 90, "max": 100}}],
+    )
+    res_zero = recommend_size({"waist_cm": 75, "hip_cm": 0}, bottom_chart)
+    assert res_zero["status"] == "insufficient_measurements"
+    assert "hip_cm" in res_zero["missing"]

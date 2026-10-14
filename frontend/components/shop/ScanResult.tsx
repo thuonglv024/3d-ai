@@ -130,18 +130,19 @@ export default function ScanResult({
   const value = (m: MeasurementDetail) =>
     m.value_cm == null ? "—" : (m.value_cm / (unit === "in" ? 2.54 : 1)).toFixed(1);
 
-  const guestToken =
-    job.guest_token ||
-    getGuestToken(job.id) ||
-    (typeof window !== "undefined"
-      ? (() => {
-          try {
-            return sessionStorage.getItem(`morph_scan_guest_token_${job.id}`) || "";
-          } catch {
-            return "";
-          }
-        })()
-      : "");
+  const guestToken = job.user_id
+    ? ""
+    : job.guest_token ||
+      getGuestToken(job.id) ||
+      (typeof window !== "undefined"
+        ? (() => {
+            try {
+              return sessionStorage.getItem(`morph_scan_guest_token_${job.id}`) || "";
+            } catch {
+              return "";
+            }
+          })()
+        : "");
 
   const withGuestToken = (url?: string) => {
     if (!url || !guestToken) return url;

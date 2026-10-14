@@ -224,7 +224,7 @@ function LoginContent() {
                 </div>
                 <div className="auth-feature-text">
                   <strong>Bảo vệ thông tin cá nhân</strong>
-                  <span>Xử lý hình ảnh trực tiếp trên trình duyệt, chỉ lưu trữ thông số số đo phom dáng để gợi ý kích cỡ.</span>
+                  <span>Ảnh chụp hai góc chỉ gửi tới máy chủ khi bạn đồng ý để dựng mô hình 3D, không lưu trữ ảnh gốc lâu dài và bạn có thể xóa dữ liệu bất kỳ lúc nào.</span>
                 </div>
               </div>
 

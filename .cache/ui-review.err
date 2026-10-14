@@ -1,0 +1,2 @@
+Error: Failed to execute 'removeChild' on 'Node': The node to be removed is not a child of this node.
+    at C:\Users\Phan Trinh Tien Dat\Documents\Codex\2026-10-09\https-3dlook-ai-content-hub-https\work\review-ui.cjs:67:24

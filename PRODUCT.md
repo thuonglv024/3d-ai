@@ -1,28 +1,27 @@
-# MORPH AI
-<!-- impeccable:product-schema 1 -->
+# MORPH AI Product Context
 
-## Platform
-web
+## Product Summary
 
-## Stack
-Next.js frontend and Python backend in separate source folders, per the ongoing implementation brief. Java is not required. Runtime dependencies are installed locally to the project.
+MORPH AI is a local Vietnamese fashion storefront and 3D size-recommendation demo. The product combines a curated 160-product storefront (`/`), product detail pages (`/products/[id]`) with an embedded webcam size finder, a standalone 3D fitting studio (`/scan`), a local cart and wishlist drawer, atomic order placement (`/checkout`, `/orders/[id]`), and user accounts with saved scan history and manual body profiles (`/account`, `/account/body-profile`).
 
-## Users
-Vietnamese fashion SMEs and startup founders evaluating a body reconstruction demo, including shoppers using laptop webcams to capture their upper body.
+## Primary Audience
 
-## Product Purpose
-Latest capture flow: camera only, with no upload inputs or pre-scan mannequin. Height and consent → one camera session → pose-gated front countdown → automatic 90-degree turn prompt → side countdown → automatic reconstruction. See CAMERA_FLOW_HANDOFF.md; this supersedes earlier input layouts.
-Demonstrate a Vietnamese fashion product page with an embedded size finder: capture two body views, inspect an estimated 3D body, receive product-specific size advice and apply the selection to a local demo cart. The user explicitly selected this shopping experience on 12 October 2026, then requested upper-body laptop capture and a SnapMeasureAI-inspired result workspace. /scan now runs that same module as a standalone page.
+Vietnamese online clothing shoppers who want a calmer, clearer answer to "Will this size fit me?" before adding an item to their cart, as well as developers/evaluators testing two-photo webcam body reconstruction and size recommendation.
 
-## Capabilities and Constraints
-The storefront, product image, price and size chart are illustrative. No external ecommerce platform integration, checkout, payments, orders or accounts are implemented. Do not represent sample avatars or unvalidated measurements as a successful scan. User has selected design-image-first implementation. Hardware detected: NVIDIA MX330, 2 GB VRAM. Current implementation uses local CPU MediaPipe plus a MakeHuman template. User selected continuous pose guidance, two-angle capture and clothing size advice. Measurement accuracy remains unvalidated; external SAM/GPU is not part of this iteration. The viewer's bodysuit tint is an illustration, not a garment simulation.
+## Core User Jobs
 
-## Brand Commitments
-Default capture is head-to-waistband upper body plus entered height, without requiring feet. Full-body remains optional. Upper-body scale assumes a template shoulder-to-hip proportion. Keep observed estimates distinct from template dimensions; hip stays null in the sizing measurements for this mode. The result workspace has 12 rows, 10 values and two unavailable lengths, with provenance labels. It must not claim the proprietary accuracy or measurement count of the reference product.
-MORPH AI technology within a MORPH Studio shopping demo, Vietnamese copy. Warm ivory storefront and input, forest green actions; dark teal result workspace following the user's screenshots. User requested a full interface refactor and supplied a direct result-screen reference.
+1. Browse a 160-item men's and women's fashion catalog (`/`), filter by gender/category/price/search, manage a wishlist, and open a product detail page (`/products/[id]`).
+2. Launch **"Tìm Cỡ Vừa Vặn & Quét 3D"** from the product page (or open `/scan` directly), enter height, weight, and gender, and capture front + 90° side poses via live webcam (`upper_body` default or `full_body` optional) to receive a recommended size, fit confidence, 3D mannequin preview, and measurement table with explicit source badges.
+3. Supplement lower-body measurements (`hip_cm`, `inseam_cm`) via the manual body profile when using `upper_body` capture so trousers, skirts, and one-piece dresses can still be sized accurately.
+4. Select the recommended size, add items to the cart, complete local checkout (`/checkout`) with atomic stock deduction, and view order details (`/orders/[id]`) or track measurement history on `/account`.
 
-## Evidence on Hand
-User product brief and reference products 3DLOOK and SnapMeasureAI. No real customer body images or accuracy validation supplied.
+## Current Technical Reality
 
-## Product Principles
-Make the real scan path obvious. Explain limitations at the point of use. Keep the demo runnable with reproducible setup scripts. Never show fabricated accuracy or scan results.
+- The 3D engine uses **MediaPipe Pose & Selfie Segmentation**, a **3-tier mathematical calibration pipeline** (`estimate_upper_body_height`, `camera_fusion`, `ANATOMICAL_SECTION_FACTORS`), and **MakeHuman base mesh deformation** (PCHIP slice scaling).
+- It is **not** SAM 3D Body or MHR, does not reconstruct personal face/hair identity, and has not yet been clinically validated against a real-human tape-measurement cohort.
+- Every measurement carries an explicit `source` (`photo_estimate`, `photo_with_prior`, `template_model`, `user_input`, `unavailable`), `confidence`, and `valid_for_tracking` flag.
+- Authentication uses an `HttpOnly` session cookie (`morph_session`) stored as a `SHA-256` hash in local SQLite (`backend/runtime/catalog.db`). No external e-commerce SaaS platform or live third-party payment gateway is connected.
+
+## Tone And Brand
+
+Calm luxury editorial storefront paired with an honest, non-clinical fitting studio. Warm Ivory (`#FAF7F2`), Alabaster (`#F3EFE6`), Espresso Ink (`#181512`), and Champagne Gold (`#C5A059` / `#8A6621`) lead the storefront experience, transitioning into a focused Dark Studio (`#141312`) for the camera and 3D measurement workspace. Copy must be natural Vietnamese with full diacritics, specific about what is estimated from photos vs. template priors vs. user input, and free of exaggerated AI accuracy claims.

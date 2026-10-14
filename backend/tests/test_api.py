@@ -64,3 +64,58 @@ def test_validation_lifecycle_and_deletion(monkeypatch, tmp_path):
         assert client.get(f"/api/scans/{key}/measurements", headers=headers).status_code == 404
         assert client.post(f"/api/scans/{key}/size-advice", json=chart, headers=headers).status_code == 404
         assert not list(tmp_path.glob("*.glb"))
+
+
+def test_hung_job_timeout_and_max_stored_jobs_eviction(monkeypatch, tmp_path):
+    monkeypatch.setattr(main, "DATA", tmp_path)
+    now = time.time()
+
+    with main.lock:
+        main.jobs.clear()
+        # 1. Create a hung processing job (> 120s old) with a partial .glb file
+        hung_key = "hung_job_001"
+        (tmp_path / f"{hung_key}.glb").write_bytes(b"partial-glb")
+        main.jobs[hung_key] = main.Job(
+            id=hung_key,
+            status="processing",
+            created=now - (main.JOB_PROCESSING_TIMEOUT_SECONDS + 10),
+            guest_token="hung_token",
+        )
+
+    main.cleanup()
+
+    with main.lock:
+        assert main.jobs[hung_key].status == "failed"
+        assert main.jobs[hung_key].finished is not None
+        assert "quá thời gian chờ" in (main.jobs[hung_key].error or "").lower()
+        assert not (tmp_path / f"{hung_key}.glb").exists()
+        # Queue slot is now free (0 queued/processing jobs)
+        assert sum(j.status in {"queued", "processing"} for j in main.jobs.values()) == 0
+
+        # 2. Test MAX_STORED_JOBS cap on finished jobs
+        main.jobs.clear()
+        for idx in range(main.MAX_STORED_JOBS + 5):
+            jid = f"finished_job_{idx:03d}"
+            (tmp_path / f"{jid}.glb").write_bytes(b"glTF")
+            main.jobs[jid] = main.Job(
+                id=jid,
+                status="completed",
+                created=now - 300 + idx,
+                finished=now - 10,
+                guest_token=f"tok_{idx}",
+            )
+
+    main.cleanup()
+
+    with main.lock:
+        assert len(main.jobs) == main.MAX_STORED_JOBS
+        # Oldest 5 jobs (000..004) should be evicted along with their .glb files
+        for idx in range(5):
+            jid = f"finished_job_{idx:03d}"
+            assert jid not in main.jobs
+            assert not (tmp_path / f"{jid}.glb").exists()
+        for idx in range(5, main.MAX_STORED_JOBS + 5):
+            jid = f"finished_job_{idx:03d}"
+            assert jid in main.jobs
+            assert (tmp_path / f"{jid}.glb").exists()
+        main.jobs.clear()

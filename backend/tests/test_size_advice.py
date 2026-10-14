@@ -92,24 +92,40 @@ def test_api_size_advice_flow_upper_and_full_body(monkeypatch, tmp_path):
     monkeypatch.setattr(main, "readiness", lambda: (True, "Ready"))
 
     with TestClient(main.app) as client:
+        guest_token = "test-guest-token-size-advice"
+        headers = {"X-Guest-Token": guest_token}
+
         # Create an upper-body completed job directly in jobs dict
         upper_key = "test-upper-job"
         main.jobs[upper_key] = main.Job(
             id=upper_key,
             status="completed",
             stage="Đã dựng hình",
+            capture_mode="upper_body",
+            guest_token=guest_token,
             measurements={"height_cm": 172.0, "chest_cm": 93.0, "waist_cm": 76.0, "hip_cm": None},
+            body_profile={
+                "capture_mode": "upper_body",
+                "measurement_details": [
+                    {"key": "chest_cm", "label": "Vòng ngực", "value_cm": 93.0, "source": "photo_with_prior"},
+                    {"key": "waist_cm", "label": "Vòng eo", "value_cm": 76.0, "source": "photo_with_prior"},
+                    {"key": "hip_cm", "label": "Vòng mông", "value_cm": 95.2, "source": "template_model"},
+                ],
+            },
         )
 
+        # Missing guest_token -> 403
+        assert client.post(f"/api/scans/{upper_key}/size-advice", json=make_top_chart()).status_code == 403
+
         # 1. Top advice on upper_body scan -> Matches M
-        top_res = client.post(f"/api/scans/{upper_key}/size-advice", json=make_top_chart())
+        top_res = client.post(f"/api/scans/{upper_key}/size-advice", json=make_top_chart(), headers=headers)
         assert top_res.status_code == 200
         data = top_res.json()
         assert data["status"] == "matched"
         assert data["candidates"] == ["M"]
 
-        # 2. Bottom advice on upper_body scan (hip_cm is None) -> insufficient_measurements
-        bottom_res = client.post(f"/api/scans/{upper_key}/size-advice", json=make_bottom_chart())
+        # 2. Bottom advice on upper_body scan (hip_cm is None / template_model) -> insufficient_measurements
+        bottom_res = client.post(f"/api/scans/{upper_key}/size-advice", json=make_bottom_chart(), headers=headers)
         assert bottom_res.status_code == 200
         b_data = bottom_res.json()
         assert b_data["status"] == "insufficient_measurements"
@@ -124,11 +140,13 @@ def test_api_size_advice_flow_upper_and_full_body(monkeypatch, tmp_path):
             id=full_key,
             status="completed",
             stage="Đã dựng hình",
+            capture_mode="full_body",
+            guest_token=guest_token,
             measurements={"height_cm": 172.0, "chest_cm": 93.0, "waist_cm": 77.0, "hip_cm": 97.0},
         )
 
         # 3. Bottom advice on full_body scan -> Matches size 30
-        bottom_full_res = client.post(f"/api/scans/{full_key}/size-advice", json=make_bottom_chart())
+        bottom_full_res = client.post(f"/api/scans/{full_key}/size-advice", json=make_bottom_chart(), headers=headers)
         assert bottom_full_res.status_code == 200
         full_data = bottom_full_res.json()
         assert full_data["status"] == "matched"
@@ -139,7 +157,7 @@ def test_api_size_advice_flow_upper_and_full_body(monkeypatch, tmp_path):
         no_match_chart["rows"] = [
             {"size": "XS", "chest_cm": {"min": 50, "max": 60}, "waist_cm": {"min": 40, "max": 50}}
         ]
-        no_match_res = client.post(f"/api/scans/{full_key}/size-advice", json=no_match_chart)
+        no_match_res = client.post(f"/api/scans/{full_key}/size-advice", json=no_match_chart, headers=headers)
         assert no_match_res.status_code == 200
         assert no_match_res.json()["status"] == "no_match"
         assert no_match_res.json()["candidates"] == []
@@ -239,17 +257,20 @@ def test_api_sizing_recommend_with_active_job(tmp_path, monkeypatch):
         slug = prod["slug"]
 
         job_key = "test-job-recommend"
+        guest_token = "test-job-recommend-token"
         main.jobs[job_key] = main.Job(
             id=job_key,
             status="completed",
             stage="Đã dựng hình",
+            guest_token=guest_token,
             measurements={"chest_cm": 94.0, "waist_cm": 78.0, "hip_cm": 96.0},
         )
 
-        # Call with product_slug and scan_id
+        # Call with product_slug and scan_id + guest_token
         res = client.post("/api/sizing/recommend", json={
             "product_slug": slug,
             "scan_id": job_key,
+            "guest_token": guest_token,
         })
         assert res.status_code == 200
         data = res.json()
@@ -315,6 +336,13 @@ def test_api_sizing_recommend_guest_token_access():
             json={"chart": top_chart, "scan_id": job_key, "guest_token": "wrong_guest_token"},
         )
         assert res_bad.status_code == 403
+
+        # 4. Access with missing guest_token -> 403
+        res_missing = client.post(
+            "/api/sizing/recommend",
+            json={"chart": top_chart, "scan_id": job_key},
+        )
+        assert res_missing.status_code == 403
 
         # Clean up
         main.jobs.pop(job_key, None)

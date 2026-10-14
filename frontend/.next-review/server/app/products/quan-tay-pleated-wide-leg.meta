@@ -1,0 +1,39 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/products/layout,_N_T_/products/[slug]/layout,_N_T_/products/[slug]/page,_N_T_/products/quan-tay-pleated-wide-leg"
+  },
+  "segmentPaths": [
+    "/_tree",
+    "/_full",
+    "/products/$d$slug/__PAGE__"
+  ],
+  "prefetchHints": {
+    "hints": 64,
+    "slots": {
+      "children": {
+        "hints": 96,
+        "slots": {
+          "children": {
+            "hints": 96,
+            "slots": {
+              "children": {
+                "hints": 160,
+                "slots": null
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "routeCache": {
+    "key": "/route-cache/APP_PAGE/679a838ce30f4d37339f0b2d8ec1b5893c3d5e46a3a706bd4c19d34cba7b565a/$/products/quan-tay-pleated-wide-leg",
+    "owner": {
+      "kind": "APP_PAGE",
+      "sourceRoute": "/products/[slug]/page"
+    },
+    "isFallback": false
+  }
+}

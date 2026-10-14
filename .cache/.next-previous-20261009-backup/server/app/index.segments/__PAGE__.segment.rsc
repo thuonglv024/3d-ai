@@ -1,0 +1,27 @@
+1:"$Sreact.fragment"
+2:I[7121,[],""]
+3:I[4581,[],""]
+7:I[1304,[],"ClientPageRoot"]
+8:"static/chunks/758-6b3dac16c5eebabb.js"
+9:"static/chunks/app/page-006cf509307da9bd.js"
+a:I[4889,["758","$8","974","$9"],"default"]
+d:I[484,[],"OutletBoundary"]
+e:"$Sreact.suspense"
+11:"ViewportBoundary"
+12:I[484,[],"$11"]
+13:"MetadataBoundary"
+14:I[484,[],"$13"]
+:HL["/_next/static/css/135b32480a9866f4.css","style"]
+5:X
+6:[["children",{"s":"__PAGE__","h":160,"d":{"r":["$","$1","c",{"children":[["$","$L7",null,{"Component":"$a","serverProvidedParams":{"searchParams":{},"params":{},"promises":["$@b","$@c"]}}],null,["$","$Ld",null,{"children":["$","$e",null,{"name":"Next.MetadataOutlet","children":"$@f"}]}]]}],"p":"$@10","v":null,"s":"$5"}}]]
+0:{"t":{"t":{"s":"","h":80,"d":{"r":["$","$1","c",{"children":[[["$","link","0",{"rel":"stylesheet","href":"/_next/static/css/135b32480a9866f4.css","precedence":"next"}]],["$","html",null,{"lang":"vi","children":["$","body",null,{"children":["$","$L2",null,{"parallelRouterKey":"children","template":["$","$L3",null,{}],"notFound":[[["$","title",null,{"children":"404: This page could not be found."}],["$","div",null,{"style":{"fontFamily":"system-ui,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif,\"Apple Color Emoji\",\"Segoe UI Emoji\"","height":"100vh","textAlign":"center","display":"flex","flexDirection":"column","alignItems":"center","justifyContent":"center"},"children":["$","div",null,{"children":[["$","style",null,{"dangerouslySetInnerHTML":{"__html":"body{color:#000;background:#fff;margin:0}.next-error-h1{border-right:1px solid rgba(0,0,0,.3)}@media (prefers-color-scheme:dark){body{color:#fff;background:#000}.next-error-h1{border-right:1px solid rgba(255,255,255,.3)}}"}}],["$","h1",null,{"className":"next-error-h1","style":{"display":"inline-block","margin":"0 20px 0 0","padding":"0 23px 0 0","fontSize":24,"fontWeight":500,"verticalAlign":"top","lineHeight":"49px"},"children":404}],["$","div",null,{"style":{"display":"inline-block"},"children":["$","h2",null,{"style":{"fontSize":14,"fontWeight":400,"lineHeight":"49px","margin":0},"children":"This page could not be found."}]}]]}]}]],[]]}]}]}]]}],"p":"$@4","v":null,"s":"$5"},"c":"$Q6"},"h":{"r":["$","$1","h",{"children":[null,["$","$L12",null,{"children":[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}]]}],["$","$L14",null,{"children":[["$","div",null,{"hidden":true,"children":["$","$e",null,{"name":"Next.Metadata","children":[["$","title","0",{"children":"MORPH AI — Phòng scan 3D"}],["$","meta","1",{"name":"description","content":"Demo dựng hình thể 3D từ ảnh toàn thân. Xem, xoay và khám phá cơ thể trong không gian 3D."}]]}]}],null]}],null]}],"p":"$@15","v":null,"s":"$5"}},"a":"$@16","u":"$@17","b":"qC6h0krsWiLlh-4hpS0F7"}
+b:{}
+c:"$6:0:1:d:r:props:children:0:props:serverProvidedParams:params"
+f:null
+5:300
+17:true
+5:C
+16:0
+4:"$undefined"
+15:"$undefined"
+10:"$undefined"

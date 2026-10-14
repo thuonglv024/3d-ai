@@ -1,16 +1,90 @@
-"""Viewer annotations with explicit provenance. Model dimensions are not body measurements."""
+"""Viewer annotations with explicit provenance. Model dimensions are not body measurements.
+
+Note on uncertainty_cm:
+    `uncertainty_cm` is explicitly set to `None` because empirical human tape-measure
+    calibration data has not been collected yet. Never fabricate a ±X cm confidence
+    interval without clinical/human validation data.
+"""
 import numpy as np
 from .measurements import closed_torso_section
 from .images import InvalidPhoto
 
+ENGINE = "mediapipe-two-photo-fit-v4"
+VALID_SIZING_SOURCES = frozenset({"user_input", "photo_estimate", "photo_with_prior"})
+
+
+def _observed_region(key: str, upper: bool) -> str:
+    if key == "height_cm":
+        return "user_reported"
+    if key in {"chest_cm", "waist_cm", "shoulder_width_cm"}:
+        return "upper_torso_with_template_prior" if upper else "frontal_and_lateral_torso"
+    if key == "hip_cm":
+        return "template_prior_unobserved" if upper else "frontal_and_lateral_torso"
+    if key in {"head_cm", "neck_cm", "thigh_cm", "calf_cm", "ankle_cm"}:
+        return "template_prior_unobserved"
+    if key in {"arm_length_cm", "inseam_cm"}:
+        return "unobserved"
+    return "template_prior_unobserved"
+
+
+def _quality_warnings(key: str, source: str, upper: bool) -> list[str]:
+    if key == "height_cm":
+        return [
+            "Chiều cao do người dùng tự nhập; các số đo quy đổi sang cm phụ thuộc tuyến tính vào giá trị này."
+        ]
+    if source == "photo_with_prior":
+        return [
+            "Ước lượng từ biên dạng 2 ảnh thân trên kết hợp giả định tỷ lệ chiều cao đa mỏ neo sọ–vai–hông.",
+            "Độ dày trang phục hoặc góc đứng lệch 90° có thể làm thay đổi số đo; chưa hiệu chuẩn trên người thật.",
+        ]
+    if source == "photo_estimate":
+        return [
+            "Ước lượng từ biên dạng 2 ảnh toàn thân và chiều cao tự nhập.",
+            "Độ dày trang phục hoặc góc đứng lệch 90° có thể làm thay đổi số đo; chưa hiệu chuẩn trên người thật.",
+        ]
+    if source == "template_model":
+        if upper and key == "hip_cm":
+            return [
+                "Chế độ thân trên không quan sát vùng mông; chỉ số này thuộc mô hình mẫu MakeHuman, không dùng để chọn size hoặc theo dõi tiến trình."
+            ]
+        return [
+            "Chỉ số trích xuất từ lưới mẫu MakeHuman chưa quan sát trực tiếp; không dùng để chọn size hoặc theo dõi tiến trình cơ thể."
+        ]
+    return [
+        "Không đủ cơ sở mốc giải phẫu tin cậy từ 2 ảnh 2D để ước lượng chỉ số này."
+    ]
+
 
 def measurement_report(mesh, measurements, profile, height_cm):
+    """Build per-metric provenance and quality report.
+
+    `uncertainty_cm` is always `None` until empirical tape-measure validation
+    on human subjects is available; never invent a synthetic ±X cm bound.
+    """
     h = height_cm / 100
     upper = profile["capture_mode"] == "upper_body"
     rows = []
+
     def add(key, label, value, source, points=None, color="#39d5c2"):
-        rows.append({"key": key, "label": label, "value_cm": round(float(value), 1) if value is not None else None,
-                     "source": source, "color": color, "points_m": np.round(points, 5).tolist() if points is not None else []})
+        if upper and key == "hip_cm":
+            source = "template_model"
+        val_cm = round(float(value), 1) if value is not None else None
+        is_valid = bool(source in VALID_SIZING_SOURCES and val_cm is not None)
+        rows.append({
+            "key": key,
+            "label": label,
+            "value_cm": val_cm,
+            "source": source,
+            "observed_region": _observed_region(key, upper),
+            "valid_for_sizing": is_valid,
+            "valid_for_tracking": is_valid,
+            "engine_version": ENGINE,
+            "uncertainty_cm": None,
+            "quality_warnings": _quality_warnings(key, source, upper),
+            "color": color,
+            "points_m": np.round(points, 5).tolist() if points is not None else [],
+        })
+
     add("height_cm", "Chiều cao", height_cm, "user_input", [[0, 0, 0], [0, h, 0]])
     for section, color in zip(profile["sections"], ["#f17be0", "#5ce4dc", "#f0dd61"]):
         source = "template_model" if upper and section["key"] == "hip_cm" else "photo_with_prior" if upper else "photo_estimate"
@@ -26,10 +100,11 @@ def measurement_report(mesh, measurements, profile, height_cm):
         ("ankle_cm", "Vòng cổ chân trái", .065, .06, "#efc65b"),
     ]:
         try:
-            circumference, curve = closed_torso_section(mesh,level*h,center_x_m=x*h)
+            circumference, curve = closed_torso_section(mesh, level * h, center_x_m=x * h)
             add(key, title, circumference, "template_model", curve, color)
         except InvalidPhoto:
             add(key, title, None, "unavailable", color=color)
     add("arm_length_cm", "Dài tay", None, "unavailable")
     add("inseam_cm", "Dài trong chân", None, "unavailable")
     return rows
+

@@ -1,0 +1,83 @@
+/*
+ * ATTENTION: An "eval-source-map" devtool has been used.
+ * This devtool is neither made for production nor for readable output files.
+ * It uses "eval()" calls to create a separate source file with attached SourceMaps in the browser devtools.
+ * If you are trying to read the output file, select a different devtool (https://webpack.js.org/configuration/devtool/)
+ * or disable the default devtool with "devtool: false".
+ * If you are looking for production-ready output files, see mode: "production" (https://webpack.js.org/configuration/mode/).
+ */
+(self["webpackChunk_N_E"] = self["webpackChunk_N_E"] || []).push([["app/layout"],{
+
+/***/ "(app-pages-browser)/./app/globals.css":
+/*!*************************!*\
+  !*** ./app/globals.css ***!
+  \*************************/
+/***/ ((module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+eval(__webpack_require__.ts("__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpack_require__.d(__webpack_exports__, {\n/* harmony export */   \"default\": () => (__WEBPACK_DEFAULT_EXPORT__)\n/* harmony export */ });\n/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (\"e3ca73c6e6aa\");\nif (true) { module.hot.accept() }\n//# sourceURL=[module]\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiKGFwcC1wYWdlcy1icm93c2VyKS8uL2FwcC9nbG9iYWxzLmNzcyIsIm1hcHBpbmdzIjoiOzs7O0FBQUEsaUVBQWUsY0FBYztBQUM3QixJQUFJLElBQVUsSUFBSSxpQkFBaUIiLCJzb3VyY2VzIjpbIkQ6XFxNT1JQSC1BSVxcZnJvbnRlbmRcXGFwcFxcZ2xvYmFscy5jc3MiXSwic291cmNlc0NvbnRlbnQiOlsiZXhwb3J0IGRlZmF1bHQgXCJlM2NhNzNjNmU2YWFcIlxuaWYgKG1vZHVsZS5ob3QpIHsgbW9kdWxlLmhvdC5hY2NlcHQoKSB9XG4iXSwibmFtZXMiOltdLCJpZ25vcmVMaXN0IjpbXSwic291cmNlUm9vdCI6IiJ9\n//# sourceURL=webpack-internal:///(app-pages-browser)/./app/globals.css\n"));
+
+/***/ }),
+
+/***/ "(app-pages-browser)/./node_modules/@fontsource/be-vietnam-pro/400.css":
+/*!*********************************************************!*\
+  !*** ./node_modules/@fontsource/be-vietnam-pro/400.css ***!
+  \*********************************************************/
+/***/ ((module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+eval(__webpack_require__.ts("__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpack_require__.d(__webpack_exports__, {\n/* harmony export */   \"default\": () => (__WEBPACK_DEFAULT_EXPORT__)\n/* harmony export */ });\n/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (\"fcd6abfc7887\");\nif (true) { module.hot.accept() }\n//# sourceURL=[module]\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiKGFwcC1wYWdlcy1icm93c2VyKS8uL25vZGVfbW9kdWxlcy9AZm9udHNvdXJjZS9iZS12aWV0bmFtLXByby80MDAuY3NzIiwibWFwcGluZ3MiOiI7Ozs7QUFBQSxpRUFBZSxjQUFjO0FBQzdCLElBQUksSUFBVSxJQUFJLGlCQUFpQiIsInNvdXJjZXMiOlsiRDpcXE1PUlBILUFJXFxmcm9udGVuZFxcbm9kZV9tb2R1bGVzXFxAZm9udHNvdXJjZVxcYmUtdmlldG5hbS1wcm9cXDQwMC5jc3MiXSwic291cmNlc0NvbnRlbnQiOlsiZXhwb3J0IGRlZmF1bHQgXCJmY2Q2YWJmYzc4ODdcIlxuaWYgKG1vZHVsZS5ob3QpIHsgbW9kdWxlLmhvdC5hY2NlcHQoKSB9XG4iXSwibmFtZXMiOltdLCJpZ25vcmVMaXN0IjpbMF0sInNvdXJjZVJvb3QiOiIifQ==\n//# sourceURL=webpack-internal:///(app-pages-browser)/./node_modules/@fontsource/be-vietnam-pro/400.css\n"));
+
+/***/ }),
+
+/***/ "(app-pages-browser)/./node_modules/@fontsource/be-vietnam-pro/500.css":
+/*!*********************************************************!*\
+  !*** ./node_modules/@fontsource/be-vietnam-pro/500.css ***!
+  \*********************************************************/
+/***/ ((module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+eval(__webpack_require__.ts("__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpack_require__.d(__webpack_exports__, {\n/* harmony export */   \"default\": () => (__WEBPACK_DEFAULT_EXPORT__)\n/* harmony export */ });\n/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (\"13c8b06a892a\");\nif (true) { module.hot.accept() }\n//# sourceURL=[module]\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiKGFwcC1wYWdlcy1icm93c2VyKS8uL25vZGVfbW9kdWxlcy9AZm9udHNvdXJjZS9iZS12aWV0bmFtLXByby81MDAuY3NzIiwibWFwcGluZ3MiOiI7Ozs7QUFBQSxpRUFBZSxjQUFjO0FBQzdCLElBQUksSUFBVSxJQUFJLGlCQUFpQiIsInNvdXJjZXMiOlsiRDpcXE1PUlBILUFJXFxmcm9udGVuZFxcbm9kZV9tb2R1bGVzXFxAZm9udHNvdXJjZVxcYmUtdmlldG5hbS1wcm9cXDUwMC5jc3MiXSwic291cmNlc0NvbnRlbnQiOlsiZXhwb3J0IGRlZmF1bHQgXCIxM2M4YjA2YTg5MmFcIlxuaWYgKG1vZHVsZS5ob3QpIHsgbW9kdWxlLmhvdC5hY2NlcHQoKSB9XG4iXSwibmFtZXMiOltdLCJpZ25vcmVMaXN0IjpbMF0sInNvdXJjZVJvb3QiOiIifQ==\n//# sourceURL=webpack-internal:///(app-pages-browser)/./node_modules/@fontsource/be-vietnam-pro/500.css\n"));
+
+/***/ }),
+
+/***/ "(app-pages-browser)/./node_modules/@fontsource/be-vietnam-pro/600.css":
+/*!*********************************************************!*\
+  !*** ./node_modules/@fontsource/be-vietnam-pro/600.css ***!
+  \*********************************************************/
+/***/ ((module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+eval(__webpack_require__.ts("__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpack_require__.d(__webpack_exports__, {\n/* harmony export */   \"default\": () => (__WEBPACK_DEFAULT_EXPORT__)\n/* harmony export */ });\n/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (\"40c1ee50f4f6\");\nif (true) { module.hot.accept() }\n//# sourceURL=[module]\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiKGFwcC1wYWdlcy1icm93c2VyKS8uL25vZGVfbW9kdWxlcy9AZm9udHNvdXJjZS9iZS12aWV0bmFtLXByby82MDAuY3NzIiwibWFwcGluZ3MiOiI7Ozs7QUFBQSxpRUFBZSxjQUFjO0FBQzdCLElBQUksSUFBVSxJQUFJLGlCQUFpQiIsInNvdXJjZXMiOlsiRDpcXE1PUlBILUFJXFxmcm9udGVuZFxcbm9kZV9tb2R1bGVzXFxAZm9udHNvdXJjZVxcYmUtdmlldG5hbS1wcm9cXDYwMC5jc3MiXSwic291cmNlc0NvbnRlbnQiOlsiZXhwb3J0IGRlZmF1bHQgXCI0MGMxZWU1MGY0ZjZcIlxuaWYgKG1vZHVsZS5ob3QpIHsgbW9kdWxlLmhvdC5hY2NlcHQoKSB9XG4iXSwibmFtZXMiOltdLCJpZ25vcmVMaXN0IjpbMF0sInNvdXJjZVJvb3QiOiIifQ==\n//# sourceURL=webpack-internal:///(app-pages-browser)/./node_modules/@fontsource/be-vietnam-pro/600.css\n"));
+
+/***/ }),
+
+/***/ "(app-pages-browser)/./node_modules/@fontsource/be-vietnam-pro/700.css":
+/*!*********************************************************!*\
+  !*** ./node_modules/@fontsource/be-vietnam-pro/700.css ***!
+  \*********************************************************/
+/***/ ((module, __webpack_exports__, __webpack_require__) => {
+
+"use strict";
+eval(__webpack_require__.ts("__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpack_require__.d(__webpack_exports__, {\n/* harmony export */   \"default\": () => (__WEBPACK_DEFAULT_EXPORT__)\n/* harmony export */ });\n/* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (\"7a40eb7c1b05\");\nif (true) { module.hot.accept() }\n//# sourceURL=[module]\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiKGFwcC1wYWdlcy1icm93c2VyKS8uL25vZGVfbW9kdWxlcy9AZm9udHNvdXJjZS9iZS12aWV0bmFtLXByby83MDAuY3NzIiwibWFwcGluZ3MiOiI7Ozs7QUFBQSxpRUFBZSxjQUFjO0FBQzdCLElBQUksSUFBVSxJQUFJLGlCQUFpQiIsInNvdXJjZXMiOlsiRDpcXE1PUlBILUFJXFxmcm9udGVuZFxcbm9kZV9tb2R1bGVzXFxAZm9udHNvdXJjZVxcYmUtdmlldG5hbS1wcm9cXDcwMC5jc3MiXSwic291cmNlc0NvbnRlbnQiOlsiZXhwb3J0IGRlZmF1bHQgXCI3YTQwZWI3YzFiMDVcIlxuaWYgKG1vZHVsZS5ob3QpIHsgbW9kdWxlLmhvdC5hY2NlcHQoKSB9XG4iXSwibmFtZXMiOltdLCJpZ25vcmVMaXN0IjpbMF0sInNvdXJjZVJvb3QiOiIifQ==\n//# sourceURL=webpack-internal:///(app-pages-browser)/./node_modules/@fontsource/be-vietnam-pro/700.css\n"));
+
+/***/ }),
+
+/***/ "(app-pages-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-client-entry-loader.js?modules=%7B%22request%22%3A%22D%3A%5C%5CMORPH-AI%5C%5Cfrontend%5C%5Cnode_modules%5C%5C%40fontsource%5C%5Cbe-vietnam-pro%5C%5C400.css%22%2C%22ids%22%3A%5B%5D%7D&modules=%7B%22request%22%3A%22D%3A%5C%5CMORPH-AI%5C%5Cfrontend%5C%5Cnode_modules%5C%5C%40fontsource%5C%5Cbe-vietnam-pro%5C%5C500.css%22%2C%22ids%22%3A%5B%5D%7D&modules=%7B%22request%22%3A%22D%3A%5C%5CMORPH-AI%5C%5Cfrontend%5C%5Cnode_modules%5C%5C%40fontsource%5C%5Cbe-vietnam-pro%5C%5C600.css%22%2C%22ids%22%3A%5B%5D%7D&modules=%7B%22request%22%3A%22D%3A%5C%5CMORPH-AI%5C%5Cfrontend%5C%5Cnode_modules%5C%5C%40fontsource%5C%5Cbe-vietnam-pro%5C%5C700.css%22%2C%22ids%22%3A%5B%5D%7D&modules=%7B%22request%22%3A%22D%3A%5C%5CMORPH-AI%5C%5Cfrontend%5C%5Capp%5C%5Cglobals.css%22%2C%22ids%22%3A%5B%5D%7D&server=false!":
+/*!*******************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************!*\
+  !*** ./node_modules/next/dist/build/webpack/loaders/next-flight-client-entry-loader.js?modules=%7B%22request%22%3A%22D%3A%5C%5CMORPH-AI%5C%5Cfrontend%5C%5Cnode_modules%5C%5C%40fontsource%5C%5Cbe-vietnam-pro%5C%5C400.css%22%2C%22ids%22%3A%5B%5D%7D&modules=%7B%22request%22%3A%22D%3A%5C%5CMORPH-AI%5C%5Cfrontend%5C%5Cnode_modules%5C%5C%40fontsource%5C%5Cbe-vietnam-pro%5C%5C500.css%22%2C%22ids%22%3A%5B%5D%7D&modules=%7B%22request%22%3A%22D%3A%5C%5CMORPH-AI%5C%5Cfrontend%5C%5Cnode_modules%5C%5C%40fontsource%5C%5Cbe-vietnam-pro%5C%5C600.css%22%2C%22ids%22%3A%5B%5D%7D&modules=%7B%22request%22%3A%22D%3A%5C%5CMORPH-AI%5C%5Cfrontend%5C%5Cnode_modules%5C%5C%40fontsource%5C%5Cbe-vietnam-pro%5C%5C700.css%22%2C%22ids%22%3A%5B%5D%7D&modules=%7B%22request%22%3A%22D%3A%5C%5CMORPH-AI%5C%5Cfrontend%5C%5Capp%5C%5Cglobals.css%22%2C%22ids%22%3A%5B%5D%7D&server=false! ***!
+  \*******************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************/
+/***/ ((__unused_webpack_module, __unused_webpack_exports, __webpack_require__) => {
+
+eval(__webpack_require__.ts("Promise.resolve(/*! import() eager */).then(__webpack_require__.bind(__webpack_require__, /*! ./node_modules/@fontsource/be-vietnam-pro/400.css */ \"(app-pages-browser)/./node_modules/@fontsource/be-vietnam-pro/400.css\"));\n;\nPromise.resolve(/*! import() eager */).then(__webpack_require__.bind(__webpack_require__, /*! ./node_modules/@fontsource/be-vietnam-pro/500.css */ \"(app-pages-browser)/./node_modules/@fontsource/be-vietnam-pro/500.css\"));\n;\nPromise.resolve(/*! import() eager */).then(__webpack_require__.bind(__webpack_require__, /*! ./node_modules/@fontsource/be-vietnam-pro/600.css */ \"(app-pages-browser)/./node_modules/@fontsource/be-vietnam-pro/600.css\"));\n;\nPromise.resolve(/*! import() eager */).then(__webpack_require__.bind(__webpack_require__, /*! ./node_modules/@fontsource/be-vietnam-pro/700.css */ \"(app-pages-browser)/./node_modules/@fontsource/be-vietnam-pro/700.css\"));\n;\nPromise.resolve(/*! import() eager */).then(__webpack_require__.bind(__webpack_require__, /*! ./app/globals.css */ \"(app-pages-browser)/./app/globals.css\"));\n//# sourceURL=[module]\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiKGFwcC1wYWdlcy1icm93c2VyKS8uL25vZGVfbW9kdWxlcy9uZXh0L2Rpc3QvYnVpbGQvd2VicGFjay9sb2FkZXJzL25leHQtZmxpZ2h0LWNsaWVudC1lbnRyeS1sb2FkZXIuanM/bW9kdWxlcz0lN0IlMjJyZXF1ZXN0JTIyJTNBJTIyRCUzQSU1QyU1Q01PUlBILUFJJTVDJTVDZnJvbnRlbmQlNUMlNUNub2RlX21vZHVsZXMlNUMlNUMlNDBmb250c291cmNlJTVDJTVDYmUtdmlldG5hbS1wcm8lNUMlNUM0MDAuY3NzJTIyJTJDJTIyaWRzJTIyJTNBJTVCJTVEJTdEJm1vZHVsZXM9JTdCJTIycmVxdWVzdCUyMiUzQSUyMkQlM0ElNUMlNUNNT1JQSC1BSSU1QyU1Q2Zyb250ZW5kJTVDJTVDbm9kZV9tb2R1bGVzJTVDJTVDJTQwZm9udHNvdXJjZSU1QyU1Q2JlLXZpZXRuYW0tcHJvJTVDJTVDNTAwLmNzcyUyMiUyQyUyMmlkcyUyMiUzQSU1QiU1RCU3RCZtb2R1bGVzPSU3QiUyMnJlcXVlc3QlMjIlM0ElMjJEJTNBJTVDJTVDTU9SUEgtQUklNUMlNUNmcm9udGVuZCU1QyU1Q25vZGVfbW9kdWxlcyU1QyU1QyU0MGZvbnRzb3VyY2UlNUMlNUNiZS12aWV0bmFtLXBybyU1QyU1QzYwMC5jc3MlMjIlMkMlMjJpZHMlMjIlM0ElNUIlNUQlN0QmbW9kdWxlcz0lN0IlMjJyZXF1ZXN0JTIyJTNBJTIyRCUzQSU1QyU1Q01PUlBILUFJJTVDJTVDZnJvbnRlbmQlNUMlNUNub2RlX21vZHVsZXMlNUMlNUMlNDBmb250c291cmNlJTVDJTVDYmUtdmlldG5hbS1wcm8lNUMlNUM3MDAuY3NzJTIyJTJDJTIyaWRzJTIyJTNBJTVCJTVEJTdEJm1vZHVsZXM9JTdCJTIycmVxdWVzdCUyMiUzQSUyMkQlM0ElNUMlNUNNT1JQSC1BSSU1QyU1Q2Zyb250ZW5kJTVDJTVDYXBwJTVDJTVDZ2xvYmFscy5jc3MlMjIlMkMlMjJpZHMlMjIlM0ElNUIlNUQlN0Qmc2VydmVyPWZhbHNlISIsIm1hcHBpbmdzIjoiQUFBQSw0TkFBK0c7QUFDL0c7QUFDQSw0TkFBK0c7QUFDL0c7QUFDQSw0TkFBK0c7QUFDL0c7QUFDQSw0TkFBK0c7QUFDL0c7QUFDQSw0SkFBNkUiLCJzb3VyY2VzIjpbIiJdLCJzb3VyY2VzQ29udGVudCI6WyJpbXBvcnQoLyogd2VicGFja01vZGU6IFwiZWFnZXJcIiAqLyBcIkQ6XFxcXE1PUlBILUFJXFxcXGZyb250ZW5kXFxcXG5vZGVfbW9kdWxlc1xcXFxAZm9udHNvdXJjZVxcXFxiZS12aWV0bmFtLXByb1xcXFw0MDAuY3NzXCIpO1xuO1xuaW1wb3J0KC8qIHdlYnBhY2tNb2RlOiBcImVhZ2VyXCIgKi8gXCJEOlxcXFxNT1JQSC1BSVxcXFxmcm9udGVuZFxcXFxub2RlX21vZHVsZXNcXFxcQGZvbnRzb3VyY2VcXFxcYmUtdmlldG5hbS1wcm9cXFxcNTAwLmNzc1wiKTtcbjtcbmltcG9ydCgvKiB3ZWJwYWNrTW9kZTogXCJlYWdlclwiICovIFwiRDpcXFxcTU9SUEgtQUlcXFxcZnJvbnRlbmRcXFxcbm9kZV9tb2R1bGVzXFxcXEBmb250c291cmNlXFxcXGJlLXZpZXRuYW0tcHJvXFxcXDYwMC5jc3NcIik7XG47XG5pbXBvcnQoLyogd2VicGFja01vZGU6IFwiZWFnZXJcIiAqLyBcIkQ6XFxcXE1PUlBILUFJXFxcXGZyb250ZW5kXFxcXG5vZGVfbW9kdWxlc1xcXFxAZm9udHNvdXJjZVxcXFxiZS12aWV0bmFtLXByb1xcXFw3MDAuY3NzXCIpO1xuO1xuaW1wb3J0KC8qIHdlYnBhY2tNb2RlOiBcImVhZ2VyXCIgKi8gXCJEOlxcXFxNT1JQSC1BSVxcXFxmcm9udGVuZFxcXFxhcHBcXFxcZ2xvYmFscy5jc3NcIik7XG4iXSwibmFtZXMiOltdLCJpZ25vcmVMaXN0IjpbXSwic291cmNlUm9vdCI6IiJ9\n//# sourceURL=webpack-internal:///(app-pages-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-client-entry-loader.js?modules=%7B%22request%22%3A%22D%3A%5C%5CMORPH-AI%5C%5Cfrontend%5C%5Cnode_modules%5C%5C%40fontsource%5C%5Cbe-vietnam-pro%5C%5C400.css%22%2C%22ids%22%3A%5B%5D%7D&modules=%7B%22request%22%3A%22D%3A%5C%5CMORPH-AI%5C%5Cfrontend%5C%5Cnode_modules%5C%5C%40fontsource%5C%5Cbe-vietnam-pro%5C%5C500.css%22%2C%22ids%22%3A%5B%5D%7D&modules=%7B%22request%22%3A%22D%3A%5C%5CMORPH-AI%5C%5Cfrontend%5C%5Cnode_modules%5C%5C%40fontsource%5C%5Cbe-vietnam-pro%5C%5C600.css%22%2C%22ids%22%3A%5B%5D%7D&modules=%7B%22request%22%3A%22D%3A%5C%5CMORPH-AI%5C%5Cfrontend%5C%5Cnode_modules%5C%5C%40fontsource%5C%5Cbe-vietnam-pro%5C%5C700.css%22%2C%22ids%22%3A%5B%5D%7D&modules=%7B%22request%22%3A%22D%3A%5C%5CMORPH-AI%5C%5Cfrontend%5C%5Capp%5C%5Cglobals.css%22%2C%22ids%22%3A%5B%5D%7D&server=false!\n"));
+
+/***/ })
+
+},
+/******/ __webpack_require__ => { // webpackRuntimeModules
+/******/ var __webpack_exec__ = (moduleId) => (__webpack_require__(__webpack_require__.s = moduleId))
+/******/ __webpack_require__.O(0, ["main-app"], () => (__webpack_exec__("(app-pages-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-client-entry-loader.js?modules=%7B%22request%22%3A%22D%3A%5C%5CMORPH-AI%5C%5Cfrontend%5C%5Cnode_modules%5C%5C%40fontsource%5C%5Cbe-vietnam-pro%5C%5C400.css%22%2C%22ids%22%3A%5B%5D%7D&modules=%7B%22request%22%3A%22D%3A%5C%5CMORPH-AI%5C%5Cfrontend%5C%5Cnode_modules%5C%5C%40fontsource%5C%5Cbe-vietnam-pro%5C%5C500.css%22%2C%22ids%22%3A%5B%5D%7D&modules=%7B%22request%22%3A%22D%3A%5C%5CMORPH-AI%5C%5Cfrontend%5C%5Cnode_modules%5C%5C%40fontsource%5C%5Cbe-vietnam-pro%5C%5C600.css%22%2C%22ids%22%3A%5B%5D%7D&modules=%7B%22request%22%3A%22D%3A%5C%5CMORPH-AI%5C%5Cfrontend%5C%5Cnode_modules%5C%5C%40fontsource%5C%5Cbe-vietnam-pro%5C%5C700.css%22%2C%22ids%22%3A%5B%5D%7D&modules=%7B%22request%22%3A%22D%3A%5C%5CMORPH-AI%5C%5Cfrontend%5C%5Capp%5C%5Cglobals.css%22%2C%22ids%22%3A%5B%5D%7D&server=false!")));
+/******/ var __webpack_exports__ = __webpack_require__.O();
+/******/ _N_E = __webpack_exports__;
+/******/ }
+]);

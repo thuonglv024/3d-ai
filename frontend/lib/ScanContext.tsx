@@ -62,9 +62,14 @@ export function computeClientSizeAdvice(
   chart: Product["chart"]
 ): SizeAdviceResult {
   const isBottom = chart.garment === "bottom";
-  const required = isBottom ? (["waist_cm", "hip_cm"] as const) : (["chest_cm", "waist_cm"] as const);
+  const hasHipInChart = isBottom || chart.rows.some((r) => r.hip_cm != null);
+  const required: ("chest_cm" | "waist_cm" | "hip_cm")[] = isBottom
+    ? ["waist_cm", "hip_cm"]
+    : hasHipInChart
+      ? ["chest_cm", "waist_cm", "hip_cm"]
+      : ["chest_cm", "waist_cm"];
 
-  if (isBottom && (measurements.hip_cm == null || measurements.hip_cm === undefined)) {
+  if (hasHipInChart && (measurements.hip_cm == null || measurements.hip_cm <= 0)) {
     return {
       status: "insufficient_measurements",
       candidates: [],
@@ -75,12 +80,13 @@ export function computeClientSizeAdvice(
   }
 
   for (const dim of required) {
-    if (measurements[dim] == null || measurements[dim] === undefined) {
+    const val = measurements[dim];
+    if (val == null || val <= 0) {
       return {
         status: "insufficient_measurements",
         candidates: [],
         chart_name: chart.name,
-        message: isBottom ? "Chưa đủ dữ liệu để gợi ý (cần số đo vòng mông)" : "Chưa đủ số đo để đối chiếu bảng size.",
+        message: dim === "hip_cm" ? "Chưa đủ dữ liệu để gợi ý (cần số đo vòng mông)" : "Chưa đủ số đo để đối chiếu bảng size.",
       };
     }
   }
@@ -170,10 +176,8 @@ export function ScanProvider({ children }: { children: React.ReactNode }) {
   const setJob = useCallback(
     (newJob: Job | null) => {
       setJobState(newJob);
-      if (!newJob) {
-        // Clear dependent size advice if session ends or is reset
-        setAdviceCache({});
-      } else if (newJob.id && newJob.guest_token) {
+      setAdviceCache({});
+      if (newJob && newJob.id && newJob.guest_token && !newJob.user_id) {
         setGuestTokens((prev) => ({ ...prev, [newJob.id]: newJob.guest_token! }));
         if (typeof window !== "undefined") {
           try {
@@ -194,7 +198,7 @@ export function ScanProvider({ children }: { children: React.ReactNode }) {
 
     async function poll() {
       try {
-        const token = job!.guest_token || getGuestToken(job!.id);
+        const token = job!.user_id ? "" : job!.guest_token || getGuestToken(job!.id);
         const headers: Record<string, string> = {};
         if (token) headers["X-Guest-Token"] = token;
         const r = await fetch(`/api/scans/${job!.id}`, {
@@ -238,12 +242,12 @@ export function ScanProvider({ children }: { children: React.ReactNode }) {
       alive = false;
       clearTimeout(timer);
     };
-  }, [job?.id, job?.status, job?.guest_token, getGuestToken]);
+  }, [job?.id, job?.status, job?.guest_token, job?.user_id, getGuestToken]);
 
   const clearScanSession = useCallback(async () => {
     if (job?.id) {
       try {
-        const token = job.guest_token || getGuestToken(job.id);
+        const token = job.user_id ? "" : job.guest_token || getGuestToken(job.id);
         const headers: Record<string, string> = {};
         if (token) headers["X-Guest-Token"] = token;
         await fetch(`/api/scans/${job.id}`, {
@@ -258,7 +262,7 @@ export function ScanProvider({ children }: { children: React.ReactNode }) {
     setJobState(null);
     setAdviceCache({});
     setJobError("");
-  }, [job?.id, job?.guest_token, getGuestToken]);
+  }, [job?.id, job?.guest_token, job?.user_id, getGuestToken]);
 
   const fetchAdviceForProduct = useCallback(
     async (product: Product, currentJob?: Job | null): Promise<SizeAdviceResult> => {
@@ -271,13 +275,13 @@ export function ScanProvider({ children }: { children: React.ReactNode }) {
         };
       }
 
-      // Composite cache key
-      const cacheKey = `${activeJob.id}:${product.id}:${product.chart.name}:${product.chart.rows.length}`;
+      const modeKey = activeJob.body_profile?.capture_mode || "default";
+      const cacheKey = `${activeJob.id}:${modeKey}:${product.id}:${product.chart.name}:${product.chart.rows.length}`;
       if (adviceCache[cacheKey]) {
         return adviceCache[cacheKey];
       }
 
-      const token = getGuestToken(activeJob.id) || activeJob.guest_token || "";
+      const token = activeJob.user_id ? "" : getGuestToken(activeJob.id) || activeJob.guest_token || "";
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (token) {
         headers["X-Guest-Token"] = token;
@@ -291,11 +295,12 @@ export function ScanProvider({ children }: { children: React.ReactNode }) {
           body: JSON.stringify({
             product_id: product.id,
             scan_id: activeJob.id,
+            guest_token: token || undefined,
             chart: product.chart,
           }),
         });
 
-        if (res.status === 404 || res.status === 405) {
+        if (res.status === 405) {
           res = await fetch(`/api/scans/${activeJob.id}/size-advice`, {
             method: "POST",
             headers,
@@ -314,15 +319,24 @@ export function ScanProvider({ children }: { children: React.ReactNode }) {
 
         if (res.ok) {
           const data = (await res.json()) as SizeAdviceResult;
+          const needsHip =
+            product.chart.garment === "bottom" ||
+            product.chart.rows.some((r) => r.hip_cm != null);
           if (
             data.status === "insufficient_measurements" &&
-            (product.chart.garment === "bottom" || activeJob.measurements?.hip_cm == null)
+            (needsHip || activeJob.measurements?.hip_cm == null)
           ) {
-            data.message = "Chưa đủ dữ liệu để gợi ý (cần số đo vòng mông)";
+            data.message = data.message || "Chưa đủ dữ liệu để gợi ý (cần số đo vòng mông)";
           }
           setAdviceCache((prev) => ({ ...prev, [cacheKey]: data }));
           return data;
         }
+
+        setAdviceCache((prev) => {
+          const next = { ...prev };
+          delete next[cacheKey];
+          return next;
+        });
 
         let detailMsg = "Không thể lấy gợi ý size từ máy chủ.";
         try {
@@ -333,13 +347,21 @@ export function ScanProvider({ children }: { children: React.ReactNode }) {
         } catch {}
         throw new Error(detailMsg);
       } catch (err) {
+        setAdviceCache((prev) => {
+          const next = { ...prev };
+          delete next[cacheKey];
+          return next;
+        });
         if (err instanceof Error && err.message === "Phiên đã hết hạn hoặc máy chủ đã khởi động lại. Vui lòng quét lại.") {
+          throw err;
+        }
+        if (err instanceof Error && err.message) {
           throw err;
         }
         throw new Error("Lỗi kết nối máy chủ khi đối chiếu size. Vui lòng thử lại.");
       }
     },
-    [job, adviceCache]
+    [job, adviceCache, getGuestToken]
   );
 
   const saveScanToProfile = useCallback(
@@ -388,7 +410,34 @@ export function ScanProvider({ children }: { children: React.ReactNode }) {
           return { success: false, error: errMsg };
         }
 
-        setSavedScans((prev) => ({ ...prev, [scanId]: "saved" }));
+        let savedId: string | undefined;
+        try {
+          const savedData = await res.json();
+          if (savedData?.id) {
+            savedId = savedData.id;
+          }
+        } catch {}
+
+        setSavedScans((prev) => ({
+          ...prev,
+          [scanId]: "saved",
+          ...(savedId ? { [savedId]: "saved" } : {}),
+        }));
+        setGuestTokens((prev) => {
+          const next = { ...prev };
+          delete next[scanId];
+          return next;
+        });
+        if (typeof window !== "undefined") {
+          try {
+            sessionStorage.removeItem(`morph_scan_guest_token_${scanId}`);
+          } catch {}
+        }
+        setJobState((prev) =>
+          prev && prev.id === scanId
+            ? { ...prev, guest_token: undefined, user_id: user?.id || prev.user_id }
+            : prev
+        );
         return { success: true };
       } catch {
         const networkErrMsg = "Lỗi kết nối mạng khi lưu hồ sơ. Vui lòng thử lại.";
@@ -397,7 +446,7 @@ export function ScanProvider({ children }: { children: React.ReactNode }) {
         return { success: false, error: networkErrMsg };
       }
     },
-    [getGuestToken]
+    [getGuestToken, user?.id]
   );
 
   const clearPersonalScanData = useCallback(() => {
@@ -447,16 +496,24 @@ export function ScanProvider({ children }: { children: React.ReactNode }) {
     }) => {
       const measMap: Record<string, number | undefined> = {};
       scan.measurements.forEach((m) => {
-        if (m.value_cm !== null && m.source !== "template_model") {
+        if (
+          m.value_cm !== null &&
+          m.value_cm > 0 &&
+          m.source !== "template_model" &&
+          m.source !== "unavailable" &&
+          !(scan.capture_mode === "upper_body" && m.metric_key === "hip_cm" && m.source !== "user_input")
+        ) {
           measMap[m.metric_key] = m.value_cm;
         }
       });
       measMap.height_cm = scan.height_input_cm;
 
+      const sessionJobId = scan.source_scan_id || scan.id;
       const sessionJob: Job = {
-        id: scan.source_scan_id || scan.id,
+        id: sessionJobId,
         status: "completed",
         stage: "complete",
+        user_id: user?.id || null,
         measurements: measMap,
         body_profile: {
           capture_mode: scan.capture_mode,
@@ -473,9 +530,13 @@ export function ScanProvider({ children }: { children: React.ReactNode }) {
 
       setJobState(sessionJob);
       setAdviceCache({});
-      setSavedScans((prev) => ({ ...prev, [scan.id]: "saved" }));
+      setSavedScans((prev) => ({
+        ...prev,
+        [scan.id]: "saved",
+        ...(scan.source_scan_id ? { [scan.source_scan_id]: "saved" } : {}),
+      }));
     },
-    []
+    [user?.id]
   );
 
   const openScanModal = useCallback((product: Product) => {

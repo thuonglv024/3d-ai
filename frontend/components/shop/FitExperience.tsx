@@ -33,7 +33,11 @@ export default function FitExperience({
   onOpenSizeChart?: () => void;
   onClose?: () => void;
 }) {
+  const requiresHipMeasurement = Boolean(
+    product.chart?.rows?.some((row) => Boolean(row.hip_cm))
+  );
   const isFullBodyRequired = Boolean(
+    requiresHipMeasurement ||
     product.chart?.garment === "bottom" ||
     (product.chart?.garment as string) === "dress" ||
     ["cat-quan", "cat-vay", "quan", "vay"].includes(product.category) ||
@@ -288,10 +292,12 @@ export default function FitExperience({
             <div className="scan-fullbody-requirement-card" role="region" aria-label="Yêu cầu chụp toàn thân">
               <div className="requirement-header">
                 <Sparkles size={18} className="requirement-gold-icon" />
-                <h3>Yêu cầu chụp toàn thân cho quần, chân váy & đầm</h3>
+                <h3>Khuyên chọn Camera · toàn thân (full_body) cho quần, chân váy & đầm</h3>
               </div>
               <p className="requirement-desc">
-                Để chọn size chuẩn xác, MORPH cần cả số đo vòng eo và vòng mông. Chế độ webcam thân trên chỉ ước lượng từ đầu đến cạp quần và không đo được vòng mông thực tế.
+                Sản phẩm này cần số đo phần dưới (vòng eo & vòng mông). Hãy chọn chế độ{" "}
+                <strong>Camera · toàn thân (full_body)</strong> ngay từ bước chuẩn bị để MORPH đo trực
+                tiếp vòng mông từ hai góc chụp. Chế độ webcam thân trên chỉ quét từ đầu đến cạp quần.
               </p>
               <div className="requirement-tips-box">
                 <strong className="requirement-tips-title">Gợi ý góc đặt thiết bị:</strong>
@@ -312,18 +318,32 @@ export default function FitExperience({
             <div className="scan-upperbody-warning-card" role="alert">
               <div className="warning-card-head">
                 <AlertCircle size={18} />
-                <strong>Cảnh báo: Không đo được vòng mông ở chế độ thân trên</strong>
+                <strong>Cảnh báo trên Laptop: Chế độ thân trên không đo được vòng mông</strong>
               </div>
               <p>
-                Sản phẩm này cần số đo vòng mông để gợi ý size. Khi chọn chế độ webcam thân trên, hệ thống sẽ không đo được mông và không thể gợi ý size tự động.
+                Chế độ <strong>Webcam · thân trên (upper_body)</strong> sẽ không đo được vòng mông thực tế
+                và <strong>hệ thống sẽ từ chối tự động gợi ý size quần/váy từ số đo mẫu 3D</strong>{" "}
+                (<code>template_model</code>). Bạn cần chuyển sang quét toàn thân (<code>full_body</code>)
+                hoặc tự đối chiếu bảng size của sản phẩm.
               </p>
-              <button
-                type="button"
-                className="scan-switch-mode-btn"
-                onClick={() => s.setCaptureMode("full_body")}
-              >
-                Chuyển lại sang Camera toàn thân →
-              </button>
+              <div className="scan-warning-actions">
+                <button
+                  type="button"
+                  className="scan-switch-mode-btn"
+                  onClick={() => s.setCaptureMode("full_body")}
+                >
+                  Chuyển lại sang Camera · toàn thân (full_body) →
+                </button>
+                {onOpenSizeChart && (
+                  <button
+                    type="button"
+                    className="scan-switch-mode-btn is-secondary"
+                    onClick={onOpenSizeChart}
+                  >
+                    Tự đối chiếu bảng size
+                  </button>
+                )}
+              </div>
             </div>
           )}
 
@@ -399,8 +419,9 @@ export default function FitExperience({
               onChange={(e) => s.setConsent(e.target.checked)}
             />
             <span>
-              Tôi đồng ý gửi khung hình và hai ảnh chụp tới máy chủ để hướng dẫn tư thế, ước lượng
-              hình thể.
+              Tôi đồng ý gửi khung hình kiểm tra tư thế và hai ảnh chụp tới máy chủ MORPH để phân tích
+              hình thể 3D (không lưu trữ lâu dài hồ sơ ảnh thô; mô hình tạm thời tự động xóa sau tối đa
+              1 giờ hoặc xóa ngay khi bấm &ldquo;Chụp lại&rdquo; / &ldquo;Xóa&rdquo;).
             </span>
           </label>
           <button
@@ -435,8 +456,10 @@ export default function FitExperience({
           <div className="scan-privacy">
             <ShieldCheck size={16} />
             <p>
-              Không lưu hồ sơ ảnh. Upload camera có thể dùng file tạm; kết quả giữ tối đa một giờ và
-              có thể xóa sớm.
+              Quyền riêng tư &amp; vòng đời dữ liệu: Khung hình kiểm tra tư thế và hai ảnh chụp được gửi
+              tới máy chủ MORPH để phân tích hình thể 3D, không lưu trữ lâu dài hồ sơ ảnh thô. Mô hình
+              tạm thời tự động xóa sau tối đa 1 giờ (hoặc xóa ngay khi bấm &ldquo;Chụp lại&rdquo; /
+              &ldquo;Xóa&rdquo;).
             </p>
           </div>
         </div>

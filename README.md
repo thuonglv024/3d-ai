@@ -1,196 +1,143 @@
-# MORPH Studio — Nền tảng Thời trang & Ước lượng Hình thể 3D
+# MORPH AI — Studio Thời Trang & Tư Vấn Kích Cỡ 3D
 
-> **Tài liệu bàn giao cốt lõi**:
-> - [CAMERA_FLOW_HANDOFF.md](CAMERA_FLOW_HANDOFF.md) — Quy trình chụp camera chuẩn: chính diện → xoay 90° chụp nghiêng, đếm ngược tự động.
-> - [UPPER_BODY_HANDOFF.md](UPPER_BODY_HANDOFF.md) — Chế độ webcam thân trên mặc định, tùy chọn toàn thân, workspace đo 3D.
-> - [COMMERCE_HANDOFF.md](COMMERCE_HANDOFF.md) — Phạm vi cửa hàng demo local, catalog 160 sản phẩm, giỏ hàng, checkout.
-> - [AGENTS.md](AGENTS.md) — Nguyên tắc và ranh giới kỹ thuật bắt buộc cho toàn bộ agent và developer.
-> - [HUONG_DAN_CHAY.md](HUONG_DAN_CHAY.md) — Hướng dẫn chi tiết môi trường Python venv, Node.js và debug F5.
+**MORPH AI** là nền tảng cửa hàng thời trang điện tử tích hợp công nghệ **Quét Hình Thể 3D qua Webcam (Camera-Only)** và **Phân Tích Số Đo & Gợi Ý Kích Cỡ (Size Recommendation)**. Hệ thống kết hợp trải nghiệm mua sắm phong cách Luxury Editorial (**Warm Ivory & Champagne Gold**) với không gian đo đạc chuyên sâu (**Dark Measurement Workspace**).
 
 ---
 
-## 1. Giới thiệu tổng quan
+## 1. Tính năng nổi bật
 
-**MORPH Studio** là ứng dụng web thương mại điện tử thời trang tối giản tích hợp công nghệ thị giác máy tính và đồ họa 3D:
-- **Cửa hàng thời trang hiện đại**: 160 sản phẩm thời trang cao cấp thuộc 5 danh mục (Áo thun, Sơ mi, Áo khoác, Quần, Váy/Đầm). 100% sử dụng ảnh chụp studio thật chất lượng cao (tỷ lệ 3:4 chuẩn packshot, kèm ảnh zoom phóng to chi tiết chất liệu/cổ áo cắt từ chính trang phục đó).
-- **Bộ máy ước lượng số đo & đề xuất size**: Chụp 2 góc qua webcam (chính diện & nghiêng), bóc tách silhouette bằng MediaPipe, ước lượng tiết diện cơ thể elip và biến dạng lưới MakeHuman template xuất file 3D GLB.
-- **Trải nghiệm đo 3D tương tác**: BodyViewer WebGL cho phép xoay 360°, hiển thị đường thước đo ngực/eo/mông trực quan trên thân người mẫu, so sánh độ vừa vặn với bảng size chuẩn của từng món đồ.
-- **Thương mại khép kín nội bộ**: Giỏ hàng tương tác, Wishlist Drawer với tính năng chọn biến thể màu/size trực tiếp, quy trình Checkout kiểm tra tồn kho và tạo đơn hàng cục bộ qua SQLite transaction an toàn.
-
----
-
-## 2. Kiến trúc hệ thống
-
-```mermaid
-graph TD
-    Client["Trình duyệt người dùng (Next.js 16 + React 19)"]
-    APIProxy["Next.js Rewrite (/api/*)"]
-    FastAPI["FastAPI Backend (Python 3.11)"]
-    MediaPipe["MediaPipe Pose & Segmentation"]
-    MakeHuman["MakeHuman Template Deformer"]
-    SQLite[(".runtime/orders.db (SQLite)")]
-
-    Client -->|Giao diện & 3D Viewer| APIProxy
-    APIProxy -->|Forward API request| FastAPI
-    FastAPI -->|Catalog, Auth, Orders, History| SQLite
-    FastAPI -->|Webcam Frames| MediaPipe
-    MediaPipe -->|Silhouette & Landmarking| MakeHuman
-    MakeHuman -->|Export GLB 3D + Measurements| Client
-```
-
-### Frontend (`frontend/`)
-- **Framework**: Next.js 16 (App Router), React 19, TypeScript.
-- **Styling & UI**: CSS scoped/modular phong cách Modern Studio Luxury (Warm Ivory `#f9f6f0`, Charcoal `#1f2220`, Champagne Gold `#c5a880`). Hỗ trợ Dark Mode, responsive hoàn hảo trên Mobile (360px..430px), Tablet (768px..1100px) và Desktop.
-- **Đồ họa 3D**: Three.js, `@react-three/fiber`, `@react-three/drei` render mô hình avatar GLB với điều khiển camera, bật/tắt lưới wireframe, hiển thị thước đo vòng 3D.
-- **Accessibility & UX**: WAI-ARIA chuẩn mực (`role="dialog"`, `aria-invalid`, `aria-describedby`, focus trap, scroll lock, điều hướng bằng phím mũi tên).
-
-### Backend (`backend/`)
-- **Framework**: FastAPI, Uvicorn, Pydantic v2.
-- **Thị giác máy tính**: MediaPipe Pose/Segmentation chạy CPU tối ưu, không phụ thuộc GPU rời hay dịch vụ cloud tính phí.
-- **Cơ sở dữ liệu**: SQLite (`.runtime/orders.db`) với hệ thống migration tự động (`app/db.py`), kết nối transaction an toàn (`BEGIN IMMEDIATE;`).
-- **Xác thực**: JWT Bearer token kết hợp cookie HTTP-only, mã hóa mật khẩu salted pbkdf2_sha256.
+- **Cửa hàng Thời trang 160 Sản phẩm**:
+  - Danh mục 160 sản phẩm (80 Nam / 80 Nữ, chia đều 10 danh mục $\times$ 8 sản phẩm) với đầy đủ biến thể màu sắc, tồn kho theo size và bảng thông số `size_chart` riêng cho từng sản phẩm.
+  - Bộ lọc đa chiều theo giới tính, danh mục, khoảng giá, từ khóa tìm kiếm và danh sách yêu thích (**Wishlist**) đồng bộ mượt mà với giỏ hàng.
+- **Quét Hình Thể 3D Tự Động Qua Webcam (Camera-Only)**:
+  - Hỗ trợ chế độ mặc định **Quét Thân Trên (`upper_body`)** phù hợp góc webcam laptop/PC và chế độ **Quét Toàn Thân (`full_body`)**.
+  - Nhận diện tư thế thời gian thực qua **MediaPipe Pose & Selfie Segmentation**, hướng dẫn giọng nói/overlay trực quan và tự động đếm ngược chụp 2 góc: **Chính diện (Frontal)** $\rightarrow$ **Nghiêng 90° (Lateral)**.
+  - Không sử dụng tải ảnh tĩnh hay hiển thị mannequin mẫu trước khi quét.
+- **Pipeline Tối Ưu Hóa 3D Body Scan 3 Tầng (`< 15 ms` xử lý toán học)**:
+  - **Tầng 1 (Multi-Anchor Height Observation)**: Kết hợp mỏ neo Đỉnh đầu $\rightarrow$ Vai (`0.195 H`) và Vai $\rightarrow$ Hông (`0.290 H`) bằng hàm Huber/Tanh giới hạn biên độ, ổn định chiều cao tham chiếu với sai số $\le \pm 1.20\%$.
+  - **Tầng 2 (Camera Scale Fusion)**: Đồng bộ mốc giải phẫu và dùng chung hệ số quy đổi chiều cao giữa góc chính diện và góc nghiêng 90°, bảo toàn tuyệt đối tỷ lệ Độ sâu / Bề rộng ($D/W$).
+  - **Tầng 3 (Anatomical Calibration & PCHIP Mesh Fitting)**: Bù trừ độ lõm giải phẫu mặt cắt ngang (`ANATOMICAL_SECTION_FACTORS`) tại Ngực, Eo, Hông và biến dạng lưới 3D chuẩn **MakeHuman** xuất file `.glb` trực quan.
+- **Minh Bạch Nguồn Số Đo & Hồ Sơ Hình Thể (`BodyProfile`)**:
+  - Phân biệt rõ 5 nguồn dữ liệu: `photo_estimate`, `photo_with_prior`, `template_model`, `user_input`, `unavailable`.
+  - Cho phép nhập bổ sung số đo phần dưới (`hip_cm`, `inseam_cm`) khi quét `upper_body` để tư vấn chính xác cả quần, chân váy và đầm liền.
+- **Tài Khoản, Biểu Đồ Lịch Sử & Đặt Hàng Nguyên Tử**:
+  - Xác thực qua `HttpOnly` session cookie (`morph_session`, băm `SHA-256` trong SQLite, mật khẩu băm `PBKDF2-HMAC-SHA256` 200.000 vòng) kèm cơ chế khóa tạm thời khi đăng nhập sai quá 5 lần.
+  - Biểu đồ theo dõi tiến trình số đo ([`BodyChart.tsx`](file:///d:/MORPH-AI/frontend/components/shop/BodyChart.tsx)) với trục thời gian tuyến tính và gom cụm thông minh.
+  - Đặt hàng nguyên tử (`BEGIN IMMEDIATE;`), chống đặt trùng đơn qua `Idempotency-Key` và bảo vệ đơn hàng khách bằng `order_token`.
 
 ---
 
-## 3. Các phân hệ chức năng
+## 2. Cấu trúc thư mục dự án
 
-### A. Cửa hàng & Danh mục sản phẩm (`/`, `/products/[slug]`)
-- **160 sản phẩm thời trang**: Chia đều 32 sản phẩm cho 5 danh mục:
-  - Áo thun (`ao-thun`)
-  - Sơ mi (`so-mi`)
-  - Áo khoác (`ao-khoac`)
-  - Quần (`quan`)
-  - Váy & Đầm (`vay`)
-- **Chuẩn hóa media v2**: 320 ảnh packshot studio thời trang thật (160 ảnh toàn thân + 160 ảnh zoom chi tiết chất liệu), kích thước chuẩn 1200×1600px (tỷ lệ 3:4 portrait), ghi nhận minh bạch nguồn và giấy phép thương mại miễn phí tại `backend/scripts/catalog_asset_manifest_v2.json`.
-- **Bộ lọc thông minh**: Lọc danh mục, tìm kiếm theo tên/mô tả, lọc khoảng giá (hỗ trợ cả preset `<500k`, `500k-1m`, `>1m` và slider tuỳ chỉnh), lọc theo nhóm màu không dấu, lọc theo size được sắp xếp chuẩn công nghiệp (`XS` đến `3XL`, quần từ `28` đến `34`).
-
-### B. Giỏ hàng, Wishlist & Đặt hàng (`/cart`, `/checkout`, `/orders/[id]`)
-- **Cart Page & Cart Drawer**: Tăng/giảm số lượng, xóa item, đổi màu sắc và kích thước trực tiếp dựa trên tồn kho thực tế của sản phẩm.
-- **Wishlist Drawer**: Lưu món đồ yêu thích, hiển thị trạng thái còn hàng/hết hàng, trực tiếp chọn màu/size và đẩy nhanh vào checkout.
-- **Quy trình Checkout**: Form nhập địa chỉ giao hàng với validation inline thời gian thực; tính phí vận chuyển tự động (miễn phí từ 500.000₫); trừ tồn kho bằng transaction bảo đảm không bán vượt số lượng; sinh mã đơn hàng độc nhất `ORD-xxxx`.
-
-### C. Quét cơ thể & Đo size thông minh (`/scan`)
-- **Webcam hướng dẫn**: Backend nhận diện khung hình và hướng dẫn người dùng căn chỉnh:
-  - Khung 1: Chụp chính diện (Front view).
-  - Khung 2: Xoay 90° chụp nghiêng (Side view).
-  - Hỗ trợ đếm ngược 3 giây khi tư thế đạt chuẩn, hoặc chụp bấm nút thủ công.
-- **Chế độ chụp thích ứng**: Thân trên (Upper Body) mặc định cho áo/sơ mi; Toàn thân (Full Body) khi cần đo chiều dài chân, vòng mông cho quần/váy.
-- **Trực quan hóa số đo 3D**: Xuất file 3D `.glb` với thước đo gắn trực tiếp trên mesh avatar (vòng ngực, vòng eo, vòng mông).
-- **Tư vấn size**: Đối chiếu số đo ước lượng với bảng thông số thực tế của sản phẩm, đưa ra khuyến nghị size phù hợp nhất kèm cảnh báo mức độ rộng/ôm.
-
-### D. Tài khoản & Lịch sử hình thể (`/account`, `/login`, `/register`)
-- **Xác thực an toàn**: Đăng nhập/Đăng ký với thông báo lỗi inline trực tiếp dưới từng ô nhập liệu, tự động focus ô lỗi đầu tiên.
-- **Lưu trữ scan**: Tự động hoặc chủ động lưu lại các phiên scan hình thể vào hồ sơ người dùng để theo dõi sự thay đổi vóc dáng hoặc tái sử dụng khi mua sắm.
+```text
+MORPH-AI/
+├── AGENTS.md                        # Hướng dẫn nhanh và quy tắc cho AI Agent
+├── DESIGN.md                        # Hệ thống thiết kế (Warm Ivory & Dark Studio)
+├── PRODUCT.md                       # Định hướng sản phẩm và phạm vi chức năng
+├── THIRD_PARTY_NOTICES.md           # Giấy phép mã nguồn mở và tài nguyên bên thứ ba
+├── docs/                            # Tài liệu kỹ thuật tập trung
+│   ├── ARCHITECTURE.md              # Kiến trúc hệ thống, cơ sở dữ liệu và luồng dữ liệu
+│   ├── API_CONTRACT.md              # Đặc tả chi tiết toàn bộ REST API
+│   ├── SCAN_QUALITY.md              # Phương pháp luận 3D Scan 3 tầng, benchmark & giới hạn
+│   ├── TESTING.md                   # Hướng dẫn chạy kiểm thử pytest, benchmark & E2E
+│   └── HANDOFF.md                   # Trạng thái bàn giao hiện tại & công việc tiếp theo
+├── design/
+│   └── ASSET_PROVENANCE.md          # Nguồn gốc và bản quyền hình ảnh sản phẩm
+├── backend/                         # FastAPI Backend (Python 3.11)
+│   ├── app/
+│   │   ├── main.py                  # Điểm vào FastAPI, định tuyến REST API & quản lý phiên quét
+│   │   ├── auth.py                  # Xác thực người dùng, PBKDF2-HMAC-SHA256 & session cookie
+│   │   ├── catalog.py               # Quản lý 160 sản phẩm, biến thể, size chart & gợi ý size
+│   │   ├── seed_160_catalog.py      # Dữ liệu khởi tạo 160 sản phẩm thời trang
+│   │   ├── orders.py                # Xử lý đơn hàng nguyên tử, trừ tồn kho & Idempotency-Key
+│   │   ├── history.py               # Lưu trữ lịch sử quét 3D và hồ sơ số đo cá nhân
+│   │   ├── reconstruction.py        # Tầng 1 & 2: Phân tích ảnh MediaPipe & biến dạng lưới 3D
+│   │   ├── camera_fusion.py         # Tầng 2: Đồng bộ tỷ lệ Camera chính diện & nghiêng 90°
+│   │   ├── measurements.py          # Tầng 3: Hiệu chuẩn giải phẫu & khớp lưới PCHIP (.glb)
+│   │   └── models/                  # Model MediaPipe (.task) và lưới cơ sở MakeHuman (.obj)
+│   └── tests/                       # Bộ 95 unit & integration tests (pytest)
+├── frontend/                        # Next.js 15 App Router Frontend (React 19, TypeScript)
+│   ├── AGENTS.md                    # Hướng dẫn thiết kế giao diện dành cho Agent
+│   ├── app/                         # Các trang: /, /products/[id], /scan, /checkout, /orders/[id], /account
+│   ├── components/                  # CameraCoach, Viewer (Three.js), SizeFinderModal, BodyChart, Drawers
+│   └── lib/                         # AuthContext, CartContext, WishlistContext, ScanContext, usePoseDetection
+└── verification/
+    └── scripts/                     # Kịch bản kiểm thử hồi quy, benchmark 3D & fixture QA (qa/)
+```
 
 ---
 
-## 4. Hướng dẫn khởi chạy nhanh
+## 3. Hướng dẫn cài đặt và khởi chạy
 
-### Yêu cầu tiên quyết
-- **Hệ điều hành**: Windows 10/11 (hoặc Linux/macOS tương đương).
-- **Python**: Python 3.11 (được thiết lập sẵn tại `.runtime/python` hoặc venv tại `backend/.venv`).
-- **Node.js**: Phiên bản 18+ (khuyên dùng Node.js 20 hoặc 22 LTS).
+### 3.1. Yêu cầu hệ thống
+- **Hệ điều hành**: Windows 10/11, macOS hoặc Linux.
+- **Python**: `3.11.x` (Sử dụng môi trường ảo tại `backend/.venv/Scripts/python.exe`; **không** dùng alias Python của Windows Store).
+- **Node.js**: `>= 20.x` kèm `npm`.
+- **Trình duyệt**: Chrome hoặc Edge bản mới nhất (cấp quyền truy cập Webcam trên `http://localhost:3000`).
 
-### Khởi động dự án (Khuyên dùng)
+### 3.2. Khởi chạy Backend (Cổng `8000`)
+Mở PowerShell tại thư mục gốc `D:\MORPH-AI`:
 
-Mở thư mục `D:\MORPH-AI` bằng PowerShell hoặc Terminal:
-
-#### Cách 1: Chạy từng dịch vụ bằng PowerShell riêng biệt
-
-**Terminal 1 — Khởi động Backend (Port 8000)**:
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\start-backend.ps1
-```
-*Backend Swagger API Docs sẵn sàng tại*: `http://127.0.0.1:8000/docs`
+# Nếu chưa tạo môi trường ảo:
+# py -3.11 -m venv backend\.venv
+# .\backend\.venv\Scripts\python.exe -m pip install -r backend\requirements.txt
 
-**Terminal 2 — Khởi động Frontend (Port 3000)**:
+.\backend\.venv\Scripts\python.exe -m uvicorn app.main:app --app-dir backend --host 0.0.0.0 --port 8000 --reload
+```
+- Kiểm tra trạng thái Backend: [http://localhost:8000/api/health](http://localhost:8000/api/health)
+- Tài liệu Swagger UI: [http://localhost:8000/docs](http://localhost:8000/docs)
+
+### 3.3. Khởi chạy Frontend (Cổng `3000`)
+Mở một cửa sổ PowerShell thứ hai tại `D:\MORPH-AI`:
+
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\start-frontend.ps1
+npm --prefix frontend install
+npm --prefix frontend run dev
 ```
-*Giao diện Storefront sẵn sàng tại*: `http://127.0.0.1:3000`
-
-#### Cách 2: Sử dụng script Batch một chạm
-- Khởi động cả 2 server: Click đúp `start-all.bat` (hoặc chạy trong cmd: `start-all.bat`).
-- Tắt toàn bộ server: Click đúp `stop-all.bat`.
+- Truy cập cửa hàng: [http://localhost:3000](http://localhost:3000)
+- Truy cập phòng đo 3D độc lập: [http://localhost:3000/scan](http://localhost:3000/scan)
 
 ---
 
-## 5. Kiểm thử hệ thống (Testing & Verification)
+## 4. Kiểm thử & Xác minh chất lượng
 
-Hệ thống được trang bị bộ kiểm thử tự động toàn diện:
+Chạy toàn bộ các bài kiểm tra tự động trước khi bàn giao (xem chi tiết tại [`docs/TESTING.md`](file:///d:/MORPH-AI/docs/TESTING.md)):
 
-### 1. Kiểm thử Backend (Pytest Suite)
-Chạy toàn bộ 89 ca kiểm thử đơn vị & tích hợp (API, Auth, Catalog, Cart, Orders, Measurements, Sizing):
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\test-backend.ps1
-```
-*Hoặc chạy trực tiếp với Python venv*:
-```powershell
-$env:PATHEXT = '.COM;.EXE;.BAT;.CMD'; backend/.venv/Scripts/python.exe -m pytest backend/tests/ -v
-```
-*(Kết quả yêu cầu: 89/89 tests PASSED)*.
+# 1. Chạy 95 bài test Backend (pytest)
+.\backend\.venv\Scripts\python.exe -m pytest backend\tests -q
 
-### 2. Kiểm thử Frontend (TypeScript Typecheck)
-Xác thực tính toàn vẹn kiểu dữ liệu của toàn bộ mã nguồn Next.js / React:
-```powershell
+# 2. Chạy Benchmark độ chính xác & tốc độ 3D Body Scan 3 Tầng (< 15ms)
+.\backend\.venv\Scripts\python.exe verification\scripts\evaluate_3d_scan_accuracy.py
+
+# 3. Kiểm tra pipeline quét thân trên với ảnh fixture chuẩn
+.\backend\.venv\Scripts\python.exe verification\scripts\check-upper.py
+
+# 4. Kiểm tra kiểu dữ liệu TypeScript phía Frontend
 npm --prefix frontend run typecheck
 ```
-*(Kết quả yêu cầu: 0 errors)*.
-
-### 3. Kiểm tra tính toàn vẹn Catalog Media
-Kiểm tra số lượng ảnh studio v2, đường dẫn hợp lệ và không có ảnh lỗi:
-```powershell
-$env:PATHEXT = '.COM;.EXE;.BAT;.CMD'; backend/.venv/Scripts/python.exe backend/scripts/inspect_catalog_status.py
-```
-*(Kết quả yêu cầu: 160/160 sản phẩm có ảnh v2, 320 ảnh tồn tại, 0 ảnh thiếu)*.
 
 ---
 
-## 6. Cấu trúc thư mục
+## 5. Xử lý sự cố thường gặp (Troubleshooting)
 
-```
-D:\MORPH-AI
-├── backend/
-│   ├── app/
-│   │   ├── main.py                # FastAPI entry point & lifespan
-│   │   ├── catalog.py             # Catalog API routes & filters
-│   │   ├── catalog_seed_data.py   # Seed catalog definition (160 products)
-│   │   ├── db.py                  # SQLite migrations & queries
-│   │   ├── auth.py                # JWT authentication & user accounts
-│   │   ├── orders.py              # Cart checkout & order transactions
-│   │   ├── history.py             # Body profile & scan history persistence
-│   │   ├── reconstruction.py      # Mesh fitting & GLB generation
-│   │   ├── sizing.py              # Size recommendation logic
-│   │   └── images.py              # Photo preprocessing & validation
-│   ├── scripts/
-│   │   ├── catalog_asset_manifest_v2.json # Master asset provenance manifest
-│   │   ├── import_catalog_media_v2.py    # Idempotent DB media importer
-│   │   └── inspect_catalog_status.py     # Catalog image status inspector
-│   └── tests/                     # 89 automated pytest test suites
-│
-├── frontend/
-│   ├── app/                       # Next.js App Router (Storefront, PDP, Cart, Checkout, Scan, Auth)
-│   ├── components/
-│   │   ├── shop/                  # ProductCard, ProductDetail, CustomSelect, Popups, Drawers
-│   │   ├── BodyViewer.tsx         # Three.js 3D WebGL Avatar & tape measurements
-│   │   └── GuidedCamera.tsx       # Live webcam pose guide & countdown
-│   ├── lib/                       # API clients, CartContext, ScanContext, helpers
-│   └── public/
-│       └── products/v2/           # 320 high-resolution studio packshot photos
-│
-├── .runtime/                      # Local SQLite orders.db and cached runtimes (gitignored)
-├── AGENTS.md                      # Canonical development rules and guardrails
-├── CAMERA_FLOW_HANDOFF.md         # Camera capture architecture spec
-├── COMMERCE_HANDOFF.md            # Commerce storefront specification
-├── UPPER_BODY_HANDOFF.md          # 3D measurement & scan specification
-└── README.md                      # Tài liệu tổng quan hệ thống này
-```
+1. **Không mở được Webcam trên trình duyệt**:
+   - Đảm bảo truy cập qua `http://localhost:3000` (trình duyệt chặn `navigator.mediaDevices.getUserMedia` trên địa chỉ IP LAN không có HTTPS).
+   - Đóng các ứng dụng đang chiếm quyền camera (Zoom, Teams, Camera app) rồi bấm *"Thử kết nối lại camera"*.
+2. **Xung đột cổng `8000` hoặc `3000`**:
+   - Kiểm tra tiến trình đang chiếm cổng bằng `Get-NetTCPConnection -LocalPort 8000,3000` và dừng tiến trình cũ trước khi khởi chạy lại.
+3. **Làm mới cơ sở dữ liệu SQLite (`catalog.db`)**:
+   - File SQLite được tạo tự động tại `backend/runtime/catalog.db`. Nếu muốn reset toàn bộ đơn hàng và tài khoản thử nghiệm về mặc định 160 sản phẩm, dừng Backend và xóa `backend/runtime/catalog.db` — hệ thống sẽ tự động khởi tạo và seed lại khi bật server.
 
 ---
 
-## 7. Ranh giới kỹ thuật & Cam kết trung thực
+## 6. Liên kết tài liệu chuyên sâu
 
-Theo tôn chỉ của MORPH Studio và hướng dẫn tại `AGENTS.md`:
-1. **Bản chất công nghệ**: Bộ máy ước lượng sử dụng MediaPipe (pose/segmentation) + biến dạng MakeHuman template trên CPU. Hệ thống **không** sử dụng SAM/MHR hay các mô hình quét laser chuyên dụng. Số đo cơ thể mang tính chất tham khảo trực quan hỗ trợ chọn cỡ quần áo, không thay thế phép đo may đo chuyên nghiệp.
-2. **Bảo mật dữ liệu**: Ứng dụng không lưu giữ khung hình webcam cá nhân lên máy chủ sau khi xử lý. File 3D `.glb` được cấp phát với thời hạn lưu tạm thời và tự động dọn dẹp theo chu kỳ (`cleanup janitor`).
-3. **Phạm vi thương mại**: Hiện tại hệ thống phục vụ mục đích demo thương mại điện tử cục bộ, không đấu nối cổng thanh toán trực tuyến của bên thứ ba hay lưu trữ thẻ ngân hàng.
+- [**Kiến trúc hệ thống (`docs/ARCHITECTURE.md`)**](file:///d:/MORPH-AI/docs/ARCHITECTURE.md)
+- [**Đặc tả REST API (`docs/API_CONTRACT.md`)**](file:///d:/MORPH-AI/docs/API_CONTRACT.md)
+- [**Chất lượng 3D Scan & Giới hạn kỹ thuật (`docs/SCAN_QUALITY.md`)**](file:///d:/MORPH-AI/docs/SCAN_QUALITY.md)
+- [**Hướng dẫn kiểm thử (`docs/TESTING.md`)**](file:///d:/MORPH-AI/docs/TESTING.md)
+- [**Trạng thái bàn giao hiện tại (`docs/HANDOFF.md`)**](file:///d:/MORPH-AI/docs/HANDOFF.md)
+- [**Hệ thống thiết kế (`DESIGN.md`)**](file:///d:/MORPH-AI/DESIGN.md) & [**Định hướng sản phẩm (`PRODUCT.md`)**](file:///d:/MORPH-AI/PRODUCT.md)
+- [**Bản quyền bên thứ ba (`THIRD_PARTY_NOTICES.md`)**](file:///d:/MORPH-AI/THIRD_PARTY_NOTICES.md) & [**Nguồn gốc hình ảnh (`design/ASSET_PROVENANCE.md`)**](file:///d:/MORPH-AI/design/ASSET_PROVENANCE.md)

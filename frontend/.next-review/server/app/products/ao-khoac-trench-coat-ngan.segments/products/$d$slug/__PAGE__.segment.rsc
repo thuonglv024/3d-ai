@@ -1,0 +1,37 @@
+1:"$Sreact.fragment"
+2:"static/chunks/app/layout-61e6045eb30c58c5.js"
+3:I[9520,["177","$2"],"Providers"]
+4:I[7121,[],""]
+5:I[4581,[],""]
+e:"$Sreact.suspense"
+f:"static/chunks/483-de202ad8c5c978bb.js"
+10:"static/chunks/499-b9321264ace91dcc.js"
+11:"static/chunks/240-2db8d828e9f18e62.js"
+12:"static/chunks/app/products/%5Bslug%5D/page-ec47635373c6b951.js"
+13:I[9621,["483","$f","499","$10","240","$11","221","$12"],"default"]
+14:I[484,[],"OutletBoundary"]
+17:"ViewportBoundary"
+18:I[484,[],"$17"]
+19:"MetadataBoundary"
+1a:I[484,[],"$19"]
+1b:I[6869,[],"IconMark"]
+:HL["/_next/static/css/a0788a235cc66740.css","style"]
+:HL["/_next/static/css/2ff61530bf848b1b.css","style"]
+:HL["/_next/static/css/08ec191cff60187d.css","style"]
+7:X
+a:X
+a:C
+d:[["children",{"s":"__PAGE__","h":160,"d":{"r":["$","$1","c",{"children":[["$","$e",null,{"fallback":["$","div",null,{"className":"fit-lazy","children":"Đang tải sản phẩm MORPH Studio…"}],"children":["$","$L13",null,{"product":{"id":"ao-khoac-trench-coat-ngan","slug":"ao-khoac-trench-coat-ngan","name":"Áo khoác Trench Coat Dáng lửng","subtitle":"Phom áo trench coat lửng hiện đại, hai hàng khuy và đai lưng tinh tế.","category":"ao-khoac","categoryName":"Áo khoác","price":1450000,"color":"Nâu lạc đà","colors":[{"name":"Nâu lạc đà","hex":"#a4815a"},{"name":"Đen tuyền","hex":"#1c1e1d"}],"sizes":["S","M","L"],"image":"/products/ao-khoac-trench-coat-ngan.jpg","gallery":["/products/ao-khoac-trench-coat-ngan.jpg"],"description":"Phiên bản dáng lửng trẻ trung của mẫu trench coat kinh điển. Chiều dài qua hông vừa phải giúp tôn dáng đôi chân, phối cùng đai thắt eo điều chỉnh linh hoạt.","material":"Vải Gabardine cotton chéo dày dặn cản gió.","fit":"Tailored crop fit dáng lửng tôn eo.","details":["Hàng khuy kép đôi vạt đắp kinh điển","Đai thắt lưng có khóa kim loại chống gỉ","Cầu vai và ve áo may đo sắc nét"],"chart":{"name":"Bảng size Trench Coat Lửng","garment":"top","source":"illustrative","measurement_basis":"body_cm","rows":[{"size":"S","chest_cm":{"min":80,"max":88},"waist_cm":{"min":64,"max":76}},{"size":"M","chest_cm":{"min":88,"max":96},"waist_cm":{"min":72,"max":84}},{"size":"L","chest_cm":{"min":96,"max":105},"waist_cm":{"min":80,"max":94}}]}}}]}],null,["$","$L14",null,{"children":["$","$e",null,{"name":"Next.MetadataOutlet","children":"$@15"}]}]]}],"p":"$@16","v":null,"s":"$7"}}]]
+b:[["children",{"s":{"n":"slug","t":"d","k":"ao-khoac-trench-coat-ngan","s":[]},"h":96,"d":{"r":["$","$1","c",{"children":[null,["$","$L4",null,{"parallelRouterKey":"children","template":["$","$L5",null,{}]}]]}],"p":"$@c","v":"$a","s":"$7"},"c":"$Qd"}]]
+8:[["children",{"s":"products","h":96,"d":{"r":["$","$1","c",{"children":[null,["$","$L4",null,{"parallelRouterKey":"children","template":["$","$L5",null,{}]}]]}],"p":"$@9","v":"$a","s":"$7"},"c":"$Qb"}]]
+0:{"t":{"t":{"s":"","h":80,"d":{"r":["$","$1","c",{"children":[[["$","link","0",{"rel":"stylesheet","href":"/_next/static/css/a0788a235cc66740.css","precedence":"next"}],["$","link","1",{"rel":"stylesheet","href":"/_next/static/css/2ff61530bf848b1b.css","precedence":"next"}],["$","link","2",{"rel":"stylesheet","href":"/_next/static/css/08ec191cff60187d.css","precedence":"next"}]],["$","html",null,{"lang":"vi","children":["$","body",null,{"children":["$","$L3",null,{"children":["$","$L4",null,{"parallelRouterKey":"children","template":["$","$L5",null,{}],"notFound":[[["$","title",null,{"children":"404: This page could not be found."}],["$","div",null,{"style":{"fontFamily":"system-ui,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif,\"Apple Color Emoji\",\"Segoe UI Emoji\"","height":"100vh","textAlign":"center","display":"flex","flexDirection":"column","alignItems":"center","justifyContent":"center"},"children":["$","div",null,{"children":[["$","style",null,{"dangerouslySetInnerHTML":{"__html":"body{color:#000;background:#fff;margin:0}.next-error-h1{border-right:1px solid rgba(0,0,0,.3)}@media (prefers-color-scheme:dark){body{color:#fff;background:#000}.next-error-h1{border-right:1px solid rgba(255,255,255,.3)}}"}}],["$","h1",null,{"className":"next-error-h1","style":{"display":"inline-block","margin":"0 20px 0 0","padding":"0 23px 0 0","fontSize":24,"fontWeight":500,"verticalAlign":"top","lineHeight":"49px"},"children":404}],["$","div",null,{"style":{"display":"inline-block"},"children":["$","h2",null,{"style":{"fontSize":14,"fontWeight":400,"lineHeight":"49px","margin":0},"children":"This page could not be found."}]}]]}]}]],[]]}]}]}]}]]}],"p":"$@6","v":null,"s":"$7"},"c":"$Q8"},"h":{"r":["$","$1","h",{"children":[null,["$","$L18",null,{"children":[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}]]}],["$","$L1a",null,{"children":[["$","div",null,{"hidden":true,"children":["$","$e",null,{"name":"Next.Metadata","children":[["$","title","0",{"children":"MORPH Studio — Một lựa chọn vừa bạn"}],["$","meta","1",{"name":"description","content":"Cửa hàng thời trang MORPH Studio với công nghệ đối chiếu size và hình thể 3D qua webcam."}],["$","link","2",{"rel":"icon","href":"/icon.svg?4ebe2cc82cd2563e","type":"image/svg+xml","sizes":"any"}],["$","$L1b","3",{}]]}]}],null]}],null]}],"p":"$@1c","v":null,"s":"$7"}},"a":"$@1d","u":"$@1e","b":"PGhRYIHe0ePS4xz2UDtMC"}
+15:null
+7:300
+1e:true
+7:C
+1d:0
+c:"$undefined"
+9:"$undefined"
+6:"$undefined"
+1c:"$undefined"
+16:"$undefined"

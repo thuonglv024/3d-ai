@@ -304,6 +304,13 @@
   margin: 0;
 }
 
+.scan-warning-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
 .scan-switch-mode-btn {
   align-self: flex-start;
   min-height: 38px;
@@ -316,7 +323,12 @@
   color: #7A4B10;
   cursor: pointer;
   transition: all 0.16s ease;
-  margin-top: 4px;
+}
+
+.scan-switch-mode-btn.is-secondary {
+  background: transparent;
+  border-color: rgba(198, 138, 54, 0.55);
+  color: #6B3F06;
 }
 
 .scan-switch-mode-btn:hover {
@@ -997,6 +1009,28 @@
   text-align: center;
 }
 
+.capture-overlay-error {
+  gap: 8px;
+}
+
+.capture-overlay-error svg {
+  color: #b33928;
+}
+
+.capture-overlay-error strong {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.capture-overlay-error p {
+  font-size: 13px;
+  line-height: 1.6;
+  max-width: 420px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
 .capture-turn {
   position: absolute;
   inset: 0;
@@ -1117,6 +1151,12 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.capture-status-card.has-warning {
+  border-color: #E5BA7D;
+  background: #FCF6EC;
 }
 
 .capture-status-badge-title {
@@ -1132,6 +1172,35 @@
   line-height: 1.5;
   color: var(--accent-text);
   font-weight: 500;
+}
+
+.capture-quality-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.capture-quality-pill {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
+  color: var(--text-secondary);
+}
+
+.capture-quality-pill.is-ok {
+  background: var(--primary-soft);
+  border-color: var(--primary-border);
+  color: var(--accent-text);
+}
+
+.capture-quality-pill.is-warn {
+  background: #FCF2E3;
+  border-color: #E5BA7D;
+  color: #7A4B10;
 }
 
 .capture-posture-tips {

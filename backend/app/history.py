@@ -146,6 +146,8 @@ def persist_scan_snapshot(
                         src = "user_input"
                     elif capture_mode == "upper_body" and m_key in {"chest_cm", "waist_cm", "shoulder_width_cm"}:
                         src = "photo_with_prior"
+                    elif capture_mode == "upper_body" and m_key in {"head_cm", "neck_cm", "hip_cm", "thigh_cm", "calf_cm", "ankle_cm"}:
+                        src = "template_model"
                     elif val_float is not None:
                         src = "photo_estimate"
                     else:
@@ -279,19 +281,25 @@ def save_scan(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="Bạn không có quyền lưu phiên scan này.",
                 )
+            with lock:
+                target_job.guest_token = None
         else:
-            # Guest scan -> claim requires guest_token check if set
-            if target_job.guest_token:
-                req_token = (req.guest_token or x_guest_token or "").strip()
-                job_token = (target_job.guest_token or "").strip()
-                if not req_token or not secrets.compare_digest(req_token, job_token):
-                    raise HTTPException(
-                        status_code=status.HTTP_403_FORBIDDEN,
-                        detail="guest_token không hợp lệ để nhận phiên scan này.",
-                    )
+            # Guest scan -> claim requires valid guest_token
+            if not target_job.guest_token or not target_job.guest_token.strip():
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="guest_token không hợp lệ để nhận phiên scan này.",
+                )
+            req_token = (req.guest_token or x_guest_token or "").strip()
+            job_token = target_job.guest_token.strip()
+            if not req_token or not secrets.compare_digest(req_token, job_token):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="guest_token không hợp lệ để nhận phiên scan này.",
+                )
             with lock:
                 target_job.user_id = current_user["id"]
-
+                target_job.guest_token = None
 
         result = persist_scan_snapshot(current_user["id"], target_job, req.note, db_path)
         return result
@@ -367,7 +375,15 @@ def list_scans(
             ).fetchall()
 
             for mr in m_rows:
-                key_metrics_by_scan[mr["body_scan_id"]][mr["metric_key"]] = mr["value_cm"]
+                val = mr["value_cm"]
+                if (
+                    mr["source"] in ("template_model", "unavailable")
+                    or val is None
+                    or float(val) <= 0
+                ):
+                    key_metrics_by_scan[mr["body_scan_id"]][mr["metric_key"]] = None
+                else:
+                    key_metrics_by_scan[mr["body_scan_id"]][mr["metric_key"]] = val
 
         items = []
         for r in rows:
@@ -383,10 +399,10 @@ def list_scans(
                 "engine_version": r["engine_version"],
                 "note": r["note"],
                 "key_measurements": {
-                    "height_cm": km.get("height_cm", r["height_input_cm"]),
+                    "height_cm": km.get("height_cm") if km.get("height_cm") is not None else r["height_input_cm"],
                     "chest_cm": km.get("chest_cm"),
                     "waist_cm": km.get("waist_cm"),
-                    "hip_cm": km.get("hip_cm"),
+                    "hip_cm": None if r["capture_mode"] == "upper_body" and km.get("hip_cm") is None else km.get("hip_cm"),
                     "shoulder_width_cm": km.get("shoulder_width_cm"),
                 },
             })
@@ -408,8 +424,9 @@ def get_chart_data(
 ):
     """
     Returns chronological timeline points for tracking.
-    CRITICAL: Any metric with source='template_model' returns valid_for_tracking=False
-    and value=null so MakeHuman template dimensions are NOT rendered as real body variance.
+    CRITICAL: Any metric with source in ('template_model', 'unavailable') or value <= 0
+    returns valid_for_tracking=False and value=null so MakeHuman template dimensions
+    are NOT rendered as real body variance.
     """
     target_keys = [k.strip() for k in metrics.split(",") if k.strip()]
     now = datetime.now(timezone.utc)
@@ -466,14 +483,11 @@ def get_chart_data(
                 source = mr["source"]
                 raw_val = mr["value_cm"]
 
-                # If source is template_model, nullify value and mark invalid for tracking
-                if source == "template_model":
-                    metrics_map[k] = {
-                        "value": None,
-                        "source": "template_model",
-                        "valid_for_tracking": False,
-                    }
-                elif raw_val is None:
+                if (
+                    source in ("template_model", "unavailable")
+                    or raw_val is None
+                    or float(raw_val) <= 0
+                ):
                     metrics_map[k] = {
                         "value": None,
                         "source": source,

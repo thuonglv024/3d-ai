@@ -18,7 +18,13 @@ from fastapi.responses import FileResponse, JSONResponse
 from .config import DATA, MAX_UPLOAD, RESULT_TTL_SECONDS
 from .images import InvalidPhoto, decode_photo
 from .reconstruction import ENGINE, capture_feedback, close_detector, readiness, reconstruct
-from .sizing import SizeChart, SizingRecommendRequest, recommend_size
+from .sizing import (
+    SizeChart,
+    SizingRecommendRequest,
+    VALID_SIZING_SOURCES,
+    filter_valid_sizing_measurements,
+    recommend_size,
+)
 from .catalog import router as catalog_router
 from .orders import init_db as init_orders_db, router as orders_router
 from .auth import get_optional_user, router as auth_router
@@ -28,6 +34,9 @@ from .db import get_db_connection, get_product_by_slug_or_id
 logger = logging.getLogger(__name__)
 lock = threading.RLock()
 executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="morph-scan")
+
+MAX_STORED_JOBS = 50
+JOB_PROCESSING_TIMEOUT_SECONDS = 120
 
 
 class SessionCancelled(Exception):
@@ -59,13 +68,34 @@ jobs: dict[str, Job] = {}
 def cleanup():
     now = time.time()
     with lock:
+        # 1. Detect hung queued/processing jobs exceeding JOB_PROCESSING_TIMEOUT_SECONDS
+        for key, job in list(jobs.items()):
+            if job.status in {"queued", "processing"} and (now - job.created) > JOB_PROCESSING_TIMEOUT_SECONDS:
+                job.status = "failed"
+                job.stage = "Quá thời gian xử lý"
+                job.error = "Phiên xử lý quá thời gian chờ. Vui lòng thử lại."
+                job.finished = now
+                (DATA / f"{key}.glb").unlink(missing_ok=True)
+
+        # 2. Remove finished jobs past RESULT_TTL_SECONDS
         expired = [key for key, job in jobs.items() if job.finished and now - job.finished > RESULT_TTL_SECONDS]
         for key in expired:
             (DATA / f"{key}.glb").unlink(missing_ok=True)
             jobs.pop(key, None)
-        # Previous-process artifacts have no session to serve and can be removed.
+
+        # 3. Enforce MAX_STORED_JOBS cap on finished jobs (completed / failed)
+        finished_jobs = [job for job in jobs.values() if job.status in {"completed", "failed"}]
+        if len(finished_jobs) > MAX_STORED_JOBS:
+            finished_jobs.sort(key=lambda j: j.created)
+            excess = len(finished_jobs) - MAX_STORED_JOBS
+            for old_job in finished_jobs[:excess]:
+                (DATA / f"{old_job.id}.glb").unlink(missing_ok=True)
+                jobs.pop(old_job.id, None)
+
+        # 4. Previous-process or orphaned artifacts have no session to serve and can be removed.
         for path in DATA.glob("*.glb"):
-            if path.stem not in jobs:
+            job = jobs.get(path.stem)
+            if job is None or job.status == "failed":
                 path.unlink(missing_ok=True)
 
 
@@ -102,8 +132,9 @@ def check_scan_access(job: Job, request: Request, guest_token: Optional[str] = N
         user = get_optional_user(request)
         if not user or user["id"] != job.user_id:
             raise HTTPException(403, "Bạn không có quyền truy cập phiên scan này.")
-    elif job.guest_token:
-        # Guest scan: require token via argument, header, or query and verify it matches
+    else:
+        if not job.guest_token or not job.guest_token.strip():
+            raise HTTPException(403, "guest_token không hợp lệ hoặc bị thiếu.")
         token = (
             guest_token
             or request.headers.get("X-Guest-Token")
@@ -144,6 +175,7 @@ async def check_capture(photo: UploadFile = File(...), view: Literal["front", "s
     try:
         if not consent:
             raise HTTPException(400, "Cần đồng ý gửi khung hình tới backend để hướng dẫn AI.")
+        cleanup()
         with lock:
             if any(j.status in {"queued", "processing"} for j in jobs.values()):
                 raise HTTPException(429, "Đang dựng hình. Hướng dẫn camera sẽ tiếp tục sau.")
@@ -163,13 +195,13 @@ async def check_capture(photo: UploadFile = File(...), view: Literal["front", "s
 def process(key: str, front_image: np.ndarray, side_image: np.ndarray, height_cm: float, capture_mode: str = "full_body"):
     started = time.perf_counter()
     with lock:
-        if key not in jobs:
+        if key not in jobs or jobs[key].status == "failed":
             return
         jobs[key].status = "processing"
 
     def report(stage: str):
         with lock:
-            if key not in jobs:
+            if key not in jobs or jobs[key].status == "failed":
                 raise SessionCancelled("Session deleted")
             jobs[key].stage = stage
 
@@ -184,7 +216,7 @@ def process(key: str, front_image: np.ndarray, side_image: np.ndarray, height_cm
         else:
             warnings, measurements, profile = result, {}, {}
         with lock:
-            if key not in jobs:
+            if key not in jobs or jobs[key].status == "failed":
                 path.unlink(missing_ok=True)
                 return
             job = jobs[key]
@@ -229,6 +261,7 @@ async def create_scan(
     ready, message = readiness()
     if not ready:
         raise HTTPException(503, message)
+    cleanup()
     with lock:
         if sum(j.status in {"queued", "processing"} for j in jobs.values()) >= 3:
             raise HTTPException(429, "Demo đang xử lý nhiều ảnh. Hãy thử lại sau ít phút.")
@@ -278,7 +311,10 @@ def get_scan(key: str, request: Request, guest_token: Optional[str] = Query(None
             raise HTTPException(404, "Phiên đã hết hạn hoặc không tồn tại. Hãy tạo phiên mới.")
         job = jobs[key]
         check_scan_access(job, request, guest_token=guest_token)
-        return asdict(job)
+        payload = asdict(job)
+        if job.user_id is not None:
+            payload["guest_token"] = None
+        return payload
 
 
 @app.get("/api/scans/{key}/model")
@@ -314,7 +350,12 @@ def size_advice(key: str, chart: SizeChart, request: Request, guest_token: Optio
         check_scan_access(job, request, guest_token=guest_token)
         if job.status != "completed":
             raise HTTPException(409, "Cần hoàn thành scan trước khi đối chiếu size.")
-        measurements = job.measurements
+        effective_mode = (job.body_profile or {}).get("capture_mode") or job.capture_mode
+        measurements = filter_valid_sizing_measurements(
+            job.measurements or {},
+            (job.body_profile or {}).get("measurement_details"),
+            capture_mode=effective_mode,
+        )
     return JSONResponse(recommend_size(measurements, chart), headers={"Cache-Control": "no-store"})
 
 
@@ -366,6 +407,7 @@ def recommend_sizing(req: SizingRecommendRequest, request: Request):
     if req.measurements is not None:
         resolved_measurements = req.measurements
     elif req.scan_id or req.saved_scan_id:
+        cleanup()
         target_scan_id = req.scan_id or req.saved_scan_id
         target_job = None
         with lock:
@@ -381,12 +423,17 @@ def recommend_sizing(req: SizingRecommendRequest, request: Request):
             check_scan_access(target_job, request, guest_token=effective_guest_token)
             if target_job.status != "completed":
                 raise HTTPException(400, "Phiên scan chưa hoàn thành.")
-            resolved_measurements = target_job.measurements or {}
+            effective_mode = (target_job.body_profile or {}).get("capture_mode") or target_job.capture_mode
+            resolved_measurements = filter_valid_sizing_measurements(
+                target_job.measurements or {},
+                (target_job.body_profile or {}).get("measurement_details"),
+                capture_mode=effective_mode,
+            )
         else:
             with get_db_connection() as conn:
                 scan_row = conn.execute(
                     """
-                    SELECT id, user_id, source_scan_id
+                    SELECT id, user_id, source_scan_id, capture_mode
                     FROM body_scans
                     WHERE id = ? OR source_scan_id = ?
                     """,
@@ -397,15 +444,28 @@ def recommend_sizing(req: SizingRecommendRequest, request: Request):
                     raise HTTPException(404, "Không tìm thấy thông tin scan.")
 
                 current_user = get_optional_user(request)
-                if scan_row["user_id"] is not None:
-                    if not current_user or current_user["id"] != scan_row["user_id"]:
-                        raise HTTPException(403, "Bạn không có quyền truy cập phiên scan này.")
+                if not current_user or current_user["id"] != scan_row["user_id"]:
+                    raise HTTPException(403, "Bạn không có quyền truy cập phiên scan này.")
 
                 m_rows = conn.execute(
-                    "SELECT metric_key, value_cm FROM body_measurements WHERE body_scan_id = ?",
+                    "SELECT metric_key, value_cm, source FROM body_measurements WHERE body_scan_id = ?",
                     (scan_row["id"],),
                 ).fetchall()
-                resolved_measurements = {r["metric_key"]: r["value_cm"] for r in m_rows}
+                resolved_measurements = {
+                    r["metric_key"]: (
+                        r["value_cm"]
+                        if r["source"] in VALID_SIZING_SOURCES
+                        and r["value_cm"] is not None
+                        and float(r["value_cm"]) > 0
+                        and not (
+                            scan_row["capture_mode"] == "upper_body"
+                            and r["metric_key"] == "hip_cm"
+                            and r["source"] != "user_input"
+                        )
+                        else None
+                    )
+                    for r in m_rows
+                }
     else:
         resolved_measurements = {}
 

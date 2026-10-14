@@ -244,9 +244,15 @@ def test_guest_scan_creation_access_and_user_claim(test_app_and_db):
         assert saved_scan["source_scan_id"] == scan_id
         assert saved_scan["note"] == "Claimed guest scan"
 
-        # Verify job now belongs to user_id
+        # Verify job now belongs to user_id and guest_token was wiped
         with main.lock:
             assert main.jobs[scan_id].user_id == user_id
+            assert main.jobs[scan_id].guest_token is None
+
+        # GET /api/scans/{scan_id} as the logged-in owner does not leak guest_token
+        res_after_claim = guest_client.get(f"/api/scans/{scan_id}")
+        assert res_after_claim.status_code == 200
+        assert res_after_claim.json()["guest_token"] is None
 
 
 def test_user_ownership_and_permission_isolation(test_app_and_db):
@@ -293,7 +299,11 @@ def test_user_ownership_and_permission_isolation(test_app_and_db):
             "measurement_basis": "body_cm",
             "rows": [{"size": "M", "chest_cm": {"min": 90, "max": 100}, "waist_cm": {"min": 70, "max": 80}}],
         }
+        assert client_b.get(f"/api/scans/{scan_a_id}").status_code == 403
+        assert client_b.get(f"/api/scans/{scan_a_id}/measurements").status_code == 403
+        assert client_b.get(f"/api/scans/{scan_a_id}/model").status_code == 403
         assert client_b.post(f"/api/scans/{scan_a_id}/size-advice", json=valid_chart).status_code == 403
+        assert client_b.post("/api/sizing/recommend", json={"chart": valid_chart, "scan_id": scan_a_id}).status_code == 403
         assert client_b.delete(f"/api/scans/{scan_a_id}").status_code == 403
 
         # User A saves scan to persistent DB
@@ -612,11 +622,12 @@ def test_sizing_recommend_with_saved_scan_in_db(test_app_and_db):
     app, db_file = test_app_and_db
     with TestClient(app) as client_owner, TestClient(app) as client_other:
         # Register owner
-        client_owner.post("/api/auth/register", json={
+        reg_owner = client_owner.post("/api/auth/register", json={
             "email": "scan_owner@morph.test",
             "password": "password123",
             "display_name": "Scan Owner",
-        })
+        }).json()
+        owner_id = reg_owner["user"]["id"]
 
         # Register other user
         client_other.post("/api/auth/register", json={
@@ -630,6 +641,7 @@ def test_sizing_recommend_with_saved_scan_in_db(test_app_and_db):
         with main.lock:
             main.jobs[scan_id] = main.Job(
                 id=scan_id,
+                user_id=owner_id,
                 status="completed",
                 measurements={"height_cm": 175.0, "chest_cm": 95.0, "waist_cm": 79.0, "hip_cm": 98.0},
             )
@@ -700,7 +712,6 @@ def test_safe_redirect_validation_and_auth_continuation(test_app_and_db):
         assert login_res.json()["return_to"] == "/checkout"
 
 
-
 def test_save_scan_with_x_guest_token_header(test_app_and_db):
     """Verifies that guest scan can be claimed and saved using X-Guest-Token header."""
     app, _ = test_app_and_db
@@ -730,5 +741,205 @@ def test_save_scan_with_x_guest_token_header(test_app_and_db):
         assert res.status_code == 200
         data = res.json()
         assert data["source_scan_id"] == scan_id
+
+
+def test_saved_upper_body_scan_with_template_model_hip_never_recommends_bottom_or_hip_dress(test_app_and_db):
+    """
+    Acceptance criterion #2:
+    A saved upper_body scan in DB where hip_cm has value_cm = 94.5 (non-null) and
+    source = 'template_model' MUST return status == 'insufficient_measurements' and
+    'hip_cm' in missing when recommending size for bottom or dress requiring hip_cm,
+    and list_scans must not expose template_model hip_cm in key_measurements.
+    """
+    app, _ = test_app_and_db
+    with TestClient(app) as client:
+        reg = client.post("/api/auth/register", json={
+            "email": "upper_template_hip@morph.test",
+            "password": "password123",
+            "display_name": "Upper Template Hip User",
+        }).json()
+        user_id = reg["user"]["id"]
+
+        scan_id = "upper_job_with_template_hip"
+        with main.lock:
+            main.jobs[scan_id] = main.Job(
+                id=scan_id,
+                user_id=user_id,
+                capture_mode="upper_body",
+                height_cm=170.0,
+                status="completed",
+                measurements={
+                    "height_cm": 170.0,
+                    "chest_cm": 92.0,
+                    "waist_cm": 74.0,
+                    "hip_cm": None,
+                },
+                body_profile={
+                    "capture_mode": "upper_body",
+                    "measurement_details": [
+                        {"key": "height_cm", "label": "Chiều cao", "value_cm": 170.0, "source": "user_input"},
+                        {"key": "chest_cm", "label": "Vòng ngực", "value_cm": 92.0, "source": "photo_with_prior"},
+                        {"key": "waist_cm", "label": "Vòng eo", "value_cm": 74.0, "source": "photo_with_prior"},
+                        {"key": "hip_cm", "label": "Vòng mông", "value_cm": 94.5, "source": "template_model"},
+                    ],
+                },
+            )
+
+        save_res = client.post("/api/user/scans/save", json={"scan_id": scan_id})
+        assert save_res.status_code == 200
+        saved_db_id = save_res.json()["id"]
+
+        # Verify list_scans does NOT expose template_model hip_cm in key_measurements
+        list_res = client.get("/api/user/scans")
+        assert list_res.status_code == 200
+        items = list_res.json()["items"]
+        assert len(items) == 1
+        assert items[0]["key_measurements"]["chest_cm"] == 92.0
+        assert items[0]["key_measurements"]["waist_cm"] == 74.0
+        assert items[0]["key_measurements"]["hip_cm"] is None
+
+        # Evict in-memory job so /api/sizing/recommend reads directly from DB body_measurements
+        with main.lock:
+            main.jobs.pop(scan_id, None)
+
+        bottom_chart = {
+            "name": "Quần Âu Test",
+            "garment": "bottom",
+            "source": "illustrative",
+            "measurement_basis": "body_cm",
+            "rows": [
+                {"size": "M", "waist_cm": {"min": 70, "max": 78}, "hip_cm": {"min": 90, "max": 98}},
+            ],
+        }
+        rec_bottom = client.post("/api/sizing/recommend", json={
+            "chart": bottom_chart,
+            "saved_scan_id": saved_db_id,
+        })
+        assert rec_bottom.status_code == 200
+        b_data = rec_bottom.json()
+        assert b_data["status"] == "insufficient_measurements"
+        assert "hip_cm" in b_data["missing"]
+        assert b_data["candidates"] == []
+
+        dress_with_hip_chart = {
+            "name": "Đầm Ôm Test",
+            "garment": "dress",
+            "source": "illustrative",
+            "measurement_basis": "body_cm",
+            "rows": [
+                {
+                    "size": "M",
+                    "chest_cm": {"min": 88, "max": 96},
+                    "waist_cm": {"min": 70, "max": 78},
+                    "hip_cm": {"min": 90, "max": 98},
+                },
+            ],
+        }
+        rec_dress = client.post("/api/sizing/recommend", json={
+            "chart": dress_with_hip_chart,
+            "scan_id": scan_id,  # resolved via source_scan_id in DB
+        })
+        assert rec_dress.status_code == 200
+        d_data = rec_dress.json()
+        assert d_data["status"] == "insufficient_measurements"
+        assert "hip_cm" in d_data["missing"]
+        assert d_data["candidates"] == []
+
+
+def test_sizing_recommend_memory_vs_db_parity_upper_and_full_body(test_app_and_db):
+    """
+    Acceptance criterion #3:
+    Comparing POST /api/sizing/recommend while the job is in memory (jobs[scan_id])
+    vs after the job is evicted from memory (jobs.pop(scan_id)) and read from DB
+    (body_scans with source_scan_id = scan_id):
+    For both top and bottom charts across both upper_body and full_body scans,
+    both must return the exact same status, candidates, and missing!
+    """
+    app, _ = test_app_and_db
+    with TestClient(app) as client:
+        reg = client.post("/api/auth/register", json={
+            "email": "parity@morph.test",
+            "password": "password123",
+            "display_name": "Parity User",
+        }).json()
+        user_id = reg["user"]["id"]
+
+        top_chart = {
+            "name": "Áo Sơ Mi Parity",
+            "garment": "top",
+            "source": "illustrative",
+            "measurement_basis": "body_cm",
+            "rows": [
+                {"size": "S", "chest_cm": {"min": 84, "max": 90}, "waist_cm": {"min": 68, "max": 74}},
+                {"size": "M", "chest_cm": {"min": 90, "max": 96}, "waist_cm": {"min": 74, "max": 80}},
+            ],
+        }
+        bottom_chart = {
+            "name": "Quần Tây Parity",
+            "garment": "bottom",
+            "source": "illustrative",
+            "measurement_basis": "body_cm",
+            "rows": [
+                {"size": "29", "waist_cm": {"min": 68, "max": 74}, "hip_cm": {"min": 88, "max": 94}},
+                {"size": "30", "waist_cm": {"min": 74, "max": 80}, "hip_cm": {"min": 94, "max": 100}},
+            ],
+        }
+
+        scenarios = [
+            (
+                "upper_parity_job",
+                "upper_body",
+                {"height_cm": 170.0, "chest_cm": 93.0, "waist_cm": 76.0, "hip_cm": None},
+                [
+                    {"key": "height_cm", "label": "Chiều cao", "value_cm": 170.0, "source": "user_input"},
+                    {"key": "chest_cm", "label": "Vòng ngực", "value_cm": 93.0, "source": "photo_with_prior"},
+                    {"key": "waist_cm", "label": "Vòng eo", "value_cm": 76.0, "source": "photo_with_prior"},
+                    {"key": "hip_cm", "label": "Vòng mông", "value_cm": 96.0, "source": "template_model"},
+                ],
+            ),
+            (
+                "full_parity_job",
+                "full_body",
+                {"height_cm": 170.0, "chest_cm": 93.0, "waist_cm": 76.0, "hip_cm": 96.0},
+                [
+                    {"key": "height_cm", "label": "Chiều cao", "value_cm": 170.0, "source": "user_input"},
+                    {"key": "chest_cm", "label": "Vòng ngực", "value_cm": 93.0, "source": "photo_estimate"},
+                    {"key": "waist_cm", "label": "Vòng eo", "value_cm": 76.0, "source": "photo_estimate"},
+                    {"key": "hip_cm", "label": "Vòng mông", "value_cm": 96.0, "source": "photo_estimate"},
+                ],
+            ),
+        ]
+
+        for scan_id, mode, meas, details in scenarios:
+            with main.lock:
+                main.jobs[scan_id] = main.Job(
+                    id=scan_id,
+                    user_id=user_id,
+                    capture_mode=mode,
+                    height_cm=170.0,
+                    status="completed",
+                    measurements=meas,
+                    body_profile={"capture_mode": mode, "measurement_details": details},
+                )
+
+            # Save to DB while still in memory
+            save_res = client.post("/api/user/scans/save", json={"scan_id": scan_id})
+            assert save_res.status_code == 200
+
+            # 1. Query while in memory
+            mem_top = client.post("/api/sizing/recommend", json={"chart": top_chart, "scan_id": scan_id}).json()
+            mem_bottom = client.post("/api/sizing/recommend", json={"chart": bottom_chart, "scan_id": scan_id}).json()
+
+            # 2. Evict from memory and query again using the same scan_id (resolved via source_scan_id in DB)
+            with main.lock:
+                main.jobs.pop(scan_id, None)
+
+            db_top = client.post("/api/sizing/recommend", json={"chart": top_chart, "scan_id": scan_id}).json()
+            db_bottom = client.post("/api/sizing/recommend", json={"chart": bottom_chart, "scan_id": scan_id}).json()
+
+            for mem_res, db_res in [(mem_top, db_top), (mem_bottom, db_bottom)]:
+                assert mem_res["status"] == db_res["status"]
+                assert mem_res["candidates"] == db_res["candidates"]
+                assert mem_res.get("missing") == db_res.get("missing")
 
 

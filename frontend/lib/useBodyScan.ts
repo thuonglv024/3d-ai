@@ -2,8 +2,37 @@
 import {useState,useEffect,useRef} from "react";
 type Health = { ready: boolean; engine: string; message: string };
 type Measurements = { height_cm?: number; chest_cm?: number; waist_cm?: number; hip_cm?: number; shoulder_width_cm?: number; inseam_cm?: number | null };
-export type MeasurementDetail = {key:string;label:string;value_cm:number|null;source:"user_input"|"photo_estimate"|"photo_with_prior"|"template_model"|"unavailable";color:string;points_m:[number,number,number][]};
-type BodyProfile = { capture_mode?:string; measurement_details?:MeasurementDetail[]; fit_status?: string; max_fit_error_cm?: number; note?: string; sections?: {key:string;label:string;target_cm:number;model_cm:number;fit_error_cm:number;points_m:[number,number,number][]}[] };
+export type MeasurementDetail = {
+  key: string;
+  label: string;
+  value_cm: number | null;
+  source: "user_input" | "photo_estimate" | "photo_with_prior" | "template_model" | "unavailable";
+  observed_region?: "user_reported" | "frontal_and_lateral_torso" | "upper_torso_with_template_prior" | "template_prior_unobserved" | "unobserved";
+  valid_for_sizing?: boolean;
+  valid_for_tracking?: boolean;
+  quality_warnings?: string[];
+  engine_version?: string;
+  uncertainty_cm?: number | null;
+  color: string;
+  points_m: [number, number, number][];
+};
+type BodyProfile = {
+  capture_mode?: string;
+  measurement_details?: MeasurementDetail[];
+  fit_status?: string;
+  max_fit_error_cm?: number;
+  note?: string;
+  quality_diagnostics?: Record<string, unknown>;
+  mesh_validation?: Record<string, unknown>;
+  sections?: {
+    key: string;
+    label: string;
+    target_cm: number;
+    model_cm: number;
+    fit_error_cm: number;
+    points_m: [number, number, number][];
+  }[];
+};
 export type Job = { id: string; status: "queued" | "processing" | "completed" | "failed"; stage: string; error?: string; model_url?: string; warnings?: string[]; measurements?: Measurements; body_profile?: BodyProfile; elapsed_seconds?: number; guest_token?: string; user_id?: string | null };
 type Slot = "front" | "side";
 
@@ -30,6 +59,7 @@ export function useBodyScan(initialJob?: Job | null, initialMode: "upper_body" |
   const complete = job?.status === "completed";
 
   function getGuestHeaders(targetJob: Job): Record<string, string> {
+    if (targetJob.user_id) return {};
     let token = targetJob.guest_token || "";
     if (!token && typeof window !== "undefined") {
       try {
@@ -94,15 +124,16 @@ export function useBodyScan(initialJob?: Job | null, initialMode: "upper_body" |
     if (!frontPhoto || !sidePhoto || !consent) { setError("Chụp đủ hai góc và đồng ý xử lý ảnh trước khi tạo mô hình."); return; }
     if (!Number.isFinite(Number(height)) || Number(height) < 100 || Number(height) > 230) { setError("Chiều cao cần nằm trong khoảng 100–230 cm."); return; }
     setError(""); setSubmitting(true);
+    const previousJob = job;
+    setJob(null);
     try {
-      if (job) {
-        const deleted = await fetch(`/api/scans/${job.id}`, {
+      if (previousJob) {
+        const deleted = await fetch(`/api/scans/${previousJob.id}`, {
           method: "DELETE",
-          headers: getGuestHeaders(job),
+          headers: getGuestHeaders(previousJob),
           credentials: "include",
         });
-        if (!deleted.ok && deleted.status !== 404) throw new Error("Chưa xóa được phiên cũ. Kiểm tra kết nối rồi thử lại.");
-        setJob(null);
+        if (!deleted.ok && deleted.status !== 404 && deleted.status !== 403) throw new Error("Chưa xóa được phiên cũ. Kiểm tra kết nối rồi thử lại.");
       }
       const body = new FormData(); body.append("front", frontPhoto); body.append("side", sidePhoto); body.append("height_cm", height); body.append("consent", "true");
       body.append("capture_mode",captureMode);
@@ -115,7 +146,7 @@ export function useBodyScan(initialJob?: Job | null, initialMode: "upper_body" |
         } catch {}
       }
       setJob(data); setRotation(false);
-    } catch (e) { setError(e instanceof Error ? e.message : "Không kết nối được backend."); }
+    } catch (e) { setJob(null); setError(e instanceof Error ? e.message : "Không kết nối được backend."); }
     finally { setSubmitting(false); }
   }
   async function clear() {

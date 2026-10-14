@@ -1,0 +1,32 @@
+{
+  "app\\page.tsx -> ../components/BodyViewer": {
+    "id": 4979,
+    "files": [
+      "static/chunks/b536a0f1.336efb6d32c28506.js",
+      "static/chunks/bd904a5c.2371a149e650f003.js",
+      "static/chunks/f5ef5e1c.3e9a024eec78ced3.js",
+      "static/chunks/910.d7a7244fbbc1cbda.js",
+      "static/chunks/979.87df3c210076975b.js"
+    ]
+  },
+  "node_modules\\@react-three\\drei\\core\\VideoTexture.js -> hls.js": {
+    "id": null,
+    "files": []
+  },
+  "node_modules\\@react-three\\drei\\web\\FaceLandmarker.js -> @mediapipe/tasks-vision": {
+    "id": null,
+    "files": []
+  },
+  "node_modules\\next\\dist\\client\\index.js -> ../pages/_app": {
+    "id": 1966,
+    "files": [
+      "static/chunks/966.1775eb621d8d3e09.js"
+    ]
+  },
+  "node_modules\\next\\dist\\client\\index.js -> ../pages/_error": {
+    "id": 3899,
+    "files": [
+      "static/chunks/899.5ce6b3cbad015b59.js"
+    ]
+  }
+}
