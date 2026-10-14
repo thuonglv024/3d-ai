@@ -194,7 +194,13 @@ export function ScanProvider({ children }: { children: React.ReactNode }) {
 
     async function poll() {
       try {
-        const r = await fetch(`/api/scans/${job!.id}`);
+        const token = job!.guest_token || getGuestToken(job!.id);
+        const headers: Record<string, string> = {};
+        if (token) headers["X-Guest-Token"] = token;
+        const r = await fetch(`/api/scans/${job!.id}`, {
+          headers,
+          credentials: "include",
+        });
         if (r.status === 404) {
           if (alive) {
             setJobState(null);
@@ -232,12 +238,19 @@ export function ScanProvider({ children }: { children: React.ReactNode }) {
       alive = false;
       clearTimeout(timer);
     };
-  }, [job?.id, job?.status]);
+  }, [job?.id, job?.status, job?.guest_token, getGuestToken]);
 
   const clearScanSession = useCallback(async () => {
     if (job?.id) {
       try {
-        await fetch(`/api/scans/${job.id}`, { method: "DELETE" });
+        const token = job.guest_token || getGuestToken(job.id);
+        const headers: Record<string, string> = {};
+        if (token) headers["X-Guest-Token"] = token;
+        await fetch(`/api/scans/${job.id}`, {
+          method: "DELETE",
+          headers,
+          credentials: "include",
+        });
       } catch {
         // Backend cleanup
       }
@@ -245,7 +258,7 @@ export function ScanProvider({ children }: { children: React.ReactNode }) {
     setJobState(null);
     setAdviceCache({});
     setJobError("");
-  }, [job?.id]);
+  }, [job?.id, job?.guest_token, getGuestToken]);
 
   const fetchAdviceForProduct = useCallback(
     async (product: Product, currentJob?: Job | null): Promise<SizeAdviceResult> => {
@@ -393,6 +406,19 @@ export function ScanProvider({ children }: { children: React.ReactNode }) {
     setGuestTokens({});
     setAdviceCache({});
     setAppliedSizes({});
+    if (typeof window !== "undefined") {
+      try {
+        sessionStorage.removeItem("morph_saved_scans_map");
+        const keysToRemove: string[] = [];
+        for (let i = 0; i < sessionStorage.length; i++) {
+          const key = sessionStorage.key(i);
+          if (key && (key.startsWith("morph_scan_guest_token_") || key === "morph_saved_scans_map")) {
+            keysToRemove.push(key);
+          }
+        }
+        keysToRemove.forEach((k) => sessionStorage.removeItem(k));
+      } catch {}
+    }
   }, []);
 
   // Listen to logout broadcast event to clear memory cache immediately

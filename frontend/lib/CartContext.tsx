@@ -174,13 +174,18 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       const color = colorOrDelta;
       const itemSize = size;
       const targetVal = deltaOrNewQty ?? 0;
+      const targetLineId = `${productId}__${color}__${itemSize}`;
 
       return prev
         .map((line) => {
           const matches =
-            line.productId === productId && line.color === color && line.size === itemSize;
+            line.id === targetLineId ||
+            (line.productId === productId && line.color === color && line.size === itemSize);
           if (!matches) return line;
-          const newQty = isAbsolute ? targetVal : line.quantity + targetVal;
+          if (isAbsolute) {
+            return { ...line, quantity: Math.max(1, Math.min(10, targetVal)) };
+          }
+          const newQty = line.quantity + targetVal;
           if (newQty <= 0) return null;
           return { ...line, quantity: Math.min(10, Math.max(1, newQty)) };
         })

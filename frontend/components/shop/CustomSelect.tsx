@@ -95,7 +95,7 @@ export default function CustomSelect({
     };
   }, [isOpen]);
 
-  // Click outside to close
+  // Click outside to close & Capture-phase Escape interception so parent drawers remain open
   useEffect(() => {
     if (!isOpen) return;
 
@@ -108,9 +108,21 @@ export default function CustomSelect({
       }
     };
 
+    const onWindowEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        setIsOpen(false);
+        triggerRef.current?.focus();
+      }
+    };
+
     document.addEventListener("mousedown", handleClickOutside);
+    window.addEventListener("keydown", onWindowEscape, true);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
+      window.removeEventListener("keydown", onWindowEscape, true);
     };
   }, [isOpen]);
 
@@ -128,6 +140,8 @@ export default function CustomSelect({
 
     if (e.key === "Escape") {
       e.preventDefault();
+      e.stopPropagation();
+      e.nativeEvent.stopImmediatePropagation();
       setIsOpen(false);
       triggerRef.current?.focus();
       return;

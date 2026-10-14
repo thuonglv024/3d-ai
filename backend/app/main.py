@@ -102,18 +102,19 @@ def check_scan_access(job: Job, request: Request, guest_token: Optional[str] = N
         user = get_optional_user(request)
         if not user or user["id"] != job.user_id:
             raise HTTPException(403, "Bạn không có quyền truy cập phiên scan này.")
-    else:
-        # Guest scan: if token is supplied via argument, header, or query, verify it matches
+    elif job.guest_token:
+        # Guest scan: require token via argument, header, or query and verify it matches
         token = (
             guest_token
             or request.headers.get("X-Guest-Token")
             or request.query_params.get("guest_token")
         )
-        if token and job.guest_token:
-            token_clean = token.strip()
-            job_token_clean = job.guest_token.strip()
-            if not secrets.compare_digest(token_clean, job_token_clean):
-                raise HTTPException(403, "guest_token không hợp lệ.")
+        if not token or not token.strip():
+            raise HTTPException(403, "guest_token không hợp lệ hoặc bị thiếu.")
+        token_clean = token.strip()
+        job_token_clean = job.guest_token.strip()
+        if not secrets.compare_digest(token_clean, job_token_clean):
+            raise HTTPException(403, "guest_token không hợp lệ hoặc bị thiếu.")
 
 
 def auto_save_scan_if_enabled(job: Job) -> None:

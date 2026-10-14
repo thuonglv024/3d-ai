@@ -130,6 +130,28 @@ export default function ScanResult({
   const value = (m: MeasurementDetail) =>
     m.value_cm == null ? "—" : (m.value_cm / (unit === "in" ? 2.54 : 1)).toFixed(1);
 
+  const guestToken =
+    job.guest_token ||
+    getGuestToken(job.id) ||
+    (typeof window !== "undefined"
+      ? (() => {
+          try {
+            return sessionStorage.getItem(`morph_scan_guest_token_${job.id}`) || "";
+          } catch {
+            return "";
+          }
+        })()
+      : "");
+
+  const withGuestToken = (url?: string) => {
+    if (!url || !guestToken) return url;
+    const sep = url.includes("?") ? "&" : "?";
+    return `${url}${sep}guest_token=${encodeURIComponent(guestToken)}`;
+  };
+
+  const modelUrl = withGuestToken(job.model_url);
+  const measurementsUrl = withGuestToken(`/api/scans/${job.id}/measurements`);
+
   async function fullscreen() {
     try {
       if (document.fullscreenElement) await document.exitFullscreen();
@@ -505,7 +527,7 @@ export default function ScanResult({
           {active && (
             <Boundary>
               <Viewer
-                url={job.model_url}
+                url={modelUrl}
                 wireframe={mode === "wire"}
                 points={mode === "points"}
                 reset={reset}
@@ -543,11 +565,11 @@ export default function ScanResult({
           </div>
 
           <div className="scan-tech-actions">
-            <a href={job.model_url} download className="scan-btn-subtle">
+            <a href={modelUrl} download className="scan-btn-subtle">
               <Download size={15} />
               Tải file GLB 3D
             </a>
-            <a href={`/api/scans/${job.id}/measurements`} download className="scan-btn-subtle">
+            <a href={measurementsUrl} download className="scan-btn-subtle">
               <Download size={15} />
               Tải báo cáo JSON
             </a>

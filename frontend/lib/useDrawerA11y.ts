@@ -45,7 +45,27 @@ export function useDrawerA11y(
 
     // Escape key and Tab focus trap
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.defaultPrevented) return;
+
+      const targetWrapper =
+        (e.target as HTMLElement | null)?.closest?.(".morph-custom-select-wrapper") ||
+        (document.activeElement as HTMLElement | null)?.closest?.(".morph-custom-select-wrapper");
+      if (
+        targetWrapper &&
+        (targetWrapper.querySelector(".morph-custom-select-trigger.is-open") ||
+          targetWrapper.querySelector(".morph-custom-select-menu"))
+      ) {
+        return;
+      }
+
       if (e.key === "Escape") {
+        if (
+          panelRef?.current?.querySelector(
+            ".morph-custom-select-trigger.is-open, .morph-custom-select-menu"
+          )
+        ) {
+          return;
+        }
         e.preventDefault();
         e.stopPropagation();
         onCloseRef.current();

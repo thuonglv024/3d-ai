@@ -29,6 +29,16 @@ export function useBodyScan(initialJob?: Job | null, initialMode: "upper_body" |
   const busy = submitting || job?.status === "queued" || job?.status === "processing";
   const complete = job?.status === "completed";
 
+  function getGuestHeaders(targetJob: Job): Record<string, string> {
+    let token = targetJob.guest_token || "";
+    if (!token && typeof window !== "undefined") {
+      try {
+        token = sessionStorage.getItem(`morph_scan_guest_token_${targetJob.id}`) || "";
+      } catch {}
+    }
+    return token ? { "X-Guest-Token": token } : {};
+  }
+
   async function checkHealth() {
     try { const r = await fetch("/api/health"); if (!r.ok) throw new Error(); setHealth(await r.json()); }
     catch { setHealth({ ready: false, engine: "offline", message: "Chưa kết nối backend. Chạy start-backend.ps1 rồi bấm Kiểm tra lại." }); }
@@ -41,7 +51,10 @@ export function useBodyScan(initialJob?: Job | null, initialMode: "upper_body" |
     let failures = 0;
     async function poll() {
       try {
-        const r = await fetch(`/api/scans/${job!.id}`);
+        const r = await fetch(`/api/scans/${job!.id}`, {
+          headers: getGuestHeaders(job!),
+          credentials: "include",
+        });
         if (r.status === 404) {
           if (alive) { setJob(null); setError("Phiên đã hết hạn hoặc máy chủ đã khởi động lại. Vui lòng quét lại."); }
           return;
@@ -83,7 +96,11 @@ export function useBodyScan(initialJob?: Job | null, initialMode: "upper_body" |
     setError(""); setSubmitting(true);
     try {
       if (job) {
-        const deleted = await fetch(`/api/scans/${job.id}`, { method: "DELETE" });
+        const deleted = await fetch(`/api/scans/${job.id}`, {
+          method: "DELETE",
+          headers: getGuestHeaders(job),
+          credentials: "include",
+        });
         if (!deleted.ok && deleted.status !== 404) throw new Error("Chưa xóa được phiên cũ. Kiểm tra kết nối rồi thử lại.");
         setJob(null);
       }
@@ -104,7 +121,14 @@ export function useBodyScan(initialJob?: Job | null, initialMode: "upper_body" |
   async function clear() {
     setDeleting(true);
     try {
-      if (job) { const r = await fetch(`/api/scans/${job.id}`, { method: "DELETE" }); if (!r.ok && r.status !== 404) throw new Error(); }
+      if (job) {
+        const r = await fetch(`/api/scans/${job.id}`, {
+          method: "DELETE",
+          headers: getGuestHeaders(job),
+          credentials: "include",
+        });
+        if (!r.ok && r.status !== 404) throw new Error();
+      }
       setJob(null); setFront(null); setSide(null); setConsent(false); setError(""); setReset(n => n + 1);
     } catch { setError("Chưa xóa được dữ liệu trên backend. Hãy kiểm tra kết nối rồi thử lại."); }
     finally { setDeleting(false); }

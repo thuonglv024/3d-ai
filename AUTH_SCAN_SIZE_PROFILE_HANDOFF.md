@@ -106,3 +106,22 @@ Các ảnh chụp nghiệm thu lưu trữ tại thư mục: `output/playwright/a
 ## 5. Giới hạn & Khuyến nghị Tiếp theo
 - **Độ chính xác số đo**: Tiếp tục duy trì tuyên bố minh bạch công nghệ rằng số đo ước lượng từ 2 góc chụp và mô hình MakeHuman chưa được kiểm chứng lâm sàng y tế hay may đo chính xác.
 - **Mở rộng catalog**: Catalog hiện tại có 160 sản phẩm với đầy đủ ảnh và size chart chuẩn lưu trong SQLite, sẵn sàng mở rộng thêm bộ lọc nâng cao nếu cần.
+
+---
+
+## 6. Vá lỗ hổng bảo mật Guest Scan, Sửa lỗi Wishlist & Kiểm thử Hồi quy (14/10/2026)
+
+1. **Vá lỗ hổng bỏ qua token tại phiên scan khách (`check_scan_access`)**:
+   - Sửa [`backend/app/main.py`](file:///d:/MORPH-AI/backend/app/main.py#L99-L118): Khi `job.user_id is None` và `job.guest_token` tồn tại, bắt buộc request phải cung cấp `guest_token` (qua tham số, header `X-Guest-Token`, hoặc query `guest_token`) và khớp qua `secrets.compare_digest`. Nếu thiếu hoặc sai token, lập tức chặn với HTTP `403 Forbidden`.
+   - Đồng bộ truyền `X-Guest-Token` / `?guest_token=...` tại [`useBodyScan.ts`](file:///d:/MORPH-AI/frontend/lib/useBodyScan.ts), [`ScanContext.tsx`](file:///d:/MORPH-AI/frontend/lib/ScanContext.tsx), và [`ScanResult.tsx`](file:///d:/MORPH-AI/frontend/components/shop/ScanResult.tsx).
+2. **Sửa lỗi cộng đôi số lượng giỏ hàng từ Wishlist & lỗi đóng nhầm Wishlist khi nhấn Escape**:
+   - Trong [`WishlistDrawer.tsx`](file:///d:/MORPH-AI/frontend/components/shop/WishlistDrawer.tsx) và [`CartContext.tsx`](file:///d:/MORPH-AI/frontend/lib/CartContext.tsx): Bổ sung `syncItemToCart` sử dụng `dispatchedRef`/`dispatchedMap` và `updateQuantity(..., true)` (chế độ tuyệt đối) khi biến thể đã tồn tại trong giỏ hoặc đã được thêm trong phiên hiện tại, ngăn chặn triệt để việc nhân đôi số lượng khi bấm "Thêm vào giỏ" rồi "Tiếp tục đặt hàng".
+   - Trong [`CustomSelect.tsx`](file:///d:/MORPH-AI/frontend/components/shop/CustomSelect.tsx) và [`useDrawerA11y.ts`](file:///d:/MORPH-AI/frontend/lib/useDrawerA11y.ts): Bắt phím `Escape` ở capture phase khi dropdown đang mở kèm `stopPropagation()` / `stopImmediatePropagation()`, đồng thời kiểm tra `e.defaultPrevented` và trạng thái mở của `.morph-custom-select-wrapper` trước khi đóng Drawer cha.
+3. **Kết quả kiểm thử tổng thể (Phase 3)**:
+   - Backend Pytest (`test-backend.ps1`): **89/89 passed** (`ExitCode: 0`).
+   - Security Repro Suite (`verification/scripts/repro_reported_issues.py`): **5/5 passed** (`ExitCode: 0`).
+   - Backend Regression Suite (`verification/scripts/regression_suite_auth_chart_checkout.py`): **100% passed** (`ExitCode: 0`).
+   - Frontend Regression Suite (`verification/scripts/regression_frontend_chart_checkout.cjs`): **100% passed** (`ExitCode: 0`).
+   - Playwright E2E Wishlist & Escape (`verification/scripts/wishlist-escape-cart-verification.cjs`): **7/7 passed** (`output/playwright/wishlist-escape-cart/results.json`).
+   - Frontend TypeScript Typecheck (`tsc --noEmit`): **0 errors** (`ExitCode: 0`).
+

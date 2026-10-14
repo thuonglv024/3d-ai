@@ -128,9 +128,19 @@ export default function CheckoutPage() {
       errs.fullName = "Họ và tên cần có ít nhất 2 ký tự";
     }
 
-    const cleanPhone = phone.replace(/[^0-9]/g, "");
+    const rawPhone = phone.trim();
+    let cleanPhone = rawPhone.replace(/[\s.\-()]/g, "");
+    if (cleanPhone.startsWith("+84")) {
+      cleanPhone = "0" + cleanPhone.slice(3);
+    } else if (cleanPhone.startsWith("84") && (cleanPhone.length === 11 || cleanPhone.length === 12)) {
+      cleanPhone = "0" + cleanPhone.slice(2);
+    }
     if (!cleanPhone) {
       errs.phone = "Vui lòng nhập số điện thoại liên hệ";
+    } else if (!/^\d+$/.test(cleanPhone)) {
+      errs.phone = "Số điện thoại chỉ được chứa các chữ số";
+    } else if (!cleanPhone.startsWith("0")) {
+      errs.phone = "Số điện thoại Việt Nam phải bắt đầu bằng 0 hoặc +84";
     } else if (cleanPhone.length < 9 || cleanPhone.length > 11) {
       errs.phone = "Số điện thoại phải từ 9 đến 11 chữ số";
     }

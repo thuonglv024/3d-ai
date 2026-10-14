@@ -31,28 +31,36 @@ def test_validation_lifecycle_and_deletion(monkeypatch, tmp_path):
         response = client.post("/api/scans", files=files, data={"height_cm": 170, "consent": True})
         assert response.status_code == 202
         key = response.json()["id"]
+        guest_token = response.json()["guest_token"]
+        headers = {"X-Guest-Token": guest_token}
         for _ in range(100):
-            status = client.get(f"/api/scans/{key}").json()
+            status = client.get(f"/api/scans/{key}", headers=headers).json()
             if status["status"] == "completed":
                 break
             time.sleep(.01)
         assert status["status"] == "completed"
         assert status["measurements"]["inseam_cm"] is None
-        exported = client.get(f"/api/scans/{key}/measurements")
+        chart = {"name": "Test chart", "garment": "top", "source": "user_provided", "measurement_basis": "body_cm", "rows": [{"size": "M", "chest_cm": {"min": 90, "max": 100}, "waist_cm": {"min": 70, "max": 80}}]}
+        # Verify requests WITHOUT guest_token are rejected with 403
+        assert client.get(f"/api/scans/{key}").status_code == 403
+        assert client.get(f"/api/scans/{key}/measurements").status_code == 403
+        assert client.get(f"/api/scans/{key}/model").status_code == 403
+        assert client.post(f"/api/scans/{key}/size-advice", json=chart).status_code == 403
+        assert client.delete(f"/api/scans/{key}").status_code == 403
+        exported = client.get(f"/api/scans/{key}/measurements", headers=headers)
         assert exported.status_code == 200
         assert exported.json()["unit"] == "cm"
         assert exported.json()["body_fit"]["validation"] == "not_validated"
-        chart = {"name": "Test chart", "garment": "top", "source": "user_provided", "measurement_basis": "body_cm", "rows": [{"size": "M", "chest_cm": {"min": 90, "max": 100}, "waist_cm": {"min": 70, "max": 80}}]}
-        advice = client.post(f"/api/scans/{key}/size-advice", json=chart)
+        advice = client.post(f"/api/scans/{key}/size-advice", json=chart, headers=headers)
         assert advice.json()["candidates"] == ["M"]
         assert advice.json()["chart_source"] == "user_provided"
-        assert client.post(f"/api/scans/{key}/size-advice", json={}).status_code == 422
-        model = client.get(status["model_url"])
+        assert client.post(f"/api/scans/{key}/size-advice", json={}, headers=headers).status_code == 422
+        model = client.get(status["model_url"], headers=headers)
         assert model.content == b"glTF-test-only"
         assert model.headers["cache-control"] == "no-store"
         assert client.get("/api/scans/does-not-exist/model").status_code == 404
-        assert client.delete(f"/api/scans/{key}").status_code == 204
-        assert client.get(f"/api/scans/{key}").status_code == 404
-        assert client.get(f"/api/scans/{key}/measurements").status_code == 404
-        assert client.post(f"/api/scans/{key}/size-advice", json=chart).status_code == 404
+        assert client.delete(f"/api/scans/{key}", headers=headers).status_code == 204
+        assert client.get(f"/api/scans/{key}", headers=headers).status_code == 404
+        assert client.get(f"/api/scans/{key}/measurements", headers=headers).status_code == 404
+        assert client.post(f"/api/scans/{key}/size-advice", json=chart, headers=headers).status_code == 404
         assert not list(tmp_path.glob("*.glb"))

@@ -218,10 +218,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Clean up cached personal scan data from sessionStorage / localStorage
       if (typeof window !== "undefined") {
         try {
+          sessionStorage.removeItem("morph_saved_scans_map");
           const keysToRemove: string[] = [];
           for (let i = 0; i < sessionStorage.length; i++) {
             const key = sessionStorage.key(i);
-            if (key && (key.startsWith("morph_scan_") || key.startsWith("morph_user_"))) {
+            if (
+              key &&
+              (key.startsWith("morph_scan_") ||
+                key.startsWith("morph_user_") ||
+                key === "morph_saved_scans_map")
+            ) {
               keysToRemove.push(key);
             }
           }

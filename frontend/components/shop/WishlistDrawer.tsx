@@ -38,7 +38,15 @@ interface ItemVariantState {
 
 export default function WishlistDrawer() {
   const router = useRouter();
-  const { wishlist, toggleWishlist, isWishlistOpen, setIsWishlistOpen, addToCart } = useCart();
+  const {
+    cart,
+    wishlist,
+    toggleWishlist,
+    isWishlistOpen,
+    setIsWishlistOpen,
+    addToCart,
+    updateQuantity,
+  } = useCart();
   const panelRef = useRef<HTMLDivElement>(null);
 
   const [isLoading, setIsLoading] = useState(false);
@@ -48,6 +56,13 @@ export default function WishlistDrawer() {
 
   // Variant selection and errors per product ID
   const [variantSelections, setVariantSelections] = useState<Record<string, ItemVariantState>>({});
+  // Dispatched variants during current Wishlist session
+  const [dispatchedMap, setDispatchedMap] = useState<
+    Record<string, { color: string; size: string; quantity: number }>
+  >({});
+  const dispatchedRef = useRef<Record<string, { color: string; size: string; quantity: number }>>(
+    {}
+  );
   // Checked items for batch add/checkout
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [batchError, setBatchError] = useState<string | null>(null);
@@ -170,7 +185,11 @@ export default function WishlistDrawer() {
   }, []);
 
   useEffect(() => {
-    if (!isWishlistOpen) return;
+    if (!isWishlistOpen) {
+      dispatchedRef.current = {};
+      setDispatchedMap({});
+      return;
+    }
     let mounted = true;
     resolveWishlist(wishlist, () => mounted);
     return () => {
@@ -181,6 +200,56 @@ export default function WishlistDrawer() {
   useDrawerA11y(isWishlistOpen, () => setIsWishlistOpen(false), panelRef);
 
   if (!isWishlistOpen) return null;
+
+  const syncItemToCart = (
+    p: Product,
+    selection: { color: string; size: string; quantity: number }
+  ) => {
+    const variantKey = `${p.id}__${selection.color}__${selection.size}`;
+    const inCart = cart.some(
+      (line) =>
+        line.id === variantKey ||
+        (line.productId === p.id &&
+          line.color === selection.color &&
+          line.size === selection.size)
+    );
+    const dispatched =
+      dispatchedRef.current[variantKey] ||
+      (dispatchedMap[p.id] &&
+      dispatchedMap[p.id].color === selection.color &&
+      dispatchedMap[p.id].size === selection.size
+        ? dispatchedMap[p.id]
+        : undefined);
+
+    if (inCart || dispatched) {
+      updateQuantity(p.id, selection.color, selection.size, selection.quantity, true);
+    } else {
+      addToCart(
+        {
+          productId: p.id,
+          productSlug: p.slug,
+          name: p.name,
+          price: p.price,
+          color: selection.color,
+          size: selection.size,
+          image: p.image,
+        },
+        selection.quantity,
+        false
+      );
+    }
+
+    const record = {
+      color: selection.color,
+      size: selection.size,
+      quantity: selection.quantity,
+    };
+    dispatchedRef.current[variantKey] = record;
+    setDispatchedMap((prev) => ({
+      ...prev,
+      [p.id]: record,
+    }));
+  };
 
   // Helpers for variant selections
   const updateItemColor = (productId: string, color: string, product: Product) => {
@@ -295,19 +364,7 @@ export default function WishlistDrawer() {
       return;
     }
 
-    addToCart(
-      {
-        productId: p.id,
-        productSlug: p.slug,
-        name: p.name,
-        price: p.price,
-        color: selection.color,
-        size: selection.size,
-        image: p.image,
-      },
-      selection.quantity,
-      false
-    );
+    syncItemToCart(p, selection);
 
     // Show temporary feedback
     setVariantSelections((prev) => ({
@@ -384,19 +441,7 @@ export default function WishlistDrawer() {
       const selection = variantSelections[p.id];
       if (!selection || !selection.color || !selection.size) continue;
 
-      addToCart(
-        {
-          productId: p.id,
-          productSlug: p.slug,
-          name: p.name,
-          price: p.price,
-          color: selection.color,
-          size: selection.size,
-          image: p.image,
-        },
-        selection.quantity,
-        false
-      );
+      syncItemToCart(p, selection);
       addedCount++;
     }
 
@@ -415,19 +460,7 @@ export default function WishlistDrawer() {
       const selection = variantSelections[p.id];
       if (!selection || !selection.color || !selection.size) continue;
 
-      addToCart(
-        {
-          productId: p.id,
-          productSlug: p.slug,
-          name: p.name,
-          price: p.price,
-          color: selection.color,
-          size: selection.size,
-          image: p.image,
-        },
-        selection.quantity,
-        false
-      );
+      syncItemToCart(p, selection);
     }
 
     setIsWishlistOpen(false);

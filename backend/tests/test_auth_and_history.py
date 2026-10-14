@@ -196,6 +196,14 @@ def test_guest_scan_creation_access_and_user_claim(test_app_and_db):
         res_get_wrong = guest_client.get(f"/api/scans/{scan_id}", headers={"X-Guest-Token": "invalid_guest_token"})
         assert res_get_wrong.status_code == 403
 
+        # Access and delete WITHOUT guest token -> 403 and job remains intact
+        res_get_missing = guest_client.get(f"/api/scans/{scan_id}")
+        assert res_get_missing.status_code == 403
+        res_del_missing = guest_client.delete(f"/api/scans/{scan_id}")
+        assert res_del_missing.status_code == 403
+        with main.lock:
+            assert scan_id in main.jobs
+
         # Mark scan completed in memory for saving test
         with main.lock:
             job = main.jobs[scan_id]
