@@ -29,6 +29,7 @@ from .catalog import router as catalog_router
 from .orders import init_db as init_orders_db, router as orders_router
 from .auth import get_optional_user, router as auth_router
 from .history import persist_scan_snapshot, router as history_router
+from .ai_scan import ai_scan_router
 from .db import get_db_connection, get_product_by_slug_or_id
 
 logger = logging.getLogger(__name__)
@@ -126,6 +127,7 @@ app.include_router(catalog_router)
 app.include_router(orders_router)
 app.include_router(auth_router)
 app.include_router(history_router)
+app.include_router(ai_scan_router)
 
 
 def check_scan_access(job: Job, request: Request, guest_token: Optional[str] = None) -> None:

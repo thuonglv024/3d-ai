@@ -129,3 +129,48 @@ Tất cả các endpoint dưới đây yêu cầu xác thực qua cookie `morph_
 | `GET` | `/api/user/scans/{scan_id}` | Xem chi tiết một bản ghi scan đã lưu | Path `scan_id` | `200 OK`: `SavedScan`; `403` / `404` |
 | `PATCH` | `/api/user/scans/{scan_id}` | Cập nhật ghi chú cá nhân (`note`) cho bản ghi scan | `{ note: string }` | `200 OK`: `SavedScan` |
 | `DELETE` | `/api/user/scans/{scan_id}` | Xóa bản ghi scan khỏi lịch sử cá nhân | Path `scan_id` | `200 OK`: `{ deleted: true, id: scan_id }` |
+
+---
+
+## 7. Nhóm API Quét AI Thử Nghiệm (`backend/app/ai_scan`) — AI Vision · Beta
+
+Đây là nhánh thử nghiệm độc lập, **không thay thế** `/api/scans` hay pipeline MediaPipe.
+Kết quả luôn mang provenance `ai_vision_estimate`, không tạo mô hình 3D và không lưu ảnh.
+
+| Method | Endpoint | Mô tả | Request | Response |
+| :--- | :--- | :--- | :--- | :--- |
+| `GET` | `/api/ai-scan/health` | Kiểm tra cấu hình AI (không lộ key) | None | `200 OK`: `{ ready, provider: "google-genai", model, message }` |
+| `POST` | `/api/ai-scan/analyze` | Ước lượng số đo từ 2 ảnh bằng Gemini + LangGraph | `multipart/form-data`: `front`, `side` (≤ 10 MB, khác nhau), `height_cm` (`100..230`), `consent=true`, `capture_mode` | `200 OK`: `AiScanResponse`; `400` consent/ảnh lỗi; `413` quá dung lượng; `422` không ước lượng được; `502` lỗi model; `503` thiếu key/deps; `504` timeout |
+
+`AiScanResponse`:
+```typescript
+{
+  status: "completed";
+  provider: "google-genai";
+  model: string;
+  capture_mode: "upper_body" | "full_body";
+  measurements: {
+    height_cm: number;
+    chest_cm: number | null;
+    waist_cm: number | null;
+    hip_cm: number | null;          // luôn null ở upper_body
+    shoulder_width_cm: number | null;
+  };
+  details: Array<{
+    key: string;
+    label: string;
+    value_cm: number | null;
+    source: "ai_vision_estimate";
+  }>;
+  confidence: number;               // 0..1
+  pose_quality: "good" | "fair" | "poor" | string;
+  notes: string;
+  warnings: string[];
+  elapsed_seconds: number;
+  source: "ai_vision_estimate";
+}
+```
+
+Cấu hình: đặt `GOOGLE_API_KEY` (hoặc `GEMINI_API_KEY`) và tuỳ chọn `MORPH_AI_MODEL`
+trong `backend/.env`; cài `backend/requirements-ai.txt`. Xem
+[`docs/AI_SCAN_FEATURE.md`](file:///d:/MORPH-AI/docs/AI_SCAN_FEATURE.md).

@@ -14,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import CustomSelect from "./CustomSelect";
+import PoseGuide from "./PoseGuide";
 import {
   CAMERA_QUALITY_THRESHOLDS,
   computePixelQualityMetrics,
@@ -59,10 +60,12 @@ function getActiveThresholds(): CameraQualityThresholds {
 
 export default function CaptureSession({
   mode,
+  aiMode = false,
   onComplete,
   onCancel,
 }: {
   mode: "upper_body" | "full_body";
+  aiMode?: boolean;
   onComplete: (pair: Pair) => void;
   onCancel: () => void;
 }) {
@@ -510,6 +513,7 @@ export default function CaptureSession({
           <strong>Camera trực tiếp</strong>
           <span>{view === "front" ? "01 · Chính diện" : "02 · Góc nghiêng"}</span>
           <span className="capture-mode-tag">{upper ? "Thân trên" : "Toàn thân"}</span>
+          {aiMode && <span className="capture-mode-tag is-ai">AI Vision</span>}
         </div>
         <div className="capture-session-head-right">
           <CustomSelect
@@ -566,6 +570,7 @@ export default function CaptureSession({
                 }
               }}
             />
+            <PoseGuide upper={upper} ready={isPoseAndQualityReady} />
             <div className="capture-frame-mark" aria-hidden="true" />
             <div className="capture-view-pill" aria-hidden="true">
               <span className="capture-view-pill-dot" />
@@ -622,6 +627,7 @@ export default function CaptureSession({
           <div className="capture-instruction capture-guide-card">
             <span className="capture-guide-step">
               {view === "front" ? "Bước 01 / 02" : "Bước 02 / 02"}
+              {aiMode ? " · AI Vision" : ""}
             </span>
             <h2>{view === "front" ? "Hướng hai vai về camera" : "Xoay nghiêng người 90°"}</h2>
             <p>

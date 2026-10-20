@@ -73,7 +73,7 @@ CACHE_DIR = ROOT / ".cache" / "bench_api_load"
 
 NODE_EXE = Path(r"C:\Program Files\nodejs\node.exe")
 CHROME_EXE = Path(r"C:\Program Files\Google\Chrome\Application\chrome.exe")
-PLAYWRIGHT_MODULE = r"C:/Users/Phan Trinh Tien Dat/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright"
+PLAYWRIGHT_MODULE = str(FRONTEND_DIR / "node_modules" / "playwright")
 
 sys.path.insert(0, str(BACKEND_DIR))
 

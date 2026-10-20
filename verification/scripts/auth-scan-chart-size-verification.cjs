@@ -1,9 +1,9 @@
-const { chromium } = require('C:/Users/Phan Trinh Tien Dat/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const { chromium } = require('./playwright-runtime.cjs');
 const { execSync } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const root = 'D:/MORPH-AI';
+const root = path.resolve(__dirname, '..', '..');
 const outDir = path.join(root, 'output/playwright/auth-scan-chart-size');
 fs.mkdirSync(outDir, { recursive: true });
 
@@ -142,7 +142,7 @@ fs.mkdirSync(outDir, { recursive: true });
     console.log('Registered test user:', userId, testEmail);
 
     // Seed 3 scans for this user via seed_test_scans.py
-    execSync(`D:/MORPH-AI/backend/.venv/Scripts/python.exe D:/MORPH-AI/verification/scripts/seed_test_scans.py ${userId}`);
+    execSync(`"${path.join(root, 'backend/.venv/Scripts/python.exe')}" "${path.join(root, 'verification/scripts/seed_test_scans.py')}" ${userId}`);
     console.log('Seeded 3 test scans (including cluster B & C).');
     results.test4_guest_token_claim_and_auth_save = true;
 

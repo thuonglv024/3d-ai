@@ -16,13 +16,13 @@
  * 8. Honest disclosure of browser-verified behaviors vs physical camera hardware limitations
  */
 
-const { chromium } = require("C:/Users/Phan Trinh Tien Dat/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright");
+const { chromium } = require("./playwright-runtime.cjs");
 const { spawn } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
 const assert = require("node:assert");
 
-const ROOT_DIR = "D:/MORPH-AI";
+const ROOT_DIR = path.resolve(__dirname, "../..");
 const RUN_ID = "run-20261014-v2";
 const OUT_DIR = path.join(ROOT_DIR, "output", "runs", RUN_ID, "capture-e2e");
 fs.mkdirSync(OUT_DIR, { recursive: true });
@@ -666,6 +666,11 @@ function createLandmarks({
     // =========================================================================
     log("Running Scenario 1: PermissionDenied -> Retry Camera...");
     await page.goto(`${baseUrl}/scan`, { waitUntil: "networkidle" });
+
+    // AI Vision is the default mode now; this suite exercises the classic 3D
+    // capture flow, so switch to it explicitly before starting.
+    const classicModeBtn = page.getByRole("button", { name: /Quét 3D/ });
+    await classicModeBtn.click();
 
     const consentCheckbox = page.locator(".scan-camera-consent input[type='checkbox']");
     await consentCheckbox.check();

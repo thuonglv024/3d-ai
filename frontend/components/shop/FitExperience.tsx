@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import {
   AlertCircle,
   ArrowRight,
@@ -19,6 +19,9 @@ import { useScan, type SizeAdviceResult } from "../../lib/ScanContext";
 import ScanResult from "./ScanResult";
 import CaptureSession from "./CaptureSession";
 import CustomSelect from "./CustomSelect";
+import AiScanResult from "../ai-scan/AiScanResult";
+import AiPhotoUpload, { type AiUploadPair } from "../ai-scan/AiPhotoUpload";
+import { useAiScan } from "../../lib/useAiScan";
 
 export default function FitExperience({
   product,
@@ -52,6 +55,53 @@ export default function FitExperience({
   const [advice, setAdvice] = useState<SizeAdviceResult | null>(null);
   const [adviceError, setAdviceError] = useState("");
   const [retry, setRetry] = useState(0);
+  const [scanMode, setScanMode] = useState<"classic" | "ai">("ai");
+  const [uploadPair, setUploadPair] = useState<AiUploadPair>({ front: null, side: null });
+  const lastUploadSignature = useRef("");
+  const ai = useAiScan();
+  const aiUnavailable = ai.health !== null && !ai.health.ready;
+  const validHeight =
+    Number.isFinite(Number(s.height)) && Number(s.height) >= 100 && Number(s.height) <= 230;
+
+  const resetAiUpload = useCallback(() => {
+    setUploadPair({ front: null, side: null });
+    lastUploadSignature.current = "";
+  }, []);
+
+  // Uploaded photos are analyzed automatically as soon as the pair is complete,
+  // the height is valid and the user has consented. The signature prevents the
+  // effect from firing twice for the same pair.
+  const uploadSignature =
+    scanMode === "ai" && uploadPair.front && uploadPair.side
+      ? [
+          uploadPair.front.name,
+          uploadPair.front.size,
+          uploadPair.front.lastModified,
+          uploadPair.side.name,
+          uploadPair.side.size,
+          uploadPair.side.lastModified,
+        ].join("|")
+      : "";
+
+  useEffect(() => {
+    if (!uploadSignature || ai.busy) return;
+    if (!s.consent || !validHeight || ai.health?.ready !== true) return;
+    if (lastUploadSignature.current === uploadSignature) return;
+    if (!uploadPair.front || !uploadPair.side) return;
+    lastUploadSignature.current = uploadSignature;
+    void ai.analyze({ front: uploadPair.front, side: uploadPair.side }, s.height, s.captureMode);
+  }, [
+    uploadSignature,
+    ai.busy,
+    ai.analyze,
+    ai.health?.ready,
+    s.consent,
+    s.height,
+    s.captureMode,
+    validHeight,
+    uploadPair.front,
+    uploadPair.side,
+  ]);
 
   // Set default captureMode based on product requirement
   useEffect(() => {
@@ -62,12 +112,15 @@ export default function FitExperience({
     }
   }, [product.id, isFullBodyRequired]);
 
-  // Sync active job from local hook to shared ScanContext
+  // Sync active job from local hook to shared ScanContext.
+  // Depend on the stable setter instead of the whole context value: the context
+  // object is recreated on every provider render, so using it as a dependency
+  // made this effect run continuously and triggered a maximum-update-depth loop.
   useEffect(() => {
     if (s.job) {
       scanContext.setJob(s.job);
     }
-  }, [s.job, scanContext]);
+  }, [s.job, scanContext.setJob]);
 
   // Populate local hook with shared ScanContext job if available and not yet loaded
   useEffect(() => {
@@ -124,18 +177,20 @@ export default function FitExperience({
   const handleReset = useCallback(async () => {
     s.setJob(null);
     scanContext.setJob(null);
+    resetAiUpload();
     await s.clear();
     await scanContext.clearScanSession();
-  }, [s, scanContext]);
+  }, [s, scanContext, resetAiUpload]);
 
   const handleResetFullBody = useCallback(async () => {
     s.setJob(null);
     scanContext.setJob(null);
+    resetAiUpload();
     await s.clear();
     await scanContext.clearScanSession();
     s.setCaptureMode("full_body");
     setCapturing(false);
-  }, [s, scanContext]);
+  }, [s, scanContext, resetAiUpload]);
 
   const renderProductContextBar = () => {
     if (!product) return null;
@@ -157,6 +212,59 @@ export default function FitExperience({
       </div>
     );
   };
+
+  if (scanMode === "ai" && ai.result) {
+    return (
+      <div className="fit-experience">
+        {renderProductContextBar()}
+        <AiScanResult
+          result={ai.result}
+          product={product}
+          onSelectSize={onSelectSize}
+          onReset={() => {
+            ai.reset();
+            resetAiUpload();
+          }}
+          onSwitchTo3D={() => {
+            ai.reset();
+            resetAiUpload();
+            setScanMode("classic");
+          }}
+          onOpenSizeChart={onOpenSizeChart}
+        />
+      </div>
+    );
+  }
+
+  if (scanMode === "ai" && ai.busy) {
+    return (
+      <div className="fit-experience">
+        {renderProductContextBar()}
+        <div className="scan-processing-screen" role="status">
+          <div className="scan-processing-icon">
+            <Sparkles size={42} />
+            <LoaderCircle size={72} className="spin" />
+          </div>
+          <h2>AI đang đọc hai góc chụp</h2>
+          <p>
+            Gemini ước lượng số đo từ ảnh chính diện và nghiêng. Quá trình có thể mất
+            10–30 giây.
+          </p>
+          <div>
+            <span>
+              <Check size={16} /> Chính diện
+            </span>
+            <span>
+              <Check size={16} /> Góc nghiêng 90°
+            </span>
+          </div>
+          <p className="scan-processing-note">
+            Bạn đã có thể rời camera. Kết quả AI sẽ hiện ngay tại đây.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (currentJob && currentJob.status === "completed") {
     return (
@@ -186,9 +294,14 @@ export default function FitExperience({
         {renderProductContextBar()}
         <CaptureSession
           mode={s.captureMode}
+          aiMode={scanMode === "ai"}
           onCancel={() => setCapturing(false)}
           onComplete={(pair) => {
             setCapturing(false);
+            if (scanMode === "ai") {
+              void ai.analyze(pair, s.height, s.captureMode);
+              return;
+            }
             s.choose("front", pair.front);
             s.choose("side", pair.side);
             void s.scan(pair);
@@ -241,22 +354,71 @@ export default function FitExperience({
     );
   }
 
-  const validHeight =
-    Number.isFinite(Number(s.height)) && Number(s.height) >= 100 && Number(s.height) <= 230;
-
   return (
     <div className="fit-experience">
       {renderProductContextBar()}
       <section className="scan-onboarding">
         <div className="scan-intro">
           <div className="scan-intro-icon">
-            <ScanLine size={27} />
+            {scanMode === "ai" ? <Sparkles size={27} /> : <ScanLine size={27} />}
           </div>
-          <h1>Tìm size từ hình thể của bạn.</h1>
+          <h1>{scanMode === "ai" ? "Quét số đo bằng AI." : "Tìm size từ hình thể của bạn."}</h1>
           <p>
-            Chỉ cần camera và chiều cao. MORPH tự chụp hai góc, dựng hình thể 3D và giúp bạn đối
-            chiếu size cho <strong>{product.name}</strong>.
+            {scanMode === "ai" ? (
+              <>
+                AI Vision gửi hai ảnh chính diện và nghiêng tới Gemini để ước lượng số đo,
+                rồi đối chiếu size cho <strong>{product.name}</strong>. Đây là chế độ thử nghiệm.
+              </>
+            ) : (
+              <>
+                Chỉ cần camera và chiều cao. MORPH tự chụp hai góc, dựng hình thể 3D và giúp bạn đối
+                chiếu size cho <strong>{product.name}</strong>.
+              </>
+            )}
           </p>
+        </div>
+        <div className="scan-mode-switch" role="group" aria-label="Chọn chế độ quét">
+          <button
+            type="button"
+            className={scanMode === "ai" ? "is-active" : ""}
+            aria-pressed={scanMode === "ai"}
+            disabled={aiUnavailable}
+            title={aiUnavailable ? ai.health?.message : undefined}
+            onClick={() => {
+              setScanMode("ai");
+              s.setError("");
+              ai.reset();
+              resetAiUpload();
+            }}
+          >
+            <Sparkles size={16} />
+            <span>
+              <strong>AI Vision · Beta</strong>
+              <small>
+                {ai.health === null
+                  ? "Đang kiểm tra dịch vụ AI…"
+                  : ai.health.ready
+                  ? `${ai.health.provider} · ${ai.health.model}`
+                  : "Chưa cấu hình GOOGLE_API_KEY"}
+              </small>
+            </span>
+          </button>
+          <button
+            type="button"
+            className={scanMode === "classic" ? "is-active" : ""}
+            aria-pressed={scanMode === "classic"}
+            onClick={() => {
+              setScanMode("classic");
+              s.setError("");
+              resetAiUpload();
+            }}
+          >
+            <ScanLine size={16} />
+            <span>
+              <strong>Quét 3D</strong>
+              <small>MediaPipe · mô hình 3D tương tác</small>
+            </span>
+          </button>
         </div>
         <ol className="scan-journey">
           <li>
@@ -276,15 +438,21 @@ export default function FitExperience({
           <li>
             <span>03</span>
             <div>
-              <strong>Xem hình thể & size</strong>
-              <p>Nhận kết quả ngay khi xử lý xong.</p>
+              <strong>{scanMode === "ai" ? "Nhận số đo AI & size" : "Xem hình thể & size"}</strong>
+              <p>
+                {scanMode === "ai"
+                  ? "AI ước lượng số đo và đối chiếu bảng size."
+                  : "Nhận kết quả ngay khi xử lý xong."}
+              </p>
             </div>
           </li>
         </ol>
         <div className="scan-setup">
           <div className="scan-setup-title">
             <h2>Chuẩn bị trước khi quét</h2>
-            <span>Hai góc · Một phiên camera</span>
+            <span>
+              {scanMode === "ai" ? "AI Vision · 2 ảnh · Beta" : "Hai góc · Một phiên camera"}
+            </span>
           </div>
 
           {/* Full Body Requirement Card for Pants / Skirts / Dresses */}
@@ -419,23 +587,41 @@ export default function FitExperience({
               onChange={(e) => s.setConsent(e.target.checked)}
             />
             <span>
-              Tôi đồng ý gửi khung hình kiểm tra tư thế và hai ảnh chụp tới máy chủ MORPH để phân tích
-              hình thể 3D (không lưu trữ lâu dài hồ sơ ảnh thô; mô hình tạm thời tự động xóa sau tối đa
-              1 giờ hoặc xóa ngay khi bấm &ldquo;Chụp lại&rdquo; / &ldquo;Xóa&rdquo;).
+              {scanMode === "ai" ? (
+                <>
+                  Tôi đồng ý gửi hai ảnh chụp tới dịch vụ AI (Google Gemini) để ước lượng số đo.
+                  Ảnh chỉ được xử lý trong bộ nhớ và không lưu trên máy chủ MORPH. Kết quả là ước
+                  lượng tham khảo, chưa kiểm chứng trên người thật.
+                </>
+              ) : (
+                <>
+                  Tôi đồng ý gửi khung hình kiểm tra tư thế và hai ảnh chụp tới máy chủ MORPH để phân tích
+                  hình thể 3D (không lưu trữ lâu dài hồ sơ ảnh thô; mô hình tạm thời tự động xóa sau tối đa
+                  1 giờ hoặc xóa ngay khi bấm &ldquo;Chụp lại&rdquo; / &ldquo;Xóa&rdquo;).
+                </>
+              )}
             </span>
           </label>
           <button
             className="shop-primary scan-start"
             type="button"
-            disabled={!s.consent || !validHeight || !s.health?.ready || s.deleting}
+            disabled={
+              !s.consent ||
+              !validHeight ||
+              !s.health?.ready ||
+              s.deleting ||
+              (scanMode === "ai" && aiUnavailable)
+            }
             onClick={() => {
               s.setError("");
               scanContext.setJobError("");
+              ai.reset();
+              resetAiUpload();
               setCapturing(true);
             }}
           >
             <Camera size={20} />
-            Mở camera & bắt đầu
+            {scanMode === "ai" ? "Mở camera & quét bằng AI" : "Mở camera & bắt đầu"}
             <ArrowRight size={18} />
           </button>
           {!s.health?.ready && (
@@ -448,26 +634,73 @@ export default function FitExperience({
               )}
             </p>
           )}
+          {scanMode === "ai" && aiUnavailable && (
+            <p className="scan-service ai-service-note" role="status">
+              {ai.health?.message || "Dịch vụ AI chưa sẵn sàng."}
+              <button className="shop-inline" type="button" onClick={() => void ai.checkHealth()}>
+                Kiểm tra lại
+              </button>
+              <button
+                className="shop-inline"
+                type="button"
+                onClick={() => {
+                  resetAiUpload();
+                  setScanMode("classic");
+                }}
+              >
+                Chuyển sang quét 3D
+              </button>
+            </p>
+          )}
+          {scanMode === "ai" && (
+            <>
+              <div className="ai-upload-divider">
+                <span>hoặc tải ảnh có sẵn</span>
+              </div>
+              <AiPhotoUpload
+                pair={uploadPair}
+                onChange={setUploadPair}
+                canAnalyze={Boolean(s.consent && validHeight)}
+                ready={ai.health?.ready === true}
+                analyzing={ai.busy}
+                error={uploadPair.front || uploadPair.side ? ai.error : ""}
+                onRetry={() => {
+                  if (!uploadPair.front || !uploadPair.side) return;
+                  lastUploadSignature.current = "";
+                  void ai.analyze(
+                    { front: uploadPair.front, side: uploadPair.side },
+                    s.height,
+                    s.captureMode
+                  );
+                }}
+              />
+            </>
+          )}
           {(s.error || scanContext.jobError) && (
             <p className="fit-error" role="alert">
               {s.error || scanContext.jobError}
             </p>
           )}
+          {scanMode === "ai" && ai.error && !uploadPair.front && !uploadPair.side && (
+            <p className="fit-error" role="alert">
+              {ai.error}
+            </p>
+          )}
           <div className="scan-privacy">
             <ShieldCheck size={16} />
             <p>
-              Quyền riêng tư &amp; vòng đời dữ liệu: Khung hình kiểm tra tư thế và hai ảnh chụp được gửi
-              tới máy chủ MORPH để phân tích hình thể 3D, không lưu trữ lâu dài hồ sơ ảnh thô. Mô hình
-              tạm thời tự động xóa sau tối đa 1 giờ (hoặc xóa ngay khi bấm &ldquo;Chụp lại&rdquo; /
-              &ldquo;Xóa&rdquo;).
+              {scanMode === "ai"
+                ? "Quyền riêng tư: hai ảnh chụp được gửi tới Google Gemini qua backend MORPH để ước lượng số đo. Backend không ghi ảnh ra đĩa và không lưu kết quả AI vào hồ sơ hình thể. Kết quả chỉ tồn tại trong phiên trình duyệt hiện tại."
+                : "Quyền riêng tư & vòng đời dữ liệu: Khung hình kiểm tra tư thế và hai ảnh chụp được gửi tới máy chủ MORPH để phân tích hình thể 3D, không lưu trữ lâu dài hồ sơ ảnh thô. Mô hình tạm thời tự động xóa sau tối đa 1 giờ (hoặc xóa ngay khi bấm “Chụp lại” / “Xóa”)."}
             </p>
           </div>
         </div>
         <p className="scan-estimate-note">
-          {s.captureMode === "upper_body"
-            ? "Ngực/eo ước lượng từ ảnh và tỷ lệ mẫu theo chiều cao; phần mông/chân theo mẫu 3D."
-            : "Ngực/eo/mông ước lượng từ hai góc chụp."}{" "}
-          Chưa kiểm chứng độ chính xác trên người thật; không dùng cho may đo.
+          {scanMode === "ai"
+            ? "AI Vision ước lượng số đo trực tiếp từ hai ảnh bằng Gemini. Chưa kiểm chứng trên người thật; không dùng cho may đo."
+            : s.captureMode === "upper_body"
+            ? "Ngực/eo ước lượng từ ảnh và tỷ lệ mẫu theo chiều cao; phần mông/chân theo mẫu 3D. Chưa kiểm chứng độ chính xác trên người thật; không dùng cho may đo."
+            : "Ngực/eo/mông ước lượng từ hai góc chụp. Chưa kiểm chứng độ chính xác trên người thật; không dùng cho may đo."}
         </p>
       </section>
     </div>

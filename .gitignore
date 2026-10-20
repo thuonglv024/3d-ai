@@ -1,4 +1,6 @@
 backend/.venv/
+backend/.env
+.cache/
 backend/runtime/
 backend/app/__pycache__/
 backend/tests/__pycache__/

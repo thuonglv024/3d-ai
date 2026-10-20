@@ -1,6 +1,6 @@
-﻿const {chromium}=require('C:/Users/Phan Trinh Tien Dat/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+﻿const {chromium}=require('./playwright-runtime.cjs');
 const {spawn}=require('node:child_process');const fs=require('node:fs');const path=require('node:path');
-const root='D:/MORPH-AI',out=path.join(root,'output/playwright/camera-flow-20261012');fs.mkdirSync(out,{recursive:true});
+const root=path.resolve(__dirname,'..','..'),out=path.join(root,'output/playwright/camera-flow-20261012');fs.mkdirSync(out,{recursive:true});
 process.env.TEMP=path.join(root,'.cache/tmp');process.env.TMP=process.env.TEMP;
 const env={...process.env,MORPH_REVIEW:'1',NEXT_TELEMETRY_DISABLED:'1',BACKEND_URL:'http://127.0.0.1:8007',MPLCONFIGDIR:path.join(root,'.cache/matplotlib'),PYTHONUNBUFFERED:'1'};
 const children=[];function start(exe,args,cwd,name){const log=fs.openSync(path.join(out,name+'.log'),'w');const p=spawn(exe,args,{cwd,env,windowsHide:true,stdio:['ignore',log,log]});children.push(p);p.on('error',e=>console.error(name,e));}

@@ -1409,3 +1409,441 @@
     font-size: 11px;
   }
 }
+
+/* ==========================================================================
+   EXPERIMENTAL AI SCAN MODE
+   Reuses the warm ivory / champagne gold language of the scan workspace.
+   ========================================================================== */
+
+.scan-mode-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 18px 0 22px;
+}
+
+.scan-mode-switch button {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+.scan-mode-switch button svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--primary);
+}
+
+.scan-mode-switch button strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.scan-mode-switch button small {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+.scan-mode-switch button:hover:not(:disabled) {
+  border-color: var(--primary);
+}
+
+.scan-mode-switch button.is-active {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  box-shadow: 0 0 0 3px rgba(198, 161, 91, 0.12);
+}
+
+.scan-mode-switch button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.capture-mode-tag.is-ai {
+  background: var(--primary-soft);
+  border-color: var(--primary-border);
+  color: var(--accent-text);
+}
+
+.ai-service-note {
+  margin-top: 10px;
+}
+
+/* Posture frame drawn over the live preview */
+.capture-pose-guide {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.6;
+  transition: opacity 0.25s ease;
+}
+
+.capture-pose-guide .pose-guide-silhouette,
+.capture-pose-guide .pose-guide-band,
+.capture-pose-guide .pose-guide-axis {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.55);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 9 7;
+  vector-effect: non-scaling-stroke;
+}
+
+.capture-pose-guide .pose-guide-band {
+  stroke-dasharray: 4 6;
+  opacity: 0.85;
+}
+
+.capture-pose-guide .pose-guide-axis {
+  stroke-dasharray: 3 9;
+  opacity: 0.35;
+}
+
+.capture-pose-guide .pose-guide-label {
+  fill: rgba(255, 255, 255, 0.78);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  paint-order: stroke;
+  stroke: rgba(20, 19, 18, 0.55);
+  stroke-width: 2px;
+}
+
+.capture-pose-guide.is-ready {
+  opacity: 1;
+}
+
+.capture-pose-guide.is-ready .pose-guide-silhouette,
+.capture-pose-guide.is-ready .pose-guide-band,
+.capture-pose-guide.is-ready .pose-guide-axis {
+  stroke: var(--primary);
+}
+
+.capture-pose-guide.is-ready .pose-guide-label {
+  fill: var(--primary);
+  stroke: rgba(20, 19, 18, 0.7);
+}
+
+/* AI result panel */
+.ai-confidence-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 11px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.ai-confidence-badge.is-high {
+  border-color: var(--primary-border);
+  background: var(--primary-soft);
+  color: var(--accent-text);
+}
+
+.ai-confidence-badge.is-low {
+  border-color: #d9b38c;
+  background: #fbeee0;
+  color: #8a5a2b;
+}
+
+.ai-scan-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0 18px;
+}
+
+.ai-pose-pill,
+.ai-source-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.ai-pose-pill.is-good {
+  border-color: var(--primary-border);
+  color: var(--accent-text);
+  background: var(--primary-soft);
+}
+
+.ai-measurement-grid {
+  margin-top: 18px;
+}
+
+.ai-scan-notes {
+  margin: 14px 0 0;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+}
+
+.ai-scan-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+@media (max-width: 640px) {
+  .scan-mode-switch {
+    grid-template-columns: 1fr;
+    margin-bottom: 18px;
+  }
+
+  .scan-mode-switch button {
+    padding: 11px 12px;
+  }
+
+  .ai-confidence-badge {
+    white-space: normal;
+  }
+
+  .ai-measurement-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ==========================================================================
+   AI PHOTO UPLOAD (alternative to live camera)
+   ========================================================================== */
+
+.ai-upload-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 18px 0;
+  color: var(--text-secondary);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.ai-upload-divider::before,
+.ai-upload-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.ai-upload-panel {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+}
+
+.ai-upload-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.ai-upload-head > svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--primary);
+}
+
+.ai-upload-head strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.ai-upload-head span {
+  display: block;
+  margin-top: 2px;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+.ai-upload-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.ai-upload-slot {
+  position: relative;
+  min-height: 168px;
+  overflow: hidden;
+  border: 1.5px dashed var(--primary-border);
+  border-radius: var(--radius-control);
+  background: var(--paper);
+  transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+}
+
+.ai-upload-slot:hover {
+  border-color: var(--primary);
+}
+
+.ai-upload-slot.is-drag {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  box-shadow: 0 0 0 3px rgba(198, 161, 91, 0.16);
+}
+
+.ai-upload-slot.has-file {
+  border-style: solid;
+  border-color: var(--primary-border);
+}
+
+.ai-upload-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ai-upload-hit {
+  position: absolute;
+  inset: 0;
+  display: block;
+  cursor: pointer;
+}
+
+.ai-upload-hit[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.ai-upload-hit img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.ai-upload-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 18px 14px 30px;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.ai-upload-placeholder > svg {
+  color: var(--primary);
+  margin-bottom: 2px;
+}
+
+.ai-upload-placeholder strong {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.ai-upload-placeholder small {
+  font-size: 10.5px;
+  line-height: 1.45;
+}
+
+.ai-upload-placeholder .ai-upload-cta {
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
+.ai-upload-label {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  z-index: 1;
+  padding: 4px 9px;
+  border: 1px solid rgba(198, 161, 91, 0.45);
+  border-radius: var(--radius-pill);
+  background: rgba(26, 22, 17, 0.82);
+  color: #faf7f0;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.ai-upload-clear {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 50%;
+  background: rgba(26, 22, 17, 0.78);
+  color: #faf7f0;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.ai-upload-clear:hover {
+  background: #1a1611;
+}
+
+.ai-upload-status {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.ai-upload-status svg {
+  flex-shrink: 0;
+  color: var(--primary);
+}
+
+.ai-upload-panel .fit-error {
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .ai-upload-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ai-upload-slot {
+    min-height: 138px;
+  }
+}

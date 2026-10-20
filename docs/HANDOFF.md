@@ -80,3 +80,40 @@ Xem báo cáo nghiệm thu chi tiết tại [**`SCAN_PRODUCT_READINESS.md`**](fi
    - Đo kiểm trên các dòng webcam laptop (720p/1080p) và điện thoại thực tế dưới nhiều mức ánh sáng (`150–500 lux`).
 3. **Tăng cường cấu hình Production**:
    - Bật `MORPH_COOKIE_SECURE=1` khi chạy HTTPS; chuyển lưu trữ trạng thái job/rate-limit sang SQLite/Redis nếu mở rộng nhiều worker process.
+
+---
+
+## 6. Tính năng thử nghiệm AI Vision Scan (19/10/2026)
+
+Đã bổ sung một nhánh quét **thử nghiệm, độc lập** dùng Google Gemini qua **LangChain + LangGraph**, không thay đổi pipeline 3D mặc định.
+
+- **Backend mới**: `backend/app/ai_scan/` (`config.py`, `prompts.py`, `schemas.py`, `graph.py`, `service.py`, `router.py`).
+  - `GET /api/ai-scan/health` và `POST /api/ai-scan/analyze`.
+  - LangGraph 3 bước: `analyze` (Gemini structured output) → `validate` (loại giá trị bất khả thi, ép `hip_cm = null` ở `upper_body`) → `finalize` (provenance `ai_vision_estimate`).
+  - Ảnh chỉ xử lý trong bộ nhớ, không ghi đĩa, không lưu job/DB.
+- **Frontend mới**: `frontend/lib/useAiScan.ts`, `frontend/components/ai-scan/AiScanResult.tsx`, `frontend/components/ai-scan/AiPhotoUpload.tsx`, `frontend/components/shop/PoseGuide.tsx`.
+  - `/scan` mặc định mở **AI Vision · Beta**; vẫn giữ nút chuyển **Quét 3D**.
+  - Chụp 2 ảnh bằng camera → tự phân tích; hoặc **tải 2 ảnh** (chọn file/kéo-thả, JPG/PNG/WebP ≤ 10 MB) → tự phân tích khi đủ ảnh, chiều cao hợp lệ và đã đồng ý.
+  - Dùng chung `CaptureSession`, `computeClientSizeAdvice` và các class UI sẵn có.
+  - Bổ sung **khung tư thế** (đầu/vai/eo/hông/bàn chân) trên preview camera, chuyển vàng khi tư thế/quality đạt.
+- **Sửa file hiện có (chỉ bổ sung)**: `backend/app/main.py` (import + include router), `FitExperience.tsx`, `CaptureSession.tsx`, `capture-flow.css`.
+- **Cấu hình**: `backend/requirements-ai.txt`, `backend/.env.example`; cần `GOOGLE_API_KEY` (hoặc `GEMINI_API_KEY`) trong `backend/.env`. Chưa có key thì health trả `ready:false`, UI báo chưa cấu hình và **không sinh kết quả giả**.
+- **Kiểm thử**: `backend/tests/test_ai_scan.py` 8 tests pass; toàn bộ backend 115 tests pass; `npm run typecheck` pass; `test_capture_session_e2e.cjs` 8/8 scenarios pass (`pageErrors = 0`); đã gọi Gemini thật với 2 ảnh QA (HTTP 200) và chạy thử upload UI → tự phân tích → hiển thị số đo + gợi ý size.
+- **Chưa xác nhận**: kết quả AI chưa có ground truth/kiểm định người thật (ảnh QA là mannequin tổng hợp). Không dùng cho may đo hoặc mục đích y tế.
+
+Chi tiết đầy đủ: [`docs/AI_SCAN_FEATURE.md`](file:///d:/MORPH-AI/docs/AI_SCAN_FEATURE.md).
+
+Nhật ký phiên triển khai (19/10/2026): [`docs/SESSION_AI_SCAN_2026-10-19.md`](file:///d:/MORPH-AI/docs/SESSION_AI_SCAN_2026-10-19.md).
+
+---
+
+## 7. Sửa lỗi vòng lặp render khi quét (19/10/2026)
+
+- **Triệu chứng**: `Maximum update depth exceeded` tại `ScanContext.tsx` sau khi có job scan; countdown/scan bị kẹt do component re-render liên tục.
+- **Nguyên nhân**: `FitExperience` đồng bộ job vào `ScanContext` trong `useEffect` với dependency là **toàn bộ object context** (`scanContext`). Object này được tạo mới mỗi lần provider render, nên effect chạy lại liên tục; `setJob` lại luôn tạo `adviceCache`/`guestTokens` mới, tạo vòng lặp setState.
+- **Cách sửa**:
+  - `FitExperience` chỉ phụ thuộc vào setter ổn định `scanContext.setJob`.
+  - `ScanContext.setJob` trở thành idempotent: trả về cùng reference khi job không đổi, chỉ xóa `adviceCache` khi cache đang có dữ liệu, và không tạo object `guestTokens` mới nếu token đã tồn tại.
+- **Kiểm chứng**: `verification/scripts/test_capture_session_e2e.cjs` chạy **8/8 browser scenarios PASSED**, `pageErrors = 0`, `consoleErrors = 0`; `npm run typecheck` pass; `test_capture_quality.cjs` **16/16**.
+
+Nhật ký chi tiết toàn bộ phiên (dependency, tính năng, upload, bug fix, kiểm thử): [`docs/SESSION_AI_SCAN_2026-10-19.md`](file:///d:/MORPH-AI/docs/SESSION_AI_SCAN_2026-10-19.md).

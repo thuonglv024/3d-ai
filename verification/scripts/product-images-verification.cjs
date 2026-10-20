@@ -1,8 +1,8 @@
-const { chromium } = require('C:/Users/Phan Trinh Tien Dat/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const { chromium } = require('./playwright-runtime.cjs');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const root = 'D:/MORPH-AI';
+const root = path.resolve(__dirname, '..', '..');
 const out = path.join(root, 'output/playwright/product-images-verification');
 fs.mkdirSync(out, { recursive: true });
 

@@ -1,0 +1,9 @@
+# Optional dependencies for the experimental AI scan mode.
+# The existing 3D MediaPipe pipeline does not require these packages.
+#
+# Install:
+#   backend/.venv/Scripts/python.exe -m pip install -r backend/requirements-ai.txt
+langchain==1.4.6
+langgraph==1.2.16
+langchain-google-genai==4.4.2
+python-dotenv==1.2.4

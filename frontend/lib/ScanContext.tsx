@@ -175,10 +175,17 @@ export function ScanProvider({ children }: { children: React.ReactNode }) {
 
   const setJob = useCallback(
     (newJob: Job | null) => {
-      setJobState(newJob);
-      setAdviceCache({});
+      // React bails out when the state updater returns the same reference.
+      // This keeps the local-hook -> ScanContext sync from re-rendering on
+      // every parent render (which previously caused "Maximum update depth").
+      setJobState((prev) => (prev === newJob ? prev : newJob));
+      setAdviceCache((prev) => (Object.keys(prev).length === 0 ? prev : {}));
       if (newJob && newJob.id && newJob.guest_token && !newJob.user_id) {
-        setGuestTokens((prev) => ({ ...prev, [newJob.id]: newJob.guest_token! }));
+        setGuestTokens((prev) =>
+          prev[newJob.id] === newJob.guest_token
+            ? prev
+            : { ...prev, [newJob.id]: newJob.guest_token! }
+        );
         if (typeof window !== "undefined") {
           try {
             sessionStorage.setItem(`morph_scan_guest_token_${newJob.id}`, newJob.guest_token);
