@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "source": "docs/audit/PLAN.md §3 (bước 2-5)",
+  "checks": [
+    {"id": "step2_hip_level", "step": 2, "case": "*", "metric": "hip_level", "op": "between", "value": [0.52, 0.545]},
+    {"id": "step2_hip_d2", "step": 2, "case": "*", "metric": "d2_0.50", "op": "ratio_max_vs_baseline", "value": 0.75},
+    {"id": "step2_fit_error", "step": 2, "case": "*", "metric": "max_fit_error_cm", "op": "max", "value": 0.5},
+
+    {"id": "step3_obese_waist_d2", "step": 3, "case": "c_male_obese", "metric": "d2_0.60", "op": "ratio_max_vs_baseline", "value": 0.70},
+    {"id": "step3_obese_chest_d2", "step": 3, "case": "c_male_obese", "metric": "d2_0.72", "op": "ratio_max_vs_baseline", "value": 0.70},
+    {"id": "step3_a_waist_d2", "step": 3, "case": "a_male_average", "metric": "d2_0.60", "op": "ratio_max_vs_baseline", "value": 1.10},
+    {"id": "step3_a_chest_d2", "step": 3, "case": "a_male_average", "metric": "d2_0.72", "op": "ratio_max_vs_baseline", "value": 1.10},
+    {"id": "step3_b_waist_d2", "step": 3, "case": "b_female_slim", "metric": "d2_0.60", "op": "ratio_max_vs_baseline", "value": 1.10},
+    {"id": "step3_b_chest_d2", "step": 3, "case": "b_female_slim", "metric": "d2_0.72", "op": "ratio_max_vs_baseline", "value": 1.10},
+    {"id": "step3_fit_error", "step": 3, "case": "*", "metric": "max_fit_error_cm", "op": "max", "value": 0.5},
+    {"id": "step3_build_time", "step": 3, "case": "*", "metric": "build_s", "op": "ratio_max_vs_baseline", "value": 1.30},
+
+    {"id": "step4_neck_a", "step": 4, "case": "a_male_average", "metric": "d2_0.855", "op": "max", "value": 10.0},
+    {"id": "step4_neck_b", "step": 4, "case": "b_female_slim", "metric": "d2_0.855", "op": "max", "value": 25.0},
+    {"id": "step4_neck_c", "step": 4, "case": "c_male_obese", "metric": "d2_0.855", "op": "max", "value": 7.0},
+    {"id": "step4_fit_error", "step": 4, "case": "*", "metric": "max_fit_error_cm", "op": "max", "value": 0.5},
+
+    {"id": "step5_thigh_d2", "step": 5, "case": "*", "metric": "d2_0.405", "op": "ratio_max_vs_baseline", "value": 1.10},
+    {"id": "step5_calf_d2", "step": 5, "case": "*", "metric": "d2_0.235", "op": "ratio_max_vs_baseline", "value": 1.10},
+    {"id": "step5_fit_error", "step": 5, "case": "*", "metric": "max_fit_error_cm", "op": "max", "value": 0.5}
+  ],
+  "manual": [
+    {"step": 4, "item": "Không có seam nhìn thấy trên render 3 case (kiểm tra bằng mắt)."},
+    {"step": 5, "item": "Vòng cổ/đùi/bắp chân/cổ chân lệch ≤ 0.5 cm so với kỳ vọng hệ số; kiểm tra render."}
+  ]
+}
