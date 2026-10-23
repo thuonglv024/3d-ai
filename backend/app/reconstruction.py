@@ -11,18 +11,38 @@ import threading
 from typing import Callable
 
 import numpy as np
-from scipy.ndimage import binary_fill_holes, gaussian_filter1d, label
+from scipy.ndimage import binary_fill_holes, label
 from scipy.interpolate import PchipInterpolator
 import trimesh
 
-from .camera_fusion import aligned_torso_landmarks, assess_cross_view_quality, extract_paired_torso_profiles, fuse_camera_scale
+from . import anny_body
+from . import proportions
+from . import report as _report
+from .anatomy import depth_weights, resolve_sex, shape_sex, template_landmarks
+from .camera_fusion import assess_cross_view_quality, fuse_camera_scale, synchronized_torso_profile as torso_profile
 from .config import MODELS
 from .images import InvalidPhoto
 from .measurements import closed_torso_section, estimate_from_profiles, fit_measurement_targets, scale_lateral, validate_glb_mesh
 
 MODEL_PATH = MODELS / "pose_landmarker_full.task"
 TEMPLATE_PATH = MODELS / "body-template.obj"
-ENGINE = "mediapipe-two-photo-fit-v4"
+ENGINE = "mediapipe-two-photo-fit-v7"
+# report.py carries a legacy ENGINE constant for direct measurement_report calls;
+# keep it on the same version as the pipeline.
+_report.ENGINE = ENGINE
+
+HIP_DEFINITION_NOTE = (
+    "Mốc hông đổi từ fraction 1.12 (đùi trên) sang 0.95–1.02 (dải xương chậu, "
+    "~0.52–0.545 H); số hông có thể giảm 2–5 cm so với engine v6."
+)
+
+
+def _tag_measurement_details(rows):
+    """Make every provenance row carry the current engine and the hip change note."""
+    for row in rows:
+        row["engine_version"] = ENGINE
+        row["definition_note"] = HIP_DEFINITION_NOTE
+    return rows
 
 _detector = None
 _detector_lock = threading.Lock()
@@ -76,7 +96,9 @@ def readiness() -> tuple[bool, str]:
         import mediapipe  # noqa: F401
     except ImportError:
         return False, "Chưa cài MediaPipe. Chạy setup.ps1 để cài thư viện backend."
-    return True, "Dựng hình thể ước lượng từ 2 ảnh bằng CPU; chưa hỗ trợ khuôn mặt hoặc số đo may đo."
+    anny_ready, _ = anny_body.available()
+    base = "Anny" if anny_ready else "MakeHuman dự phòng"
+    return True, f"Dựng hình thể ước lượng từ 2 ảnh bằng CPU (nền {base}); chưa hỗ trợ khuôn mặt hoặc số đo may đo."
 
 
 def segmentation_mask(array: np.ndarray) -> np.ndarray:
@@ -122,7 +144,34 @@ def estimate_upper_body_height(points: np.ndarray, visibility: np.ndarray, top: 
     return float(fused_height)
 
 
+def align_mask_width(image: np.ndarray) -> np.ndarray:
+    """Pad the right edge to a multiple of 4 before MediaPipe inference.
+
+    MediaPipe's segmentation `numpy_view()` aborts the whole process
+    (`image_frame.cc: Check failed: 1 == ChannelSize()`) when the mask width is
+    not a multiple of 4. Frames touching the edge are rejected later, so the
+    padded columns never contain the body.
+    """
+    pad = (-image.shape[1]) % 4
+    if not pad:
+        return image
+    return np.ascontiguousarray(np.pad(image, ((0, 0), (0, pad), (0, 0)), mode="edge"))
+
+
 def observe(image: np.ndarray, detector, name: str, capture_mode: str = "full_body") -> Observation:
+    # MediaPipe aborts natively (not a Python exception) if the buffer layout does
+    # not match the declared SRGB format, so normalise defensively before detect.
+    image = np.asarray(image)
+    if image.ndim == 2:
+        image = np.repeat(image[:, :, None], 3, axis=2)
+    elif image.ndim == 3 and image.shape[2] == 4:
+        image = image[:, :, :3]
+    if image.ndim != 3 or image.shape[2] != 3:
+        raise InvalidPhoto(f"Ảnh {name}: định dạng màu chưa được hỗ trợ. Hãy chụp lại bằng JPG hoặc PNG.")
+    image = np.ascontiguousarray(image, dtype=np.uint8)
+    # MediaPipe aborts the process in `segmentation_masks[0].numpy_view()` when
+    # the image width is not a multiple of 4; padding avoids that crash.
+    image = align_mask_width(image)
     brightness = float(np.mean(image)) if image.size else 0.0
     if brightness < 25.0:
         raise InvalidPhoto(f"Ảnh {name}: ánh sáng quá tối (độ sáng trung bình {brightness:.1f}/255). Hãy bật thêm đèn và chụp lại.")
@@ -269,33 +318,6 @@ def center_run_width(mask: np.ndarray, y: float, center: float) -> float:
     return float(ends[idx] - starts[idx])
 
 
-def torso_profile(
-    obs: Observation,
-    reference_obs: Observation | None = None,
-    shared_height: float | None = None,
-) -> tuple[np.ndarray, np.ndarray]:
-    shoulder, hip = aligned_torso_landmarks(obs, reference_obs=reference_obs)
-    norm_height = float(shared_height if shared_height is not None else obs.height)
-    if not np.isfinite(norm_height) or norm_height <= 0:
-        raise InvalidPhoto("Không xác định được chiều cao tham chiếu.")
-    if hip[1] - shoulder[1] < norm_height * 0.15:
-        raise InvalidPhoto("Không xác định được vùng thân. Hãy đứng thẳng và chụp lại.")
-    fractions = np.linspace(0.12, 1.12, 35)
-    sampled = np.minimum(fractions, .78) if obs.capture_mode == "upper_body" else fractions
-    rows = shoulder[1] + sampled * (hip[1] - shoulder[1])
-    centers = shoulder[0] + sampled * (hip[0] - shoulder[0])
-    widths = []
-    for row, center in zip(rows, centers):
-        local = [center_run_width(obs.mask, row + d, center) for d in (-2, -1, 0, 1, 2)]
-        valid = sorted(v for v in local if np.isfinite(v))
-        med = float(valid[len(valid) >> 1]) if (len(valid) & 1) else (0.5 * (valid[(len(valid) >> 1) - 1] + valid[len(valid) >> 1]) if valid else float("nan"))
-        widths.append(med / norm_height)
-    widths = np.asarray(widths)
-    if not np.all(np.isfinite(widths)) or np.min(widths) < 0.06 or np.max(widths) > 0.40:
-        raise InvalidPhoto("Đường viền cơ thể chưa rõ. Hãy dùng nền đơn giản và tránh tay che thân.")
-    return fractions, gaussian_filter1d(widths, sigma=1.4)
-
-
 def read_template(path: Path = TEMPLATE_PATH) -> trimesh.Trimesh:
     # Parse only body faces: upstream OBJ also contains helper/joint geometry.
     vertices, faces = [], []
@@ -316,8 +338,9 @@ def read_template(path: Path = TEMPLATE_PATH) -> trimesh.Trimesh:
     return mesh
 
 
-def deform_template(mesh: trimesh.Trimesh, fractions: np.ndarray, front_width: np.ndarray, side_depth: np.ndarray, height_cm: float) -> trimesh.Trimesh:
-    mesh = mesh.copy()
+def deform_template(mesh: trimesh.Trimesh, fractions: np.ndarray, front_width: np.ndarray, side_depth: np.ndarray, height_cm: float, sex: str = "female", levels: tuple[float, float] | None = None) -> trimesh.Trimesh:
+    mesh = shape_sex(mesh, sex)
+    shoulder_level, hip_level = levels or (.805, .515)
     vertices = mesh.vertices.copy()
     y = vertices[:, 1]
     # Template landmarks are fixed to this CC0 asset; these are a modelling prior,
@@ -325,7 +348,7 @@ def deform_template(mesh: trimesh.Trimesh, fractions: np.ndarray, front_width: n
     # A hand overlapping the side silhouette can introduce a large local bulge.
     # Fit a smooth template prior through the three measured regions, rather
     # than imprinting every noisy silhouette row onto the skin.
-    _, anchors = estimate_from_profiles(fractions, front_width, side_depth, height_cm, 0)
+    _, anchors = estimate_from_profiles(fractions, front_width, side_depth, height_cm, 0, True, shoulder_level, hip_level)
     levels = np.array([a["level"] for a in anchors])
     front_width = np.array([a["width_cm"] / height_cm for a in anchors])
     side_depth = np.array([a["depth_cm"] / height_cm for a in anchors])
@@ -348,13 +371,19 @@ def deform_template(mesh: trimesh.Trimesh, fractions: np.ndarray, front_width: n
     # Exterior arm vertices are shifted with the torso rather than thickened to
     # torso depth. Arms remain a template estimate, explicitly disclosed in UI.
     radius = np.interp(y, levels[::-1], np.asarray(base_width)[::-1] / 2)
-    torso_weight = np.clip((radius * 1.35 - abs(vertices[:, 0])) / (radius * .25), 0, 1)
+    torso_weight = np.clip((radius * 1.35 - abs(vertices[:, 0])) / (radius * .45), 0, 1)
     torso_weight = torso_weight * torso_weight * (3 - 2 * torso_weight)
-    vertices[:, 0] = scale_lateral(vertices[:, 0], x_scale, radius)
+    # Arms keep their own thickness: only a small part of the torso widening
+    # becomes an outward shift, so a larger chest no longer detaches the arms.
+    vertices[:, 0] = scale_lateral(vertices[:, 0], 1 + (x_scale - 1) * (.2 + .8 * torso_weight), radius)
     # OBJ depth origin is not the torso centre (feet/nose affect its bounds).
     # Scaling about global zero pushes the back sideways and distorts posture.
     center_z = np.interp(y, levels[::-1], np.asarray(base_center_z)[::-1])
-    vertices[:, 2] = center_z + (vertices[:, 2] - center_z) * (1 + (z_scale - 1) * torso_weight)
+    # Chest depth grows forward, buttock depth backward. One symmetric factor is
+    # what used to inflate the back into a barrel whenever the chest grew.
+    front_w, back_w = depth_weights(y)
+    side_w = np.where(vertices[:, 2] > center_z, front_w, back_w)
+    vertices[:, 2] = center_z + (vertices[:, 2] - center_z) * (1 + (z_scale - 1) * torso_weight * side_w)
     vertices *= height_cm / 100
     mesh.vertices = vertices
     mesh.visual.vertex_colors = [148, 170, 146, 255]
@@ -362,7 +391,108 @@ def deform_template(mesh: trimesh.Trimesh, fractions: np.ndarray, front_width: n
     return mesh
 
 
-def reconstruct(front: np.ndarray, side: np.ndarray, height_cm: float, destination: Path, report: Callable[[str], None], capture_mode: str = "full_body") -> tuple[list[str], dict[str, float | None], dict]:
+def smooth_avatar(mesh: trimesh.Trimesh, targets: list[dict], height_cm: float, width_targets=None):
+    """One volume-preserving smoothing pass, then re-fit so circumferences stay exact.
+
+    Per-slice scaling leaves hard transitions around the armpits and the chest
+    shelf. Laplacian smoothing removes them; the second fit restores the measured
+    sections, so smoothing cannot silently change reported numbers.
+    """
+    try:
+        from trimesh.smoothing import filter_laplacian
+
+        smoothed = filter_laplacian(mesh, lamb=.25, iterations=1, volume_constraint=True)
+    except Exception:  # pragma: no cover - optional dependency detail
+        return mesh, None
+    y = smoothed.vertices[:, 1]
+    span = float(y.max() - y.min())
+    target_height = height_cm / 100
+    if span <= 0 or abs(span - target_height) > 0.02:
+        return mesh, None
+    smoothed.vertices[:, 1] = (y - y.min()) * (target_height / span)
+    mesh, profile = fit_measurement_targets(smoothed, targets, height_cm, width_targets)
+    return mesh, profile
+
+
+def refit_avatar(fitting: dict, measurements: dict, overrides: dict, height_cm: float, destination: Path) -> dict:
+    """Rebuild the avatar after the user edits measurements.
+
+    The photo-derived width/depth profile is kept; only the edited circumferences
+    change. Width and depth are scaled by the same ratio so the silhouette's W/D
+    aspect ratio survives the correction. `fit_measurement_targets` then re-imposes
+    every section, so the exported GLB still reports an exact fit.
+    """
+    targets = [dict(target) for target in fitting.get("targets", [])]
+    if not targets:
+        raise InvalidPhoto("Phiên này không lưu đủ dữ liệu để dựng lại mô hình. Hãy quét lại.")
+    for target in targets:
+        key = target.get("key")
+        if key in overrides:
+            new_cm = float(overrides[key])
+            ratio = new_cm / max(float(target["target_cm"]), 1e-6)
+            target["target_cm"] = new_cm
+            target["width_cm"] = float(target["width_cm"]) * ratio
+            target["depth_cm"] = float(target["depth_cm"]) * ratio
+
+    body_model = fitting.get("body_model", "template")
+    width_targets = []
+    levels = (float(fitting["levels"]["shoulder"]), float(fitting["levels"]["hip"]))
+    if body_model == "anny" and anny_body.available()[0]:
+        prior = fitting.get("prior") or {}
+        mesh = anny_body.build(
+            fitting.get("sex", "female"),
+            float(prior.get("weight", 0.5)),
+            float(prior.get("muscle", 0.45)),
+            height_cm,
+        )
+    else:
+        body_model = "template"
+        mesh = deform_template(
+            read_template(),
+            np.asarray(fitting["fractions"], dtype=float),
+            np.asarray(fitting["widths"], dtype=float),
+            np.asarray(fitting["depths"], dtype=float),
+            height_cm,
+            fitting.get("sex", "female"),
+            levels,
+        )
+        shoulder_cm = measurements.get("shoulder_width_cm")
+        if shoulder_cm:
+            width_targets.append({"key": "shoulder_width_cm", "label": "Rộng vai", "kind": "width", "level": levels[0], "target_cm": shoulder_cm, "width_cm": shoulder_cm, "blend": .6})
+
+    base_mains = {}
+    for target in targets:
+        try:
+            base_mains[target["key"]] = closed_torso_section(mesh, target["level"] * height_cm / 100)[0]
+        except InvalidPhoto:
+            base_mains[target["key"]] = target["target_cm"]
+    ring_scales = proportions.ring_scales(base_mains, {t["key"]: t["target_cm"] for t in targets})
+    proportions.apply_rings(mesh, ring_scales, height_cm / 100)
+
+    mesh, profile = fit_measurement_targets(mesh, targets, height_cm, width_targets)
+    mesh, smoothed = smooth_avatar(mesh, targets, height_cm, width_targets)
+    if smoothed is not None:
+        profile = smoothed
+    profile["capture_mode"] = fitting.get("capture_mode", "full_body")
+    profile["sex"] = fitting.get("sex", "female")
+    profile["sex_source"] = fitting.get("sex_source", "auto")
+    profile["body_model"] = body_model
+    profile["proportional_rings"] = proportions.describe(ring_scales)
+    if fitting.get("prior"):
+        profile["body_model_prior"] = fitting["prior"]
+    profile["levels"] = fitting["levels"]
+    profile["engine_version"] = ENGINE
+    profile["uncertainty_cm"] = None
+    profile["scale_method"] = "refit_from_user_measurements"
+    profile["measurement_method"] = "user_corrected_refit"
+    from .report import measurement_report
+    profile["measurement_details"] = _tag_measurement_details(measurement_report(mesh, measurements, profile, height_cm, overrides=overrides))
+    profile["mesh_validation"] = validate_glb_mesh(mesh, height_cm, profile["sections"])
+    mesh.export(destination, file_type="glb", include_normals=True)
+    return profile
+
+
+def reconstruct(front: np.ndarray, side: np.ndarray, height_cm: float, destination: Path, report: Callable[[str], None], capture_mode: str = "full_body", sex: str = "auto") -> tuple[list[str], dict[str, float | None], dict]:
     report("Đang nhận diện cơ thể trong hai ảnh…")
     detector = get_detector()
     with _detector_lock:
@@ -380,20 +510,78 @@ def reconstruct(front: np.ndarray, side: np.ndarray, height_cm: float, destinati
     fractions, widths = torso_profile(frontal, reference_obs=None, shared_height=shared_height)
     _, depths = torso_profile(lateral, reference_obs=frontal, shared_height=shared_height)
     template = read_template()
+    landmarks = template_landmarks(str(TEMPLATE_PATH))
+    shoulder_level = landmarks.get("shoulder", .805)
+    hip_level = landmarks.get("hip", .515)
     if capture_mode == "upper_body":
         # Hip silhouette is not observed. Restore template widths for those rows,
         # and mark the resulting hip as model-only rather than a photo estimate.
         for i in np.flatnonzero(fractions > .78):
-            _, curve = closed_torso_section(template, float(.805-fractions[i]*.29))
+            level = float(shoulder_level - fractions[i] * (shoulder_level - hip_level))
+            _, curve = closed_torso_section(template, level)
             blend = min(1., (fractions[i]-.78)/.17)
             widths[i] = widths[i]*(1-blend)+np.ptp(curve[:,0])*blend
             depths[i] = depths[i]*(1-blend)+np.ptp(curve[:,2])*blend
-    mesh = deform_template(template, fractions, widths, depths, height_cm)
     report("Đang trích xuất thông số kích thước cơ thể…")
-    measurements, targets = estimate_from_profiles(fractions, widths, depths, height_cm, front_shoulders)
+    measurements, targets = estimate_from_profiles(fractions, widths, depths, height_cm, front_shoulders, True, shoulder_level, hip_level)
+    mesh_sex, sex_source = resolve_sex(sex, measurements, capture_mode)
+    report("Đang dựng hình thể nam/nữ…")
+    anny_ready, _anny_message = anny_body.available()
+    width_targets = []
+    shoulder_cm = measurements.get("shoulder_width_cm")
+    body_prior = None
+    if anny_ready:
+        # Anny's sex phenotype supplies the anatomy (shoulders, bust, glutes,
+        # limbs). Its cross-section at the shoulder joint includes the upper
+        # arms, so the landmark breadth is NOT imposed here: it would narrow a
+        # natural deltoid instead of matching an acromion-to-acromion width.
+        weight, muscle = anny_body.phenotype_from_measurements(measurements, height_cm)
+        mesh = anny_body.build(mesh_sex, weight, muscle, height_cm)
+        body_prior = {"weight": weight, "muscle": muscle}
+    else:
+        mesh = deform_template(template, fractions, widths, depths, height_cm, mesh_sex, (shoulder_level, hip_level))
+        if shoulder_cm:
+            # Breadth from pose landmarks is noisier than a silhouette perimeter, so
+            # the mesh blends towards it instead of being forced onto it.
+            width_targets.append({"key": "shoulder_width_cm", "label": "Rộng vai", "kind": "width", "level": shoulder_level, "target_cm": shoulder_cm, "width_cm": shoulder_cm, "blend": .6})
     report("Đang khớp avatar theo các vòng ước lượng…")
-    mesh, profile = fit_measurement_targets(mesh, targets, height_cm)
+    base_mains = {}
+    for target in targets:
+        try:
+            base_mains[target["key"]] = closed_torso_section(mesh, target["level"] * height_cm / 100)[0]
+        except InvalidPhoto:
+            base_mains[target["key"]] = target["target_cm"]
+    ring_scales = proportions.ring_scales(base_mains, {t["key"]: t["target_cm"] for t in targets})
+    proportions.apply_rings(mesh, ring_scales, height_cm / 100)
+    mesh, profile = fit_measurement_targets(mesh, targets, height_cm, width_targets)
+    mesh, smoothed_profile = smooth_avatar(mesh, targets, height_cm, width_targets)
+    if smoothed_profile is not None:
+        profile = smoothed_profile
     profile["capture_mode"] = capture_mode
+    profile["sex"] = mesh_sex
+    profile["sex_source"] = sex_source
+    profile["body_model"] = "anny" if anny_ready else "template"
+    if body_prior:
+        profile["body_model_prior"] = body_prior
+    profile["levels"] = {"shoulder": round(shoulder_level, 4), "hip": round(hip_level, 4), "neck": round(landmarks.get("neck", .855), 4)}
+    profile["proportional_rings"] = proportions.describe(ring_scales)
+    # Everything needed to rebuild the same body after the user edits a
+    # measurement: the photo width/depth profile, the chosen base and the
+    # fitted targets. Kept in the profile so a PATCH never needs the photos.
+    profile["fitting"] = {
+        "sex": mesh_sex,
+        "sex_source": sex_source,
+        "capture_mode": capture_mode,
+        "height_cm": height_cm,
+        "body_model": "anny" if anny_ready else "template",
+        "prior": body_prior,
+        "targets": targets,
+        "width_targets": width_targets,
+        "levels": profile["levels"],
+        "fractions": np.asarray(fractions, dtype=float).tolist(),
+        "widths": np.asarray(widths, dtype=float).tolist(),
+        "depths": np.asarray(depths, dtype=float).tolist(),
+    }
     profile["engine_version"] = ENGINE
     profile["uncertainty_cm"] = None
     profile["quality_diagnostics"] = quality_diagnostics
@@ -403,7 +591,7 @@ def reconstruct(front: np.ndarray, side: np.ndarray, height_cm: float, destinati
         measurements["inseam_cm"] = None
         profile["measurement_method"] = "upper_body_anatomical_calibrated_v2"
     from .report import measurement_report
-    profile["measurement_details"] = measurement_report(mesh, measurements, profile, height_cm)
+    profile["measurement_details"] = _tag_measurement_details(measurement_report(mesh, measurements, profile, height_cm))
     profile["mesh_validation"] = validate_glb_mesh(mesh, height_cm, profile["sections"])
     report("Đang hoàn thiện file 3D…")
     mesh.export(destination, file_type="glb", include_normals=True)
@@ -416,6 +604,27 @@ def reconstruct(front: np.ndarray, side: np.ndarray, height_cm: float, destinati
     ]
     if capture_mode == "upper_body":
         warnings.insert(0, "Chế độ webcam thân trên: tỷ lệ cm suy ra từ chiều cao và đa mỏ neo sọ–vai–hông của mẫu. Ngực/eo phụ thuộc giả định này; mông và chân không được đo từ ảnh. Không dùng cho may đo.")
+    warnings.append(
+        ("Dáng mô hình 3D: Nữ" if mesh_sex == "female" else "Dáng mô hình 3D: Nam")
+        + (" (bạn chọn)." if sex_source == "user" else " (ước lượng từ tỉ lệ số đo).")
+        + " Đây là giả định dựng hình để mô hình có tỉ lệ cơ thể, không phải nhận diện giới tính."
+    )
     if quality_diagnostics.get("cross_view_warning"):
         warnings.append(quality_diagnostics["cross_view_warning"])
+    if anny_ready:
+        warnings.append(
+            "Hình nền nam/nữ dựng từ mô hình cơ thể Anny (Apache-2.0, asset MakeHuman CC0) rồi mới khớp số đo. "
+            "Đây vẫn là hình thể ước lượng, không phải bản sao 3D của bạn."
+        )
+    else:
+        warnings.append(
+            "Chưa có basis Anny trong backend/models nên đang dùng lưới MakeHuman cũ; "
+            "chạy verification/scripts/build_anny_bases.py để bật mô hình nam/nữ đầy đủ."
+        )
+    warnings.append(
+        "Vòng cổ/đùi/bắp chân/cổ chân suy từ vòng ngực hoặc hông theo hệ số tỷ lệ dựng hình "
+        f"(cổ {ring_scales['neck_cm']:.2f}×, đùi {ring_scales['thigh_cm']:.2f}×, "
+        f"bắp chân {ring_scales['calf_cm']:.2f}×, cổ chân {ring_scales['ankle_cm']:.2f}×). "
+        "Không phải số đo trực tiếp từ ảnh."
+    )
     return warnings, measurements, profile

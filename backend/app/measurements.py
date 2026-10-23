@@ -40,10 +40,17 @@ def anatomical_perimeter(width: float, depth: float, key: str | None = None) -> 
     return base
 
 
-def estimate_from_profiles(fractions, widths, depths, height_cm, shoulder_ratio, apply_anatomical_calibration: bool = True):
-    """Corresponding shoulder-to-hip rows; circumference uses calibrated anatomical sections."""
+def estimate_from_profiles(fractions, widths, depths, height_cm, shoulder_ratio, apply_anatomical_calibration: bool = True, shoulder_level: float = .805, hip_level: float = .515):
+    """Corresponding shoulder-to-hip rows; circumference uses calibrated anatomical sections.
+
+    ``shoulder_level``/``hip_level`` are the mesh's own skeletal landmarks in
+    normalised height, so sections sit on real joints instead of fixed constants.
+    """
     base_circumferences = np.array([ellipse_perimeter(w, d) * height_cm for w, d in zip(widths, depths)])
-    definitions = [("chest_cm", "Ngực", .30, .44, "max"), ("waist_cm", "Eo", .52, .78, "min"), ("hip_cm", "Mông", .95, 1.12, "max")]
+    # Hip: search 0.95–1.02 of the shoulder-hip span, not 1.12. With the
+    # template landmarks (0.805/0.534) this is ~0.528–0.547 H, i.e. the pelvic
+    # band around hip_level ±0.03 H; 1.12 slid down onto the upper thigh.
+    definitions = [("chest_cm", "Ngực", .30, .44, "max"), ("waist_cm", "Eo", .52, .78, "min"), ("hip_cm", "Mông", .95, 1.02, "max")]
     values = {"height_cm": round(height_cm, 1), "shoulder_width_cm": round(shoulder_ratio * height_cm, 1), "inseam_cm": None}
     targets = []
     for key, title, low, high, choice in definitions:
@@ -61,7 +68,7 @@ def estimate_from_profiles(fractions, widths, depths, height_cm, shoulder_ratio,
             "target_cm": value,
             "ellipse_cm": float(base_circumferences[i]),
             "k_anatomy": round(float(k_factor), 5),
-            "level": float(.805 - fractions[i] * (.805 - .515)),
+            "level": float(shoulder_level - fractions[i] * (shoulder_level - hip_level)),
             "width_cm": float(widths[i] * height_cm),
             "depth_cm": float(depths[i] * height_cm),
         })
@@ -205,16 +212,36 @@ def validate_glb_mesh(mesh: trimesh.Trimesh, height_cm: float, sections: list[di
     }
 
 
-def fit_measurement_targets(mesh, targets, height_cm):
-    """Fit the avatar to the photo estimates; report fit residual, not accuracy."""
+def fit_measurement_targets(mesh, targets, height_cm, width_targets=None):
+    """Fit the avatar to the photo estimates; report fit residual, not accuracy.
+
+    ``width_targets`` optionally constrain lateral breadths that are not
+    circumferences (e.g. biacromial shoulder width) without adding report rows.
+    Each entry: ``{key, label, kind: "width", level, target_cm, width_cm, blend}``.
+    """
     mesh = mesh.copy()
     h = height_cm / 100
-    ordered = sorted(targets, key=lambda t: t["level"])
+    width_targets = [dict(target) for target in (width_targets or [])]
+    for target in width_targets:
+        blend = float(target.get("blend", 1.0))
+        if blend < 1.0:
+            # Blend once against the current breadth; blending inside the loop
+            # would converge to the raw landmark value after four iterations.
+            _, curve = closed_torso_section(mesh, target["level"] * h)
+            current = float(np.ptp(curve[:, 0]) * 100)
+            target["target_cm"] = current + blend * (target["target_cm"] - current)
+            target["width_cm"] = target["target_cm"]
+    ordered = sorted(list(targets) + width_targets, key=lambda t: t["level"])
     for _ in range(4):
         factors_x, factors_z, centers_z = [], [], []
         for target in ordered:
             current, curve = closed_torso_section(mesh, target["level"] * h)
             centers_z.append((curve[:, 2].min() + curve[:, 2].max()) / 2)
+            if target.get("kind") == "width":
+                raw = target["target_cm"] / max(float(np.ptp(curve[:, 0]) * 100), 1e-4)
+                factors_x.append(float(np.clip(raw, .80, 1.25)))
+                factors_z.append(1.0)
+                continue
             factor = target["target_cm"] / current
             if not .70 <= factor <= 1.40:
                 raise InvalidPhoto("Số đo từ hai góc chưa nhất quán với hình thể. Chụp lại cùng tư thế, tay không che thân.")
