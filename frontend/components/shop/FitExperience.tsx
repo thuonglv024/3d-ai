@@ -58,6 +58,7 @@ export default function FitExperience({
   const [scanMode, setScanMode] = useState<"classic" | "ai">("ai");
   const [uploadPair, setUploadPair] = useState<AiUploadPair>({ front: null, side: null });
   const lastUploadSignature = useRef("");
+  const aiPairRef = useRef<{ front: File; side: File } | null>(null);
   const ai = useAiScan();
   const aiUnavailable = ai.health !== null && !ai.health.ready;
   const validHeight =
@@ -89,6 +90,7 @@ export default function FitExperience({
     if (lastUploadSignature.current === uploadSignature) return;
     if (!uploadPair.front || !uploadPair.side) return;
     lastUploadSignature.current = uploadSignature;
+    aiPairRef.current = { front: uploadPair.front, side: uploadPair.side };
     void ai.analyze({ front: uploadPair.front, side: uploadPair.side }, s.height, s.captureMode);
   }, [
     uploadSignature,
@@ -230,8 +232,26 @@ export default function FitExperience({
             resetAiUpload();
             setScanMode("classic");
           }}
+          onBuild3D={() => {
+            const pair = aiPairRef.current;
+            if (!pair) return;
+            s.choose("front", pair.front);
+            s.choose("side", pair.side);
+            void (async () => {
+              const ok = await s.scan(pair);
+              if (!ok) return; // keep the AI result visible; s.error explains why
+              ai.reset();
+              resetAiUpload();
+              setScanMode("classic");
+            })();
+          }}
           onOpenSizeChart={onOpenSizeChart}
         />
+        {s.error && (
+          <p className="fit-error" role="alert" style={{ margin: "0 24px 16px" }}>
+            {s.error}
+          </p>
+        )}
       </div>
     );
   }
@@ -299,6 +319,7 @@ export default function FitExperience({
           onComplete={(pair) => {
             setCapturing(false);
             if (scanMode === "ai") {
+              aiPairRef.current = pair;
               void ai.analyze(pair, s.height, s.captureMode);
               return;
             }
@@ -570,6 +591,22 @@ export default function FitExperience({
                 }
               />
             </div>
+            {scanMode !== "ai" && (
+              <div className="scan-framing-field scan-setup-wide">
+                <span className="scan-field-label">Dáng cơ thể cho mô hình 3D</span>
+                <CustomSelect
+                  id="scan-sex"
+                  value={s.sex}
+                  onChange={(val) => s.setSex(val as "auto" | "female" | "male")}
+                  ariaLabel="Dáng cơ thể cho mô hình 3D"
+                  options={[
+                    { value: "auto", label: "Tự động", sublabel: "Ước lượng từ tỉ lệ số đo" },
+                    { value: "female", label: "Nữ", sublabel: "Vai hẹp hơn, ngực và hông nữ" },
+                    { value: "male", label: "Nam", sublabel: "Vai rộng hơn, ngực phẳng" },
+                  ]}
+                />
+              </div>
+            )}
           </div>
           <div className="scan-preparation">
             <Sun size={20} />

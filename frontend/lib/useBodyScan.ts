@@ -18,6 +18,8 @@ export type MeasurementDetail = {
 };
 type BodyProfile = {
   capture_mode?: string;
+  sex?: "female" | "male";
+  sex_source?: "user" | "auto";
   measurement_details?: MeasurementDetail[];
   fit_status?: string;
   max_fit_error_cm?: number;
@@ -33,11 +35,12 @@ type BodyProfile = {
     points_m: [number, number, number][];
   }[];
 };
-export type Job = { id: string; status: "queued" | "processing" | "completed" | "failed"; stage: string; error?: string; model_url?: string; warnings?: string[]; measurements?: Measurements; body_profile?: BodyProfile; elapsed_seconds?: number; guest_token?: string; user_id?: string | null };
+export type Job = { id: string; status: "queued" | "processing" | "completed" | "failed"; stage: string; error?: string; model_url?: string; warnings?: string[]; measurements?: Measurements; body_profile?: BodyProfile; elapsed_seconds?: number; guest_token?: string; user_id?: string | null; revision?: number; overrides?: Record<string, number> };
 type Slot = "front" | "side";
 
 export function useBodyScan(initialJob?: Job | null, initialMode: "upper_body" | "full_body" = "upper_body") {
   const [captureMode,setCaptureMode]=useState<"upper_body"|"full_body">(initialMode);
+  const [sex,setSex]=useState<"auto"|"female"|"male">("auto");
   const [front, setFront] = useState<File | null>(null);
   const [side, setSide] = useState<File | null>(null);
   const [height, setHeight] = useState("170");
@@ -119,10 +122,10 @@ export function useBodyScan(initialJob?: Job | null, initialMode: "upper_body" |
     }
     setError(""); (slot === "front" ? setFront : setSide)(file);
   }
-  async function scan(captured?: {front:File;side:File}) {
+  async function scan(captured?: {front:File;side:File}): Promise<boolean> {
     const frontPhoto=captured?.front||front,sidePhoto=captured?.side||side;
-    if (!frontPhoto || !sidePhoto || !consent) { setError("Chụp đủ hai góc và đồng ý xử lý ảnh trước khi tạo mô hình."); return; }
-    if (!Number.isFinite(Number(height)) || Number(height) < 100 || Number(height) > 230) { setError("Chiều cao cần nằm trong khoảng 100–230 cm."); return; }
+    if (!frontPhoto || !sidePhoto || !consent) { setError("Chụp đủ hai góc và đồng ý xử lý ảnh trước khi tạo mô hình."); return false; }
+    if (!Number.isFinite(Number(height)) || Number(height) < 100 || Number(height) > 230) { setError("Chiều cao cần nằm trong khoảng 100–230 cm."); return false; }
     setError(""); setSubmitting(true);
     const previousJob = job;
     setJob(null);
@@ -133,10 +136,12 @@ export function useBodyScan(initialJob?: Job | null, initialMode: "upper_body" |
           headers: getGuestHeaders(previousJob),
           credentials: "include",
         });
-        if (!deleted.ok && deleted.status !== 404 && deleted.status !== 403) throw new Error("Chưa xóa được phiên cũ. Kiểm tra kết nối rồi thử lại.");
+        // A stale job from a restarted backend must not block the new scan.
+        if (!deleted.ok && deleted.status >= 500) throw new Error("Chưa xóa được phiên cũ. Kiểm tra kết nối rồi thử lại.");
       }
       const body = new FormData(); body.append("front", frontPhoto); body.append("side", sidePhoto); body.append("height_cm", height); body.append("consent", "true");
       body.append("capture_mode",captureMode);
+      body.append("sex",sex);
       const r = await fetch("/api/scans", { method: "POST", body, credentials: "include" });
       const data = await r.json();
       if (!r.ok) throw new Error(typeof data.detail === "string" ? data.detail : "Không gửi được ảnh. Hãy kiểm tra dữ liệu và thử lại.");
@@ -146,8 +151,12 @@ export function useBodyScan(initialJob?: Job | null, initialMode: "upper_body" |
         } catch {}
       }
       setJob(data); setRotation(false);
-    } catch (e) { setJob(null); setError(e instanceof Error ? e.message : "Không kết nối được backend."); }
-    finally { setSubmitting(false); }
+      return true;
+    } catch (e) {
+      setJob(null);
+      setError(e instanceof Error ? e.message : "Không kết nối được backend.");
+      return false;
+    } finally { setSubmitting(false); }
   }
   async function clear() {
     setDeleting(true);
@@ -165,5 +174,5 @@ export function useBodyScan(initialJob?: Job | null, initialMode: "upper_body" |
     finally { setDeleting(false); }
   }
 
-  return {captureMode,setCaptureMode,front,side,height,setHeight,consent,setConsent,health,error,setError,job,setJob,camera,setCamera,wireframe,setWireframe,rotation,setRotation,showRings,setShowRings,reset,setReset,privacy,setPrivacy,deleting,setPollRetry,viewport,busy,complete,choose,scan,clear,checkHealth};
+  return {captureMode,setCaptureMode,sex,setSex,front,side,height,setHeight,consent,setConsent,health,error,setError,job,setJob,camera,setCamera,wireframe,setWireframe,rotation,setRotation,showRings,setShowRings,reset,setReset,privacy,setPrivacy,deleting,setPollRetry,viewport,busy,complete,choose,scan,clear,checkHealth};
 }
