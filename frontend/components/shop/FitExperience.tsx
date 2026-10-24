@@ -140,6 +140,16 @@ export default function FitExperience({
   const currentJob: Job | null = s.job || scanContext.job;
   const isBusy = s.busy || currentJob?.status === "queued" || currentJob?.status === "processing";
 
+  // When the AI result is used to build the 3D model, keep the AI measurements
+  // visible until the job actually completes; only then swap to the classic view.
+  useEffect(() => {
+    if (scanMode === "ai" && ai.result && currentJob?.status === "completed") {
+      ai.reset();
+      resetAiUpload();
+      setScanMode("classic");
+    }
+  }, [scanMode, ai.result, currentJob?.status, ai.reset, resetAiUpload]);
+
   useEffect(() => {
     if (!active) setCapturing(false);
   }, [active]);
@@ -237,16 +247,11 @@ export default function FitExperience({
             if (!pair) return;
             s.choose("front", pair.front);
             s.choose("side", pair.side);
-            void (async () => {
-              const ok = await s.scan(pair);
-              if (!ok) return; // keep the AI result visible; s.error explains why
-              ai.reset();
-              resetAiUpload();
-              setScanMode("classic");
-            })();
+            void s.scan(pair);
           }}
           onOpenSizeChart={onOpenSizeChart}
         />
+        {isBusy && <p className="scan-loading">Đang dựng mô hình 3D…</p>}
         {s.error && (
           <p className="fit-error" role="alert" style={{ margin: "0 24px 16px" }}>
             {s.error}
@@ -304,6 +309,24 @@ export default function FitExperience({
           error={s.error || scanContext.jobError}
           product={product}
         />
+      </div>
+    );
+  }
+
+  if (currentJob && currentJob.status === "failed") {
+    return (
+      <div className="fit-experience">
+        {renderProductContextBar()}
+        <div className="scan-intro">
+          <h1>Chưa dựng được mô hình 3D</h1>
+          <p role="alert">
+            {currentJob.error || s.error || scanContext.jobError ||
+              "Ảnh chưa đủ thông tin để dựng hình. Hãy quét lại hoặc thử ảnh khác."}
+          </p>
+          <button type="button" className="shop-primary" onClick={() => void handleReset()}>
+            Quét lại
+          </button>
+        </div>
       </div>
     );
   }
