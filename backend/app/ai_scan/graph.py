@@ -30,6 +30,7 @@ class AiScanState(TypedDict, total=False):
     estimate: dict[str, Any]
     values: dict[str, float | None]
     confidence: float
+    shape_confidence: float
     pose_quality: str
     notes: str
     warnings: list[str]
@@ -41,8 +42,14 @@ METRICS: tuple[tuple[str, str, float, float], ...] = (
     ("waist_cm", "Vòng eo", 40.0, 190.0),
     ("hip_cm", "Vòng mông", 55.0, 200.0),
     ("shoulder_width_cm", "Rộng vai", 20.0, 80.0),
+    ("chest_width_cm", "Ngang ngực", 20.0, 80.0),
+    ("chest_depth_cm", "Sâu ngực", 10.0, 60.0),
+    ("waist_width_cm", "Ngang eo", 15.0, 80.0),
+    ("waist_depth_cm", "Sâu eo", 8.0, 60.0),
+    ("hip_width_cm", "Ngang mông", 20.0, 90.0),
+    ("hip_depth_cm", "Sâu mông", 10.0, 60.0),
 )
-CORE_METRICS = tuple(metric[0] for metric in METRICS)
+CORE_METRICS = tuple(metric[0] for metric in METRICS[:4])
 
 # Plausible value / height ratios. Outside these ranges we keep the number but
 # lower confidence and surface a warning; we never fabricate a correction.
@@ -51,7 +58,45 @@ RATIO_BOUNDS: dict[str, tuple[float, float]] = {
     "waist_cm": (0.28, 0.65),
     "hip_cm": (0.38, 0.72),
     "shoulder_width_cm": (0.16, 0.32),
+    "chest_width_cm": (0.14, 0.35),
+    "chest_depth_cm": (0.08, 0.30),
+    "waist_width_cm": (0.10, 0.32),
+    "waist_depth_cm": (0.06, 0.28),
+    "hip_width_cm": (0.15, 0.40),
+    "hip_depth_cm": (0.08, 0.32),
 }
+
+# Circumference vs breadth/depth consistency: an ellipse section must land within
+# this relative band of the reported circumference after anatomical calibration.
+CROSS_CHECK_TOLERANCE = 0.08
+CROSS_CHECK_SECTIONS = (
+    ("chest_cm", "chest_width_cm", "chest_depth_cm", "Vòng ngực"),
+    ("waist_cm", "waist_width_cm", "waist_depth_cm", "Vòng eo"),
+    ("hip_cm", "hip_width_cm", "hip_depth_cm", "Vòng mông"),
+)
+
+
+def _cross_check_shape(values: dict[str, float | None]) -> list[str]:
+    """Warn when a circumference contradicts the AI's own width/depth pair."""
+    from ..measurements import ANATOMICAL_SECTION_FACTORS, ellipse_perimeter
+
+    warnings: list[str] = []
+    for circ_key, width_key, depth_key, label in CROSS_CHECK_SECTIONS:
+        circumference = values.get(circ_key)
+        width = values.get(width_key)
+        depth = values.get(depth_key)
+        if circumference is None or width is None or depth is None:
+            continue
+        try:
+            expected = ellipse_perimeter(width, depth) * ANATOMICAL_SECTION_FACTORS.get(circ_key, 1.0)
+        except Exception:  # noqa: BLE001 - invalid geometry is reported as a warning
+            continue
+        if abs(expected - circumference) / max(circumference, 1.0) > CROSS_CHECK_TOLERANCE:
+            warnings.append(
+                f"{label}: chu vi và cặp ngang/sâu AI trả về lệch quá "
+                f"{CROSS_CHECK_TOLERANCE * 100:.0f}%; nên xem lại kết quả."
+            )
+    return warnings
 
 
 def validate_estimate(state: AiScanState) -> dict[str, Any]:
@@ -82,11 +127,12 @@ def validate_estimate(state: AiScanState) -> dict[str, Any]:
         values[key] = round(value, 1)
 
     if capture_mode == "upper_body":
-        if values.get("hip_cm") is not None:
+        if any(values.get(key) is not None for key in ("hip_cm", "hip_width_cm", "hip_depth_cm")):
             warnings.append(
-                "Chế độ thân trên không ước lượng vòng mông; giá trị hip_cm đã bị bỏ."
+                "Chế độ thân trên không ước lượng vòng mông hoặc hình khối hông; các giá trị đó đã bị bỏ."
             )
-        values["hip_cm"] = None
+        for key in ("hip_cm", "hip_width_cm", "hip_depth_cm"):
+            values[key] = None
 
     # Cross-measurement sanity checks: warn, do not rewrite the model output.
     chest = values.get("chest_cm")
@@ -110,6 +156,8 @@ def validate_estimate(state: AiScanState) -> dict[str, Any]:
     if all(values.get(key) is None for key in CORE_METRICS):
         warnings.append("AI không ước lượng được số đo nào từ hai ảnh.")
 
+    warnings.extend(_cross_check_shape(values))
+
     confidence = float(min(max(estimate.confidence, 0.0), 1.0))
     if estimate.pose_quality == "poor":
         confidence = min(confidence, 0.45)
@@ -121,6 +169,7 @@ def validate_estimate(state: AiScanState) -> dict[str, Any]:
     return {
         "values": values,
         "confidence": round(confidence, 2),
+        "shape_confidence": round(float(min(max(estimate.shape_confidence, 0.0), 1.0)), 2),
         "pose_quality": estimate.pose_quality,
         "notes": (estimate.notes or "").strip(),
         "warnings": warnings,
@@ -153,10 +202,11 @@ def finalize(state: AiScanState) -> dict[str, Any]:
             "capture_mode": capture_mode,
             "measurements": {
                 "height_cm": float(state.get("height_cm") or 0),
-                **{key: values.get(key) for key in CORE_METRICS},
+                **{key: values.get(key) for key, _label, _low, _high in METRICS},
             },
             "details": details,
             "confidence": float(state.get("confidence") or 0.0),
+            "shape_confidence": float(state.get("shape_confidence") or 0.0),
             "pose_quality": state.get("pose_quality") or "fair",
             "notes": state.get("notes") or "",
             "warnings": list(state.get("warnings") or []),

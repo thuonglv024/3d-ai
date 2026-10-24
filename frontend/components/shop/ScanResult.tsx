@@ -1,7 +1,7 @@
 "use client";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { Component, useRef, useState, useEffect, type ReactNode } from "react";
+import { Component, useRef, useState, useEffect, useMemo, type ReactNode } from "react";
 import {
   ArrowRight,
   Box,
@@ -19,9 +19,13 @@ import {
   CheckCircle2,
   TrendingUp,
   LoaderCircle,
+  Paintbrush,
+  Pencil,
 } from "lucide-react";
 import type { Job, MeasurementDetail } from "../../lib/useBodyScan";
 import type { Product } from "../../lib/catalog";
+import { fetchFitMap, type FitBand, type FitMapResult } from "../../lib/fitMap";
+import FitMapPanel from "./FitMapPanel";
 import { useScan, type SizeAdviceResult } from "../../lib/ScanContext";
 import { useAuth } from "../../lib/AuthContext";
 import { useRouter } from "next/navigation";
@@ -47,7 +51,7 @@ class Boundary extends Component<{ children: ReactNode }, { failed: boolean }> {
   }
   render() {
     return this.state.failed ? (
-      <p className="scan-loading">Không mở được 3D. Số đo và file tải xuống vẫn khả dụng.</p>
+      <p className="scan-loading">Không mở được mô hình 3D (phiên có thể đã hết hạn hoặc trình duyệt chặn WebGL). Số đo và file tải xuống vẫn khả dụng.</p>
     ) : (
       this.props.children
     );
@@ -83,13 +87,22 @@ export default function ScanResult({
 }) {
   const host = useRef<HTMLDivElement>(null);
   const [rotate, setRotate] = useState(false);
-  const [rings, setRings] = useState(true);
+  const [rings, setRings] = useState(false);
   const [mode, setMode] = useState("solid");
   const [reset, setReset] = useState(0);
   const [unit, setUnit] = useState("cm");
   const [selected, setSelected] = useState("");
   const [notice, setNotice] = useState("");
   const [loadingTimedOut, setLoadingTimedOut] = useState(false);
+  const [fitSize, setFitSize] = useState("");
+  const [fitMap, setFitMap] = useState<FitMapResult | null>(null);
+  const [fitLoading, setFitLoading] = useState(false);
+  const [fitError, setFitError] = useState("");
+  const [fitView, setFitView] = useState(true);
+  const [editing, setEditing] = useState(false);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState("");
+  const [editForm, setEditForm] = useState({ height_cm: "", chest_cm: "", waist_cm: "", hip_cm: "" });
 
   useEffect(() => {
     if (!advice && !adviceError) {
@@ -103,9 +116,45 @@ export default function ScanResult({
     }
   }, [advice, adviceError]);
 
+  const activeFitSize = fitSize || advice?.candidates?.[0] || product?.sizes?.[0] || "";
+
+  useEffect(() => {
+    if (!product || !activeFitSize || job.status !== "completed") {
+      setFitMap(null);
+      return;
+    }
+    let cancelled = false;
+    setFitLoading(true);
+    setFitError("");
+    fetchFitMap(product.slug, activeFitSize, job.measurements || {})
+      .then((result) => {
+        if (!cancelled) setFitMap(result);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setFitMap(null);
+          setFitError(err?.message || "Chưa tính được bản đồ độ vừa.");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setFitLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [product?.slug, activeFitSize, job.id, job.status, job.revision]);
+
+  const fitBands: FitBand[] = useMemo(
+    () =>
+      (fitMap?.regions || [])
+        .filter((region) => region.verdict !== "unknown")
+        .map((region) => ({ from: region.band.from, to: region.band.to, color: region.color })),
+    [fitMap]
+  );
+
   const router = useRouter();
   const { user } = useAuth();
-  const { savedScans, saveErrors, saveScanToProfile, getGuestToken } = useScan();
+  const { savedScans, saveErrors, saveScanToProfile, getGuestToken, setJob } = useScan();
   const autoSavedJobRef = useRef<Record<string, boolean>>({});
 
   const currentSaveStatus = savedScans[job.id] || "idle";
@@ -150,8 +199,71 @@ export default function ScanResult({
     return `${url}${sep}guest_token=${encodeURIComponent(guestToken)}`;
   };
 
-  const modelUrl = withGuestToken(job.model_url);
+  const modelUrl = (() => {
+    const base = withGuestToken(job.model_url);
+    if (!base || !job.revision) return base;
+    return `${base}${base.includes("?") ? "&" : "?"}v=${job.revision}`;
+  })();
+  const hasModel = Boolean(modelUrl);
   const measurementsUrl = withGuestToken(`/api/scans/${job.id}/measurements`);
+
+  function openEditor() {
+    setEditForm({
+      height_cm: job.measurements?.height_cm != null ? String(job.measurements.height_cm) : "",
+      chest_cm: job.measurements?.chest_cm != null ? String(job.measurements.chest_cm) : "",
+      waist_cm: job.measurements?.waist_cm != null ? String(job.measurements.waist_cm) : "",
+      hip_cm: job.measurements?.hip_cm != null ? String(job.measurements.hip_cm) : "",
+    });
+    setEditError("");
+    setEditing(true);
+  }
+
+  async function saveEdits() {
+    const parse = (value: string) => (value.trim() === "" ? null : Number(value.replace(",", ".")));
+    const next = {
+      height_cm: parse(editForm.height_cm),
+      chest_cm: parse(editForm.chest_cm),
+      waist_cm: parse(editForm.waist_cm),
+      hip_cm: parse(editForm.hip_cm),
+    };
+    const current = job.measurements || {};
+    const payload: Record<string, number> = {};
+    (Object.keys(next) as (keyof typeof next)[]).forEach((key) => {
+      const value = next[key];
+      const before = current[key as keyof typeof current];
+      if (value == null || !Number.isFinite(value)) return;
+      if (before == null || Math.abs(value - before) > 0.05) payload[key] = value;
+    });
+    if (Object.keys(payload).length === 0) {
+      setEditError("Chưa có số đo nào thay đổi.");
+      return;
+    }
+    setEditSaving(true);
+    setEditError("");
+    try {
+      const response = await fetch(`/api/scans/${job.id}/measurements`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...(guestToken ? { "X-Guest-Token": guestToken } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        throw new Error(body?.detail || "Không lưu được số đo mới.");
+      }
+      const updated = (await response.json()) as Job;
+      setJob(updated);
+      setEditing(false);
+      setNotice("Đã cập nhật số đo và dựng lại mô hình 3D.");
+      onRetry();
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : "Không lưu được số đo mới.");
+    } finally {
+      setEditSaving(false);
+    }
+  }
 
   async function fullscreen() {
     try {
@@ -203,6 +315,14 @@ export default function ScanResult({
   }
 
   const isBottom = product?.chart?.garment === "bottom";
+  const editFields = [
+    { key: "height_cm", label: "Chiều cao", min: 100, max: 230 },
+    { key: "chest_cm", label: "Vòng ngực", min: 40, max: 200 },
+    { key: "waist_cm", label: "Vòng eo", min: 30, max: 200 },
+    { key: "hip_cm", label: "Vòng mông", min: 40, max: 200 },
+  ] as const;
+  const sexLabel =
+    job.body_profile?.sex === "male" ? "Nam" : job.body_profile?.sex === "female" ? "Nữ" : "";
 
   return (
     <div className="scan-result" ref={host}>
@@ -211,6 +331,7 @@ export default function ScanResult({
           <h2>Hình thể 3D của bạn</h2>
           <p>
             {job.measurements?.height_cm} cm · {upper ? "Webcam thân trên" : "Ảnh toàn thân"} · Mô hình ước lượng
+            {sexLabel && ` · Dáng ${sexLabel}${job.body_profile?.sex_source === "auto" ? " (tự động)" : ""}`}
           </p>
         </div>
         <div className="scan-header-actions">
@@ -231,6 +352,52 @@ export default function ScanResult({
           : "Ngực/eo/mông ước lượng từ hai ảnh. Các vòng đầu, cổ và chân trích từ mẫu 3D."}{" "}
         Chưa kiểm chứng độ chính xác trên người thật.
       </p>
+
+      <div className="scan-edit-row">
+        <button type="button" className="scan-btn-subtle" onClick={() => (editing ? setEditing(false) : openEditor())} disabled={editSaving}>
+          <Pencil size={15} />
+          {editing ? "Đóng sửa số đo" : "Sửa số đo"}
+        </button>
+        {job.revision ? <span className="scan-edit-badge">Đã sửa {job.revision} lần</span> : null}
+        <span className="scan-edit-hint">Sửa ngực/eo/mông hoặc chiều cao; mô hình và gợi ý size sẽ được dựng lại.</span>
+      </div>
+
+      {editing && (
+        <section className="scan-edit-panel" aria-label="Sửa số đo của bạn">
+          <div className="scan-edit-grid">
+            {editFields.map((field) => (
+              <label key={field.key}>
+                <span>{field.label}</span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min={field.min}
+                  max={field.max}
+                  step="0.5"
+                  value={editForm[field.key]}
+                  onChange={(event) => setEditForm((prev) => ({ ...prev, [field.key]: event.target.value }))}
+                  placeholder={field.key === "hip_cm" ? "Chưa đo" : ""}
+                />
+                <small>cm</small>
+              </label>
+            ))}
+          </div>
+          {editError && (
+            <p className="scan-edit-error" role="alert">
+              {editError}
+            </p>
+          )}
+          <div className="scan-edit-actions">
+            <button type="button" className="scan-size-apply-btn" onClick={saveEdits} disabled={editSaving}>
+              {editSaving ? "Đang dựng lại mô hình…" : "Lưu & dựng lại mô hình"}
+            </button>
+            <button type="button" className="scan-btn-subtle" onClick={() => setEditing(false)} disabled={editSaving}>
+              Hủy
+            </button>
+            <span className="scan-edit-note">Số đo sửa tay được ghi nguồn “Bạn nhập”.</span>
+          </div>
+        </section>
+      )}
 
       {/* Body Profile Save & Measurement History Bar */}
       <div className="scan-profile-bar" role="region" aria-label="Lưu hồ sơ hình thể">
@@ -446,6 +613,20 @@ export default function ScanResult({
         </div>
       </section>
 
+      {product && (
+        <FitMapPanel
+          fit={fitMap}
+          size={activeFitSize}
+          sizes={product.sizes}
+          onSelectSize={(size) => {
+            setFitSize(size);
+            onSelectSize(size);
+          }}
+          loading={fitLoading}
+          error={fitError}
+        />
+      )}
+
       {/* 3D Workspace */}
       <div className="scan-workspace">
         <aside className="scan-measure-list" aria-label="Danh sách số đo">
@@ -518,6 +699,16 @@ export default function ScanResult({
             </button>
             <button
               type="button"
+              aria-pressed={fitView}
+              onClick={() => setFitView(!fitView)}
+              disabled={!product || fitBands.length === 0}
+              title="Tô màu vùng chật/rộng theo size đang chọn"
+            >
+              <Paintbrush size={15} />
+              Độ vừa
+            </button>
+            <button
+              type="button"
               onClick={() => setMode(mode === "solid" ? "points" : mode === "points" ? "wire" : "solid")}
             >
               <Box size={15} />
@@ -525,7 +716,7 @@ export default function ScanResult({
             </button>
           </div>
 
-          {active && (
+          {active && (hasModel ? (
             <Boundary>
               <Viewer
                 url={modelUrl}
@@ -538,10 +729,16 @@ export default function ScanResult({
                 technical
                 annotations={rows}
                 selectedMeasurement={selected}
+                fitBands={fitView ? fitBands : undefined}
                 onSelectView={() => setRotate(false)}
               />
             </Boundary>
-          )}
+          ) : (
+            <p className="scan-loading">
+              Mô hình 3D không còn khả dụng cho phiên này (phiên đã hết hạn hoặc đây là bản lưu số đo).
+              Số đo và gợi ý size vẫn dùng được; hãy quét lại nếu cần xem hình thể.
+            </p>
+          ))}
           <p className="scan-stage-help">Kéo để xoay · Cuộn hoặc chụm để phóng to</p>
         </div>
       </div>

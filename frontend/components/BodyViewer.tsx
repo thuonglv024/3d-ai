@@ -8,13 +8,14 @@ import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import * as THREE from "three";
 import type {MeasurementDetail} from "../lib/useBodyScan";
+import type { FitBand } from "../lib/fitMap";
 import type { OrbitControls as OrbitControlsType } from "three-stdlib";
 
 export type Section = {key:string;label:string;target_cm:number;model_cm:number;fit_error_cm:number;points_m:[number,number,number][]};
 const SECTION_COLORS: Record<string,string> = {chest_cm:"#194e3d",waist_cm:"#a0521e",hip_cm:"#285b7e",chest:"#194e3d",waist:"#a0521e",hip:"#285b7e"};
 const VIEWS = [{label:"Trước",angle:0},{label:"Nghiêng",angle:Math.PI/2},{label:"Sau",angle:Math.PI},{label:"3/4",angle:Math.PI/4}];
 
-function Surface({ object, wireframe, targetHeight, preserveOrigin = false, studio=false, technical=false, points=false }: { object: THREE.Object3D; wireframe: boolean; targetHeight: number; preserveOrigin?: boolean; studio?:boolean;technical?:boolean;points?:boolean }) {
+function Surface({ object, wireframe, targetHeight, preserveOrigin = false, studio=false, technical=false, points=false, fitBands }: { object: THREE.Object3D; wireframe: boolean; targetHeight: number; preserveOrigin?: boolean; studio?:boolean;technical?:boolean;points?:boolean;fitBands?:FitBand[] }) {
   const model = useMemo(() => {
     const copy = object.clone(true);
     const bounds=new THREE.Box3().setFromObject(copy), height=bounds.max.y-bounds.min.y;
@@ -28,6 +29,23 @@ function Surface({ object, wireframe, targetHeight, preserveOrigin = false, stud
           geometry.computeVertexNormals();
         }
         child.geometry=geometry;
+        if (fitBands?.length) {
+          // Per-vertex fit colours: horizontal anatomical bands, one colour per
+          // estimated verdict. Kept as geometry colours so the heat map survives
+          // screenshots and wireframe/points modes.
+          const position = geometry.getAttribute("position");
+          const colors = new Float32Array(position.count * 3);
+          const color = new THREE.Color();
+          for (let i = 0; i < position.count; i++) {
+            const normalizedY = (position.getY(i) - bounds.min.y) / Math.max(height, 1e-6);
+            const band = fitBands.find((b) => normalizedY >= b.from && normalizedY < b.to);
+            color.set(band?.color ?? "#c9d1c8");
+            colors[i * 3] = color.r;
+            colors[i * 3 + 1] = color.g;
+            colors[i * 3 + 2] = color.b;
+          }
+          geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+        }
         if(studio){
           const p=geometry.getAttribute("position"), coordinates=new Float32Array(p.count*2);
           for(let i=0;i<p.count;i++){
@@ -37,8 +55,8 @@ function Surface({ object, wireframe, targetHeight, preserveOrigin = false, stud
           geometry.setAttribute("morphCoord",new THREE.BufferAttribute(coordinates,2));
         }
         const material = new THREE.MeshStandardMaterial({
-          color: technical?"#3d5c4e":studio?"#ffffff":"#4a6858",
-          vertexColors:false,
+          color: fitBands?.length ? "#ffffff" : technical?"#3d5c4e":studio?"#ffffff":"#4a6858",
+          vertexColors: Boolean(fitBands?.length),
           roughness: 0.80,
           metalness: 0.04,
           wireframe,
@@ -73,7 +91,7 @@ function Surface({ object, wireframe, targetHeight, preserveOrigin = false, stud
       return cloud;
     }
     return copy;
-  }, [object, targetHeight, preserveOrigin, studio,technical,points]);
+  }, [object, targetHeight, preserveOrigin, studio,technical,points,fitBands]);
 
   useEffect(() => {
     model.traverse((child) => {
@@ -96,9 +114,9 @@ function Sample({ wireframe,studio,technical,points }: { wireframe: boolean;stud
   return <Surface object={object} wireframe={wireframe} targetHeight={1.75} studio={studio} technical={technical} points={points}/>;
 }
 
-function Result({ url, wireframe,studio,technical,points }: { url: string; wireframe: boolean;studio:boolean;technical:boolean;points:boolean }) {
+function Result({ url, wireframe,studio,technical,points,fitBands }: { url: string; wireframe: boolean;studio:boolean;technical:boolean;points:boolean;fitBands?:FitBand[] }) {
   const model = useLoader(GLTFLoader, url);
-  return <Surface object={model.scene} wireframe={wireframe} targetHeight={1.75} preserveOrigin studio={studio} technical={technical} points={points}/>;
+  return <Surface object={model.scene} wireframe={wireframe} targetHeight={1.75} preserveOrigin studio={studio} technical={technical} points={points} fitBands={fitBands}/>;
 }
 
 function MeasurementRings({ heightCm, sections }: { heightCm:number; sections:Section[] }) {
@@ -133,7 +151,7 @@ export default function BodyViewer({
   sections,
   onSelectView,
   studio=false,
-  technical=false, points=false, annotations, selectedMeasurement,
+  technical=false, points=false, annotations, selectedMeasurement, fitBands,
 }: {
   url?: string;
   wireframe: boolean;
@@ -145,6 +163,7 @@ export default function BodyViewer({
   onSelectView?: () => void;
   studio?:boolean;
   technical?:boolean;points?:boolean;annotations?:MeasurementDetail[];selectedMeasurement?:string;
+  fitBands?:FitBand[];
 }) {
   const [view,setView]=useState(0),[revision,setRevision]=useState(0);
   useEffect(()=>{setView(0);},[reset]);
@@ -155,7 +174,7 @@ export default function BodyViewer({
       <directionalLight position={[-3, 4, 5]} intensity={2.2} />
       <directionalLight position={[3, 2, -3]} intensity={1.5} color="#f4f7f1" />
       <Suspense fallback={null}>
-        {url ? <Result url={url} wireframe={wireframe} studio={studio} technical={technical} points={points}/> : <Sample wireframe={wireframe} studio={studio} technical={technical} points={points}/>}
+        {url ? <Result url={url} wireframe={wireframe} studio={studio} technical={technical} points={points} fitBands={fitBands}/> : <Sample wireframe={wireframe} studio={studio} technical={technical} points={points}/>}
       </Suspense>
       {url && showRings && !technical && sections && targetHeightCm && <MeasurementRings heightCm={targetHeightCm} sections={sections}/> }
       {technical&&showRings&&annotations&&annotations.filter(m=>m.points_m.length>1).map(m=><Line key={m.key} points={m.points_m.map(p=>p.map(v=>v*1.75/((targetHeightCm||175)/100)) as [number,number,number])} position={[0,.025,0]} color={m.color} lineWidth={selectedMeasurement===m.key?4.5:2} transparent opacity={!selectedMeasurement||selectedMeasurement===m.key?1:.35}/>) }

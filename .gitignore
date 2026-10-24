@@ -2,6 +2,7 @@ backend/.venv/
 backend/.env
 .cache/
 backend/runtime/
+backend/.anny-cache/
 backend/app/__pycache__/
 backend/tests/__pycache__/
 **/__pycache__/
@@ -9,9 +10,7 @@ backend/tests/__pycache__/
 frontend/node_modules/
 frontend/.next/
 frontend/next-env.d.ts
-output/playwright/
-output/runs/
-output/*.json
+output/
 verification/review-*/
 verification/quality_gate_screenshots/
 verification/*.png
@@ -20,3 +19,12 @@ verification/*.json
 *.log
 .DS_Store
 Thumbs.db
+
+# Next.js review build output (distDir=.next-review)
+frontend/.next-review/
+
+# Local runtime, generated GLBs and diagnostic outputs (never commit)
+.runtime/
+backend/data/
+tools/diag/out/
+tools/mh_proto/out/

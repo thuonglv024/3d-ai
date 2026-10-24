@@ -9,7 +9,7 @@ import numpy as np
 from .measurements import closed_torso_section
 from .images import InvalidPhoto
 
-ENGINE = "mediapipe-two-photo-fit-v4"
+ENGINE = "mediapipe-two-photo-fit-v6"
 VALID_SIZING_SOURCES = frozenset({"user_input", "photo_estimate", "photo_with_prior"})
 
 
@@ -45,28 +45,41 @@ def _quality_warnings(key: str, source: str, upper: bool) -> list[str]:
     if source == "template_model":
         if upper and key == "hip_cm":
             return [
-                "Chế độ thân trên không quan sát vùng mông; chỉ số này thuộc mô hình mẫu MakeHuman, không dùng để chọn size hoặc theo dõi tiến trình."
+                "Chế độ thân trên không quan sát vùng mông; chỉ số này thuộc mô hình nền (Anny/MakeHuman), không dùng để chọn size hoặc theo dõi tiến trình."
+            ]
+        if key in {"neck_cm", "thigh_cm", "calf_cm", "ankle_cm"}:
+            return [
+                "Chỉ số suy từ vòng ngực/hông chính theo hệ số tỷ lệ dựng hình, không đo trực tiếp từ ảnh; "
+                "không dùng để chọn size hoặc theo dõi tiến trình cơ thể."
             ]
         return [
-            "Chỉ số trích xuất từ lưới mẫu MakeHuman chưa quan sát trực tiếp; không dùng để chọn size hoặc theo dõi tiến trình cơ thể."
+            "Chỉ số trích xuất từ mặt cắt mô hình nền (Anny/MakeHuman) chưa quan sát trực tiếp; không dùng để chọn size hoặc theo dõi tiến trình cơ thể."
         ]
     return [
         "Không đủ cơ sở mốc giải phẫu tin cậy từ 2 ảnh 2D để ước lượng chỉ số này."
     ]
 
 
-def measurement_report(mesh, measurements, profile, height_cm):
+def measurement_report(mesh, measurements, profile, height_cm, overrides=None):
     """Build per-metric provenance and quality report.
+
+    `overrides` are measurements the user corrected after the scan. They become
+    `user_input` rows and their warning says so, instead of pretending the photo
+    produced the new value.
 
     `uncertainty_cm` is always `None` until empirical tape-measure validation
     on human subjects is available; never invent a synthetic ±X cm bound.
     """
+    overrides = {key: float(value) for key, value in (overrides or {}).items() if value is not None}
     h = height_cm / 100
     upper = profile["capture_mode"] == "upper_body"
     rows = []
 
     def add(key, label, value, source, points=None, color="#39d5c2"):
-        if upper and key == "hip_cm":
+        if key in overrides:
+            value = overrides[key]
+            source = "user_input"
+        if upper and key == "hip_cm" and key not in overrides:
             source = "template_model"
         val_cm = round(float(value), 1) if value is not None else None
         is_valid = bool(source in VALID_SIZING_SOURCES and val_cm is not None)
@@ -75,17 +88,24 @@ def measurement_report(mesh, measurements, profile, height_cm):
             "label": label,
             "value_cm": val_cm,
             "source": source,
-            "observed_region": _observed_region(key, upper),
+            "observed_region": "user_reported" if key in overrides else _observed_region(key, upper),
             "valid_for_sizing": is_valid,
             "valid_for_tracking": is_valid,
             "engine_version": ENGINE,
             "uncertainty_cm": None,
-            "quality_warnings": _quality_warnings(key, source, upper),
+            "quality_warnings": (
+                ["Số đo bạn nhập lại sau khi quét; mô hình 3D và gợi ý size được dựng lại theo giá trị này."]
+                if key in overrides
+                else _quality_warnings(key, source, upper)
+            ),
             "color": color,
             "points_m": np.round(points, 5).tolist() if points is not None else [],
         })
 
-    add("height_cm", "Chiều cao", height_cm, "user_input", [[0, 0, 0], [0, h, 0]])
+    # No 3D line for height: a vertical line inside the body pokes out through
+    # the head and feet and reads as a rendering glitch. The value stays in the
+    # table, only the annotation is omitted.
+    add("height_cm", "Chiều cao", height_cm, "user_input")
     for section, color in zip(profile["sections"], ["#f17be0", "#5ce4dc", "#f0dd61"]):
         source = "template_model" if upper and section["key"] == "hip_cm" else "photo_with_prior" if upper else "photo_estimate"
         add(section["key"], section["label"], section["model_cm"] if source == "template_model" else measurements[section["key"]], source, section["points_m"], color)
@@ -93,7 +113,7 @@ def measurement_report(mesh, measurements, profile, height_cm):
     # Horizontal closed sections on the actual mesh. Anatomical levels are a
     # template prior, including for full-body uploads: never claim observation.
     for key, title, level, x, color in [
-        ("head_cm", "Vòng đầu", .94, 0, "#a8eb73"),
+        ("head_cm", "Vòng đầu", .955, 0, "#a8eb73"),
         ("neck_cm", "Vòng cổ", .855, 0, "#a195ff"),
         ("thigh_cm", "Vòng đùi trái", .405, .055, "#bfa8dd"),
         ("calf_cm", "Vòng bắp chân trái", .235, .06, "#76cfed"),

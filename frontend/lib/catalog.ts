@@ -61,6 +61,16 @@ export interface ProductVariant {
   is_active?: number;
 }
 
+export interface GarmentSpec {
+  size: string;
+  chest_cm?: number;
+  waist_cm?: number;
+  hip_cm?: number;
+  length_cm?: number;
+  shoulder_cm?: number;
+  sleeve_cm?: number;
+}
+
 export interface Product {
   id: string;
   slug: string;
@@ -82,6 +92,8 @@ export interface Product {
   isNew?: boolean;
   isFeatured?: boolean;
   chart: SizeChart;
+  garment_specs?: GarmentSpec[];
+  garment_source?: string | null;
   variants?: ProductVariant[];
 }
 

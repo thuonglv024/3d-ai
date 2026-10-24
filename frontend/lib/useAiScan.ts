@@ -12,7 +12,7 @@ export type AiScanHealth = {
 };
 
 export type AiMeasurementDetail = {
-  key: "chest_cm" | "waist_cm" | "hip_cm" | "shoulder_width_cm";
+  key: string;
   label: string;
   value_cm: number | null;
   source: "ai_vision_estimate";
@@ -29,9 +29,16 @@ export type AiScanResultData = {
     waist_cm: number | null;
     hip_cm: number | null;
     shoulder_width_cm: number | null;
+    chest_width_cm?: number | null;
+    chest_depth_cm?: number | null;
+    waist_width_cm?: number | null;
+    waist_depth_cm?: number | null;
+    hip_width_cm?: number | null;
+    hip_depth_cm?: number | null;
   };
   details: AiMeasurementDetail[];
   confidence: number;
+  shape_confidence?: number;
   pose_quality: string;
   notes: string;
   warnings: string[];
@@ -65,6 +72,14 @@ export function useAiScan() {
   useEffect(() => {
     void checkHealth();
   }, [checkHealth]);
+
+  // The backend may start later or a key may be added while this page is open;
+  // retry quietly instead of leaving the AI mode disabled until a manual reload.
+  useEffect(() => {
+    if (health?.ready) return;
+    const timer = setInterval(() => void checkHealth(), 10000);
+    return () => clearInterval(timer);
+  }, [health?.ready, checkHealth]);
 
   const analyze = useCallback(
     async (

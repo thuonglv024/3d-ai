@@ -9,14 +9,16 @@ Cập nhật: 14/10/2026.
 
 | Method | Endpoint | Mô tả | Request | Response & Bảo mật |
 | :--- | :--- | :--- | :--- | :--- |
-| `GET` | `/api/health` | Kiểm tra trạng thái backend & engine | None | `200 OK`: `{ ready: bool, engine: str, message: str, retention_seconds: int }` |
+| `GET` | `/api/health` | Kiểm tra trạng thái backend & engine | None | `200 OK`: `{ ready: bool, engine: str, body_model: object, message: str, retention_seconds: int }` |
 | `POST` | `/api/capture-check` | Kiểm tra tư thế và góc chụp webcam theo thời gian thực | `multipart/form-data`: `photo` (file $\le 2\text{MB}$), `view` (`"front" \| "side"`), `consent` (`bool`), `capture_mode` (`"upper_body" \| "full_body"`) | `200 OK`: `{ ready: bool, message: str, landmarks: number[][], view: str, capture_mode: str }` |
-| `POST` | `/api/scans` | Khởi tạo phiên dựng hình 3D từ 2 frame camera | `multipart/form-data`: `front` ($\le 10\text{MB}$), `side` ($\le 10\text{MB}$), `height_cm` (`100..230`), `consent` (`true`), `capture_mode` (`"upper_body" \| "full_body"`) | `202 Accepted`: `Job` object (kèm `guest_token` nếu chưa đăng nhập) |
+| `POST` | `/api/scans` | Khởi tạo phiên dựng hình 3D từ 2 frame camera | `multipart/form-data`: `front` ($\le 10\text{MB}$), `side` ($\le 10\text{MB}$), `height_cm` (`100..230`), `consent` (`true`), `capture_mode` (`"upper_body" \| "full_body"`), `sex` (`"auto" \| "female" \| "male"`, mặc định `auto`) | `202 Accepted`: `Job` object (kèm `guest_token` nếu chưa đăng nhập) |
 | `GET` | `/api/scans/{key}` | Lấy trạng thái xử lý & số đo phiên scan | Path `key`; Header `X-Guest-Token` hoặc `?guest_token=` | `200 OK`: `Job` object; `403`: Thiếu/sai token hoặc khác chủ sở hữu; `404`: Hết hạn/không tồn tại |
 | `GET` | `/api/scans/{key}/model` | Tải file mô hình `.glb` 3D | Path `key`; `?guest_token=` hoặc `X-Guest-Token` | `200 OK` (`model/gltf-binary`); `403` / `404` |
 | `GET` | `/api/scans/{key}/measurements` | Tải báo cáo số đo JSON | Path `key`; `?guest_token=` hoặc `X-Guest-Token` | `200 OK` (`application/json`); `403` / `404` |
+| `PATCH` | `/api/scans/{key}/measurements` | Sửa chiều cao/ngực/eo/mông và dựng lại avatar | Path `key`; `?guest_token=`/`X-Guest-Token`; Body `{ height_cm?, chest_cm?, waist_cm?, hip_cm? }` | `200 OK`: `Job` (kèm `revision`, `overrides`); `400`/`403`/`404`/`409`/`422` |
 | `POST` | `/api/scans/{key}/size-advice` | Đối chiếu số đo của phiên scan với `SizeChart` gửi kèm | Path `key`, Header `X-Guest-Token`, Body `SizeChart` | `200 OK`: `SizeAdviceResponse`; `403` / `404` |
 | `POST` | `/api/sizing/recommend` | Đối chiếu size theo `product_id` / `product_slug` từ SQLite | Body: `{ scan_id?, product_id?, product_slug?, measurements?, size_chart?, guest_token? }` | `200 OK`: `SizeAdviceResponse` |
+| `POST` | `/api/fit-map` | Ước lượng chật/rộng theo vùng cho một size từ bảng size cơ thể + số đo | Body: `{ product_id? \| product_slug?, size, measurements: { chest_cm?, waist_cm?, hip_cm? } }` | `200 OK`: `FitMapResponse` (kèm `confidence: "estimated_from_size_chart"`); `400` / `404` |
 | `DELETE` | `/api/scans/{key}` | Xóa phiên scan & file `.glb` trên đĩa ngay lập tức | Path `key`; Header `X-Guest-Token` hoặc `?guest_token=` | `204 No Content`; `403`: Thiếu hoặc sai token |
 
 ### Quy tắc Bảo mật Phiên Scan (`check_scan_access`)
@@ -64,11 +66,55 @@ export interface Job {
       value_cm: number | null;
       points_m: number[][];
     }>;
+    proportional_rings?: Array<{   // vòng phụ ăn theo ngực/hông
+      key: string;
+      label: string;
+      driver: "chest_cm" | "hip_cm";
+      coefficient: number;
+      scale: number;
+    }>;
   } | null;
   guest_token?: string;
   user_id?: string | null;
+  revision?: number;              // tăng mỗi lần PATCH số đo
+  overrides?: Record<string, number>; // các số đo người dùng đã sửa
 }
 ```
+
+### Cấu trúc `FitMapResponse` (`POST /api/fit-map`)
+
+```typescript
+export interface FitMapResponse {
+  status: "ok" | "partial" | "insufficient_measurements" | "size_not_found";
+  size: string;
+  garment?: "top" | "bottom" | "dress" | "outerwear" | string;
+  stretch?: boolean;              // suy từ mô tả chất liệu, không phải thông số vải
+  baseline_ease_cm?: number;      // ease giả định theo nhãn fit (slim/regular/oversized)
+  confidence: "estimated_from_size_chart" | "published_garment_spec";
+  garment_source?: string | null;
+  regions: Array<{
+    key: "chest_cm" | "waist_cm" | "hip_cm";
+    label: string;
+    status: "estimated" | "unknown";
+    body_cm?: number;
+    range_min_cm?: number;
+    range_max_cm?: number;
+    garment_estimate_cm?: number;
+    ease_cm?: number;             // chu vi áo − chu vi cơ thể
+    clearance_cm?: number;        // ease / 2π, khe hở hướng tâm
+    verdict: "tight" | "snug" | "regular" | "loose" | "unknown";
+    label_text?: string;
+    color: string;
+    basis?: "size_chart_estimate" | "garment_flat_spec";
+    band: { from: number; to: number }; // dải chiều cao chuẩn hoá để tô màu mô hình
+  }>;
+  overall: { key: string; label: string; color: string };
+  warnings: string[];
+  available_sizes?: string[];
+}
+```
+
+> `FitMapResponse` là **ước lượng độ vừa**: dùng số đo may công bố nếu sản phẩm có `garment_specs` (`published_garment_spec`), ngược lại suy từ khoảng số đo cơ thể (`estimated_from_size_chart`). Không phải mô phỏng vải và không được dùng để khẳng định chắc chắn vừa.
 
 ---
 
@@ -77,7 +123,7 @@ export interface Job {
 1. **`user_input`**: Chiều cao (`height_cm`) do người dùng nhập.
 2. **`photo_estimate`**: Vòng ngực (`chest_cm`), vòng eo (`waist_cm`), vòng mông (`hip_cm`), rộng vai (`shoulder_width_cm`) khi chụp toàn thân (`capture_mode="full_body"`).
 3. **`photo_with_prior`**: Vòng ngực (`chest_cm`), vòng eo (`waist_cm`), rộng vai (`shoulder_width_cm`) khi chụp thân trên (`capture_mode="upper_body"` — suy tỷ lệ cm từ chiều cao nhập và đa mỏ neo sọ–vai–hông trên mẫu).
-4. **`template_model`**: Các vòng trích từ mặt cắt lưới MakeHuman (`head_cm`, `neck_cm`, `thigh_cm`, `calf_cm`, `ankle_cm`, và `hip_cm` trong `measurement_details` khi chụp `upper_body`).
+4. **`template_model`**: Các vòng trích từ mặt cắt mô hình nền — basis Anny, hoặc lưới MakeHuman dự phòng khi thiếu basis (`head_cm`, `neck_cm`, `thigh_cm`, `calf_cm`, `ankle_cm`, và `hip_cm` trong `measurement_details` khi chụp `upper_body`).
    - **Quy tắc bất biến**: Trong `measurements` cấp cao nhất dùng để tư vấn size, khi `capture_mode="upper_body"`, `measurements.hip_cm` **bắt buộc là `null`**. Nếu bảng size sản phẩm yêu cầu `hip_cm` (quần, chân váy, đầm cần số đo mông), API trả về `status: "insufficient_measurements"` và `missing: ["hip_cm"]`, tuyệt đối không lấy vòng mông của mẫu 3D để tư vấn size quần/váy.
 5. **`unavailable`**: Chiều dài tay (`arm_length_cm`) và chiều dài đũng quần (`inseam_cm`) luôn giữ giá trị `null`.
 
@@ -87,7 +133,7 @@ export interface Job {
 
 | Method | Endpoint | Mô tả | Query / Params | Response |
 | :--- | :--- | :--- | :--- | :--- |
-| `GET` | `/api/products` | Danh sách 160 sản phẩm (hỗ trợ lọc, tìm kiếm, sắp xếp, phân trang) | `page`, `limit` (mặc định 24), `category`, `search`, `sort` (`featured \| price_asc \| price_desc \| name_asc \| newest`), `min_price`, `max_price`, `color`, `size` | Khi có `page`/`limit`: `{ items, total, page, page_size, total_pages }`; khi không truyền: `Product[]` |
+| `GET` | `/api/products` | Danh sách 162 sản phẩm (hỗ trợ lọc, tìm kiếm, sắp xếp, phân trang) | `page`, `limit` (mặc định 24), `category`, `search`, `sort` (`featured \| price_asc \| price_desc \| name_asc \| newest`), `min_price`, `max_price`, `color`, `size` | Khi có `page`/`limit`: `{ items, total, page, page_size, total_pages }`; khi không truyền: `Product[]` |
 | `GET` | `/api/products/{slug}` | Chi tiết sản phẩm kèm biến thể màu/size/stock, ảnh studio v2 và `size_chart` | Path `slug` hoặc `id` | `200 OK`: `Product`; `404`: Không tìm thấy |
 | `GET` | `/api/products/categories` | Danh sách 5 danh mục kèm `product_count` (alias `/api/categories`) | None | `200 OK`: `Category[]` |
 
@@ -155,6 +201,12 @@ Kết quả luôn mang provenance `ai_vision_estimate`, không tạo mô hình 3
     waist_cm: number | null;
     hip_cm: number | null;          // luôn null ở upper_body
     shoulder_width_cm: number | null;
+    chest_width_cm: number | null;  // bề ngang / độ sâu tại cùng mốc
+    chest_depth_cm: number | null;
+    waist_width_cm: number | null;
+    waist_depth_cm: number | null;
+    hip_width_cm: number | null;    // luôn null ở upper_body
+    hip_depth_cm: number | null;
   };
   details: Array<{
     key: string;
@@ -163,6 +215,7 @@ Kết quả luôn mang provenance `ai_vision_estimate`, không tạo mô hình 3
     source: "ai_vision_estimate";
   }>;
   confidence: number;               // 0..1
+  shape_confidence: number;         // 0..1, riêng cho cặp ngang/sâu
   pose_quality: "good" | "fair" | "poor" | string;
   notes: string;
   warnings: string[];

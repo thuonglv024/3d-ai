@@ -7,6 +7,7 @@ LangGraph test uses a fake structured model.
 from __future__ import annotations
 
 import asyncio
+import os
 from io import BytesIO
 
 from fastapi.testclient import TestClient
@@ -113,6 +114,31 @@ def test_validate_estimate_drops_impossible_values_and_upper_body_hip():
     assert any("ngoài khoảng" in warning for warning in result["warnings"])
 
 
+def test_validate_flags_contradictory_shape_and_clears_upper_body_hip_shape():
+    state = {
+        "height_cm": 170.0,
+        "capture_mode": "upper_body",
+        "estimate": {
+            "chest_cm": 115.0,
+            "chest_width_cm": 30.0,
+            "chest_depth_cm": 22.0,
+            "waist_cm": 75.0,
+            "shoulder_width_cm": 40.0,
+            "hip_width_cm": 38.0,
+            "hip_depth_cm": 24.0,
+            "shape_confidence": 0.7,
+            "confidence": 0.9,
+            "pose_quality": "good",
+        },
+    }
+    result = validate_estimate(state)
+    assert result["values"]["chest_width_cm"] == 30.0
+    assert result["values"]["hip_width_cm"] is None
+    assert result["values"]["hip_depth_cm"] is None
+    assert any("lệch" in warning for warning in result["warnings"])
+    assert result["shape_confidence"] == 0.7
+
+
 def test_langgraph_pipeline_with_fake_model():
     class FakeStructured:
         async def ainvoke(self, _messages):
@@ -149,7 +175,7 @@ def test_langgraph_pipeline_with_fake_model():
     assert result["measurements"]["hip_cm"] == 101.0
     assert result["model"] == "fake-model"
     assert result["source"] == "ai_vision_estimate"
-    assert len(result["details"]) == 4
+    assert len(result["details"]) == 10
 
 
 def test_ai_analyze_returns_result_from_service(monkeypatch):
@@ -191,3 +217,43 @@ def test_ai_analyze_returns_result_from_service(monkeypatch):
     assert body["status"] == "completed"
     assert body["measurements"]["chest_cm"] == 95
     assert body["source"] == "ai_vision_estimate"
+
+
+def test_env_file_is_reloaded_without_restart(monkeypatch, tmp_path):
+    from app.ai_scan import config as ai_config
+
+    env = tmp_path / ".env"
+    env.write_text("GOOGLE_API_KEY=first-key\n", encoding="utf-8")
+    monkeypatch.setattr(ai_config, "ENV_FILE", env)
+    monkeypatch.setattr(ai_config, "_ENV_MTIME", None)
+    monkeypatch.setattr(ai_config, "_ENV_LOADED", {})
+    monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    assert ai_config.google_api_key() == "first-key"
+
+    env.write_text("GOOGLE_API_KEY=rotated-key\n", encoding="utf-8")
+    os.utime(env, (1_700_000_100, 1_700_000_100))
+    assert ai_config.google_api_key() == "rotated-key"
+
+    # A real environment variable must win over the file.
+    monkeypatch.setenv("GOOGLE_API_KEY", "shell-key")
+    assert ai_config.google_api_key() == "shell-key"
+
+
+def test_invalid_api_key_returns_actionable_503(monkeypatch):
+    async def failing(*_args, **_kwargs):
+        raise RuntimeError("400 API key not valid. Please pass a valid API key.")
+
+    monkeypatch.setattr(service, "run_ai_scan", failing)
+    files = {
+        "front": ("front.jpg", photo("white"), "image/jpeg"),
+        "side": ("side.jpg", photo("gray"), "image/jpeg"),
+    }
+    with TestClient(main.app) as client:
+        response = client.post(
+            "/api/ai-scan/analyze",
+            files=files,
+            data={"height_cm": 170, "capture_mode": "upper_body", "consent": True},
+        )
+    assert response.status_code == 503
+    assert "không hợp lệ" in response.json()["detail"]

@@ -32,6 +32,36 @@ class VisionMeasurementEstimate(BaseModel):
         default=None,
         description="Estimated biacromial shoulder width in centimetres, or null if not visible.",
     )
+    chest_width_cm: float | None = Field(
+        default=None,
+        description="Frontal side-to-side breadth of the chest at the chest level, or null.",
+    )
+    chest_depth_cm: float | None = Field(
+        default=None,
+        description="Front-to-back depth of the chest at the chest level, or null.",
+    )
+    waist_width_cm: float | None = Field(
+        default=None,
+        description="Frontal breadth of the natural waist, or null.",
+    )
+    waist_depth_cm: float | None = Field(
+        default=None,
+        description="Front-to-back depth of the natural waist, or null.",
+    )
+    hip_width_cm: float | None = Field(
+        default=None,
+        description="Frontal breadth of the hips, or null (always null in upper_body mode).",
+    )
+    hip_depth_cm: float | None = Field(
+        default=None,
+        description="Front-to-back depth of the hips, or null (always null in upper_body mode).",
+    )
+    shape_confidence: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=1.0,
+        description="Confidence in the width/depth shape estimates (separate from circumferences).",
+    )
     confidence: float = Field(
         default=0.0,
         ge=0.0,
@@ -58,6 +88,12 @@ class AiMeasurementValues(BaseModel):
     waist_cm: float | None = None
     hip_cm: float | None = None
     shoulder_width_cm: float | None = None
+    chest_width_cm: float | None = None
+    chest_depth_cm: float | None = None
+    waist_width_cm: float | None = None
+    waist_depth_cm: float | None = None
+    hip_width_cm: float | None = None
+    hip_depth_cm: float | None = None
 
 
 class AiMeasurementDetail(BaseModel):
@@ -75,6 +111,7 @@ class AiScanResponse(BaseModel):
     measurements: AiMeasurementValues
     details: list[AiMeasurementDetail]
     confidence: float = Field(ge=0.0, le=1.0)
+    shape_confidence: float = Field(default=0.0, ge=0.0, le=1.0)
     pose_quality: str
     notes: str = ""
     warnings: list[str] = Field(default_factory=list)
