@@ -1,7 +1,18 @@
 import numpy as np
 import pytest
-from app.reconstruction import center_run_width, deform_template, read_template, segmentation_mask
+from app.reconstruction import ENGINE, align_mask_width, center_run_width, deform_template, read_template, segmentation_mask, smooth_avatar
+from app.measurements import closed_torso_section, fit_measurement_targets
 from app.images import InvalidPhoto
+
+
+def test_mask_width_is_padded_to_multiple_of_four():
+    for width in (798, 799, 800, 801, 802, 803, 804, 805):
+        image = np.zeros((40, width, 3), dtype=np.uint8)
+        aligned = align_mask_width(image)
+        assert aligned.shape[0] == 40
+        assert aligned.shape[1] % 4 == 0
+        assert aligned.shape[1] >= width
+        assert np.array_equal(aligned[:, :width], image)
 
 
 @pytest.mark.parametrize("channel_axis", [False, True])
@@ -103,7 +114,7 @@ def test_reconstruct_end_to_end_upper_body_provenance_and_glb_validation(monkeyp
     assert measurements["waist_cm"] > 55.0
 
     # Profile diagnostics & mesh validation
-    assert profile["engine_version"] == "mediapipe-two-photo-fit-v4"
+    assert profile["engine_version"] == ENGINE
     assert profile["uncertainty_cm"] is None
     assert profile["mesh_validation"]["valid"] is True
     assert profile["mesh_validation"]["unit"] == "m"
@@ -139,3 +150,46 @@ def test_sensitivity_to_imperfect_side_standing_angle():
     # 15-degree rotation error causes only a small, bounded circumference shift (< 1.5 cm)
     assert 0.0 < (m_75["chest_cm"] - m_90["chest_cm"]) < 1.5
 
+
+def _smooth_targets(mesh, height_cm):
+    targets = []
+    for key, level, factor in (("chest_cm", .72, 1.04), ("waist_cm", .60, .96), ("hip_cm", .533, 1.03)):
+        perimeter, curve = closed_torso_section(mesh, level * height_cm / 100)
+        targets.append({
+            "key": key,
+            "label": key,
+            "level": level,
+            "target_cm": perimeter * factor,
+            "width_cm": float(np.ptp(curve[:, 0]) * 100),
+            "depth_cm": float(np.ptp(curve[:, 2]) * 100),
+        })
+    return targets
+
+
+def test_smooth_avatar_preserves_height_floor_and_girths():
+    mesh = read_template()
+    mesh.apply_scale(1.75)
+    targets = _smooth_targets(mesh, 175.0)
+    fitted, _ = fit_measurement_targets(mesh, targets, 175.0)
+    smoothed, profile = smooth_avatar(fitted, targets, 175.0)
+
+    if profile is None:
+        # Rollback path: an unchanged mesh is returned with the caller's profile.
+        assert np.allclose(smoothed.vertices, fitted.vertices)
+        return
+    assert profile["max_fit_error_cm"] <= .5
+    assert abs(smoothed.extents[1] - 1.75) <= .015
+    assert abs(smoothed.vertices[:, 1].min()) < 1e-6
+
+
+def test_smooth_avatar_rolls_back_when_girths_move_too_far():
+    mesh = read_template()
+    mesh.apply_scale(1.75)
+    targets = _smooth_targets(mesh, 175.0)
+    fitted, _ = fit_measurement_targets(mesh, targets, 175.0)
+    bad = [dict(t, target_cm=t["target_cm"] + 20.0) for t in targets]
+
+    rolled, profile = smooth_avatar(fitted, bad, 175.0)
+
+    assert profile is None
+    assert np.allclose(rolled.vertices, fitted.vertices)

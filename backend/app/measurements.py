@@ -245,6 +245,42 @@ def _smooth_scale_field(y: np.ndarray, levels, factors) -> np.ndarray:
     return 1.0 + basis @ weights
 
 
+def measure_target_sections(mesh, targets, height_cm, fit_mode: str = "pchip", iterations: int = 0):
+    """Measure every target on the mesh and return the provenance profile."""
+    h = height_cm / 100
+    sections, errors = [], []
+    for target in targets:
+        actual, curve = closed_torso_section(mesh, target["level"] * h)
+        error = abs(actual - target["target_cm"])
+        errors.append(error)
+        sections.append({
+            "key": target["key"],
+            "label": target["label"],
+            "target_cm": round(target["target_cm"], 1),
+            "model_cm": round(actual, 1),
+            "fit_error_cm": round(error, 2),
+            "points_m": np.round(curve, 5).tolist(),
+        })
+    mesh.fix_normals()
+    fit_status = "matched" if max(errors) <= 1.5 else "approximate"
+    profile = {
+        "fit_status": fit_status,
+        "max_fit_error_cm": round(max(errors), 2),
+        "fit_mode": fit_mode,
+        "fit_iterations": iterations,
+        "sections": sections,
+        "measurement_method": "two_photo_anatomical_calibrated_v2",
+        "validation": "not_validated",
+        "uncertainty_cm": None,
+        "note": "Sai lệch fit chỉ so avatar với số ước lượng từ ảnh, không phải sai số so với cơ thể thật.",
+    }
+    try:
+        profile["mesh_validation"] = validate_glb_mesh(mesh, height_cm, sections)
+    except InvalidPhoto:
+        pass
+    return mesh, profile
+
+
 def fit_measurement_targets(mesh, targets, height_cm, width_targets=None, fit_mode: str = "pchip"):
     """Fit the avatar to the photo estimates; report fit residual, not accuracy.
 
@@ -320,27 +356,4 @@ def fit_measurement_targets(mesh, targets, height_cm, width_targets=None, fit_mo
         vertices[:, 2] = center_z + (vertices[:, 2] - center_z) * (1 + (scale_z - 1) * weight)
         mesh.vertices = vertices
         iterations += 1
-    sections, errors = [], []
-    for target in targets:
-        actual, curve = closed_torso_section(mesh, target["level"] * h)
-        error = abs(actual - target["target_cm"])
-        errors.append(error)
-        sections.append({"key": target["key"], "label": target["label"], "target_cm": round(target["target_cm"], 1), "model_cm": round(actual, 1), "fit_error_cm": round(error, 2), "points_m": np.round(curve, 5).tolist()})
-    mesh.fix_normals()
-    fit_status = "matched" if max(errors) <= 1.5 else "approximate"
-    profile = {
-        "fit_status": fit_status,
-        "max_fit_error_cm": round(max(errors), 2),
-        "fit_mode": fit_mode,
-        "fit_iterations": iterations,
-        "sections": sections,
-        "measurement_method": "two_photo_anatomical_calibrated_v2",
-        "validation": "not_validated",
-        "uncertainty_cm": None,
-        "note": "Sai lệch fit chỉ so avatar với số ước lượng từ ảnh, không phải sai số so với cơ thể thật.",
-    }
-    try:
-        profile["mesh_validation"] = validate_glb_mesh(mesh, height_cm, sections)
-    except InvalidPhoto:
-        pass
-    return mesh, profile
+    return measure_target_sections(mesh, targets, height_cm, fit_mode=fit_mode, iterations=iterations)

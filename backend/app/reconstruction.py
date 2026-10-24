@@ -22,7 +22,7 @@ from .anatomy import depth_weights, resolve_sex, shape_sex, template_landmarks
 from .camera_fusion import assess_cross_view_quality, fuse_camera_scale, synchronized_torso_profile as torso_profile
 from .config import MODELS
 from .images import InvalidPhoto
-from .measurements import closed_torso_section, estimate_from_profiles, fit_measurement_targets, scale_lateral, validate_glb_mesh
+from .measurements import closed_torso_section, estimate_from_profiles, fit_measurement_targets, measure_target_sections, scale_lateral, validate_glb_mesh
 
 MODEL_PATH = MODELS / "pose_landmarker_full.task"
 TEMPLATE_PATH = MODELS / "body-template.obj"
@@ -392,26 +392,51 @@ def deform_template(mesh: trimesh.Trimesh, fractions: np.ndarray, front_width: n
 
 
 def smooth_avatar(mesh: trimesh.Trimesh, targets: list[dict], height_cm: float, width_targets=None, fit_mode: str = "pchip"):
-    """One volume-preserving smoothing pass, then re-fit so circumferences stay exact.
+    """Region-weighted Taubin pass, then re-measure; rollback if girths move > 0.5 cm.
 
-    Per-slice scaling leaves hard transitions around the armpits and the chest
-    shelf. Laplacian smoothing removes them; the second fit restores the measured
-    sections, so smoothing cannot silently change reported numbers.
+    The old volume-constrained Laplacian + full re-fit sharpened the neck/shoulder
+    step. Taubin is applied only outside the 0.82–0.86 H neck band (with a soft
+    taper), so the neck keeps its pre-smoothing profile. Circumferences are
+    measured on the smoothed mesh; if any moved more than 0.5 cm, the original
+    mesh is returned and the caller keeps the pre-smoothing profile.
     """
-    try:
-        from trimesh.smoothing import filter_laplacian
-
-        smoothed = filter_laplacian(mesh, lamb=.25, iterations=1, volume_constraint=True)
-    except Exception:  # pragma: no cover - optional dependency detail
-        return mesh, None
-    y = smoothed.vertices[:, 1]
-    span = float(y.max() - y.min())
     target_height = height_cm / 100
-    if span <= 0 or abs(span - target_height) > 0.02:
+    candidate = mesh.copy()
+    try:
+        from trimesh.smoothing import filter_taubin
+
+        filter_taubin(candidate, lamb=.65, nu=.68, iterations=2)
+    except Exception:  # pragma: no cover - optional dependency detail
+        try:
+            from trimesh.smoothing import filter_laplacian
+
+            filter_laplacian(candidate, lamb=.15, iterations=1, volume_constraint=False)
+        except Exception:
+            return mesh, None
+
+    y = candidate.vertices[:, 1]
+    span = float(y.max() - y.min())
+    if span <= 0 or abs(span - target_height) > .02:
         return mesh, None
-    smoothed.vertices[:, 1] = (y - y.min()) * (target_height / span)
-    mesh, profile = fit_measurement_targets(smoothed, targets, height_cm, width_targets, fit_mode=fit_mode)
-    return mesh, profile
+    normalized = (y - y.min()) / span
+    # Reduce (not fully remove) smoothing at the neck and shoulder transition.
+    neck_weight = np.exp(-((normalized - .84) / .06) ** 2)
+    blend = 1.0 - neck_weight
+    candidate.vertices = mesh.vertices + (candidate.vertices - mesh.vertices) * blend[:, None]
+
+    y = candidate.vertices[:, 1]
+    span = float(y.max() - y.min())
+    if span <= 0:
+        return mesh, None
+    candidate.vertices[:, 1] = (y - y.min()) * (target_height / span)
+    candidate.vertices[:, 1] -= candidate.vertices[:, 1].min()
+
+    candidate, profile = measure_target_sections(candidate, targets, height_cm, fit_mode=fit_mode, iterations=0)
+    if profile["max_fit_error_cm"] > .5:
+        return mesh, None
+    if not (profile.get("mesh_validation") or {}).get("valid", False):
+        return mesh, None
+    return candidate, profile
 
 
 def refit_avatar(fitting: dict, measurements: dict, overrides: dict, height_cm: float, destination: Path, fit_mode: str = "pchip") -> dict:
