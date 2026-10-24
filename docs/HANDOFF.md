@@ -7,8 +7,8 @@ Tài liệu này tổng hợp trạng thái hiện tại của dự án **MORPH 
 ## 1. Trạng thái hệ thống hiện tại
 
 ### 1.1. Các phân hệ đã hoàn thiện và hoạt động ổn định
-1. **Storefront & Catalog 160 sản phẩm**:
-   - Đầy đủ 160 sản phẩm thời trang (80 Nam / 80 Nữ, chia đều 10 danh mục $\times$ 8 sản phẩm), có biến thể màu sắc, tồn kho theo size và bảng thông số `size_chart` riêng.
+1. **Storefront & Catalog 162 sản phẩm**:
+   - Đầy đủ 162 sản phẩm thời trang trên **5 danh mục** (Áo thun 34 — gồm 2 mẫu có số đo may công bố; các danh mục còn lại 32), có biến thể màu sắc, tồn kho theo size và bảng thông số `size_chart` riêng.
    - Giao diện Luxury Editorial (**Warm Ivory & Champagne Gold**) trên cửa hàng, kết hợp **Dark Measurement Workspace** (`#141312`) cho khu vực quét 3D và phân tích số đo.
 2. **Luồng Quét 3D Camera-Only & Tự động chụp 2 góc**:
    - Chỉ sử dụng Webcam trực tiếp (không có nút tải ảnh tĩnh, không hiển thị mannequin mẫu trước khi quét).
@@ -117,3 +117,166 @@ Nhật ký phiên triển khai (19/10/2026): [`docs/SESSION_AI_SCAN_2026-10-19.m
 - **Kiểm chứng**: `verification/scripts/test_capture_session_e2e.cjs` chạy **8/8 browser scenarios PASSED**, `pageErrors = 0`, `consoleErrors = 0`; `npm run typecheck` pass; `test_capture_quality.cjs` **16/16**.
 
 Nhật ký chi tiết toàn bộ phiên (dependency, tính năng, upload, bug fix, kiểm thử): [`docs/SESSION_AI_SCAN_2026-10-19.md`](file:///d:/MORPH-AI/docs/SESSION_AI_SCAN_2026-10-19.md).
+
+---
+
+## 8. Dáng nam/nữ & tỉ lệ giải phẫu cho mô hình 3D (21/10/2026)
+
+- **Vấn đề**: lưới `hm08` là lưới trung tính; mọi số đo đều đổ vào cùng một hình dáng, độ sâu co giãn đối xứng nên tăng ngực là phình cả lưng, và bề rộng vai của mô hình không liên quan tới số đo vai đang báo cáo.
+- **Thay đổi** (engine `mediapipe-two-photo-fit-v5`):
+  - Thêm [`backend/app/anatomy.py`](file:///d:/MORPH-AI/backend/app/anatomy.py): `resolve_sex()`, `shape_sex()`, `depth_weights()` — prior tỷ lệ vai/hông/đùi, thể tích ngực và mông theo dáng, không phải nhân trắc học.
+  - [`deform_template()`](file:///d:/MORPH-AI/backend/app/reconstruction.py#L319-L369) nhận `sex`, áp prior **trước** khi khớp đường viền; độ sâu chia trước/sau; cánh tay chỉ dịch một phần thay vì trôi theo thân.
+  - `reconstruct()` nhận `sex` (`auto | female | male`), ghi `body_profile.sex` + `sex_source`, thêm cảnh báo minh bạch.
+  - API `POST /api/scans` nhận form `sex` (mặc định `auto`); UI `/scan` có ô chọn **Dáng cơ thể** dùng chung `CustomSelect`; tiêu đề kết quả hiển thị dáng kèm nhãn "(tự động)".
+- **Không đổi**: pipeline ước lượng số đo (Tier 1–3), `fit_measurement_targets` vẫn ép chu vi về `0.00 cm`, nhãn `source` và toàn bộ contract số đo giữ nguyên.
+- **Kiểm chứng**: `pytest backend/tests` **123 passed** (thêm 8 test `test_anatomy.py`); `npm run typecheck` pass; `test_capture_session_e2e.cjs` 8/8 (xem `output/runs/run-20261014-v2/capture-e2e/report.json`).
+- **Giới hạn**: khác biệt nam/nữ là prior dựng hình trên lưới trung tính, chưa phải mô hình thống kê học từ dân số thật; chưa kiểm định trên người thật.
+
+---
+
+## 9. Mốc xương, rộng vai, số đo AI mở rộng & 3D từ AI (21/10/2026)
+
+Thực hiện trọn 5 bước đã thống nhất:
+
+1. **Bước 0 — Baseline QA**: thêm [`verification/scripts/qa_export_avatars.py`](file:///d:/MORPH-AI/verification/scripts/qa_export_avatars.py) xuất **6 avatar** (3 archetype × nam/nữ) ra `output/runs/qa-avatars/*.glb` kèm `metrics.json` (vai, fit error, mesh validation). Dùng làm baseline so sánh mỗi lần đổi engine.
+2. **Bước 1 — Giải phẫu**:
+   - [`template_landmarks()`](file:///d:/MORPH-AI/backend/app/anatomy.py) đọc các nhóm `g joint-*` có sẵn trong `body-template.obj` → vai `0.805 H`, hông `0.534 H`, cổ `0.844 H`. `estimate_from_profiles()` nhận `shoulder_level/hip_level`, nên vòng đo đặt đúng mốc xương thay vì hằng số.
+   - Rộng vai trở thành **width target** trong `fit_measurement_targets(..., width_targets=...)`, trộn 60% về số đo landmark (giới hạn hệ số `0.80–1.25`), không thêm dòng báo cáo.
+3. **Bước 2 — Số đo AI mở rộng**: `VisionMeasurementEstimate` thêm `chest/waist/hip_width_cm` + `*_depth_cm` và `shape_confidence`; `validate` kiểm tra khoảng, tỷ lệ/chiều cao, ép hông `null` ở `upper_body`, và **cross-check** chu vi với `ellipse(W,D)×k` (lệch > 8% → cảnh báo, không sửa số). UI hiển thị thêm 6 dòng trong cùng lưới số đo.
+4. **Bước 3 — 3D từ AI**: nút **Dựng mô hình 3D từ hai ảnh này** trong `AiScanResult` gọi lại `POST /api/scans` với đúng cặp ảnh AI (đã giữ trong `aiPairRef`). Mesh do MediaPipe dựng; số đo AI chỉ dùng cho size, hai nguồn không trộn.
+5. **Bước 4 — Dọn nợ**: gộp `torso_profile` còn **một bản** ở [`camera_fusion.py`](file:///d:/MORPH-AI/backend/app/camera_fusion.py) (reconstruction import lại), bỏ import thừa; sửa tài liệu lệch code (đùi `0.405 H`, bắp chân `0.235 H`, cổ chân `0.065 H`; catalog **5 danh mục × 32**).
+
+- **Kiểm chứng**: `pytest backend/tests` **126 passed** (10 test `test_anatomy.py`); `npm run typecheck` pass; `test_capture_session_e2e.cjs` 8/8; QA export 6/6 avatar `fit 0.00 cm`, `mesh_valid=True`.
+- **Không đổi**: công thức ước lượng số đo, nhãn `source`, contract `/api/scans` (chỉ thêm form `sex`).
+- **Giới hạn**: số đo ngang/sâu của AI vẫn là ước lượng thị giác chưa có ground truth; chưa kiểm định người thật.
+
+### 9.1. Cấu hình `GOOGLE_API_KEY` không cần khởi động lại (21/10/2026)
+
+- `backend/app/ai_scan/config.py` đọc lại `backend/.env` khi `mtime` thay đổi: thêm/rotate key có hiệu lực ở request kế tiếp; biến môi trường thật vẫn được ưu tiên hơn file.
+- `/api/ai-scan/analyze` phân biệt lỗi xác thực: key sai/hết hạn trả `503` kèm hướng dẫn cập nhật key, không còn gộp vào `502` chung.
+- `useAiScan` tự kiểm tra lại health mỗi 10 giây khi chưa sẵn sàng, nên mở trang trước khi bật backend vẫn dùng được sau đó.
+- Kiểm chứng: `GET /api/ai-scan/health` → `ready:true`; `POST /api/ai-scan/analyze` với 2 ảnh QA → **HTTP 200**; upload UI → kết quả AI; nút **Dựng mô hình 3D từ hai ảnh này** → `POST /api/scans` 202 và hiện “Hình thể 3D của bạn”.
+
+---
+
+## 10. Triển khai mô hình nền Anny — engine `v6` (21/10/2026)
+
+Thay lưới MakeHuman trung tính bằng **basis Anny** đã nướng sẵn, giữ nguyên toàn bộ tầng đo.
+
+- **Vì sao nướng sẵn**: Anny (Apache-2.0, asset MPFB2 CC0) khởi tạo model mất **~3 phút / ~1 GB RAM** trên CPU và kéo theo `torch` + `warp-lang` (~1 GB đĩa). Backend chỉ đọc `backend/models/anny-bases.npz` (**1,9 MB**, 12 lưới giới × cân nặng × cơ) rồi nội suy tuyến tính; **không** import Anny/torch lúc chạy.
+- **Sinh basis**: [`verification/scripts/build_anny_bases.py`](../verification/scripts/build_anny_bases.py) (`pip install -r backend/requirements-anny.txt`). Local changes: nữ ngực/mông/hông, nam V-shape + cơ vai. Metadata + giấy phép ở `backend/models/anny-bases.json`.
+- **Nối vào pipeline** ([`backend/app/anny_body.py`](../backend/app/anny_body.py), [`reconstruction.py`](../backend/app/reconstruction.py)):
+  - Frame chuẩn hoá: Y-up, chân `y=0`, mặt `+Z`, cao `1.0` → nhân chiều cao người dùng.
+  - `weight` suy từ tỉ lệ eo/chiều cao (chỉ chọn vùng mô hình), `muscle=0.45`, giới từ `resolve_sex()`.
+  - Sau đó vẫn chạy `fit_measurement_targets` (4 vòng PCHIP) + `smooth_avatar` như cũ → số đo không đổi.
+  - Với Anny, **không** áp `width_targets` cho vai (mặt cắt mốc vai lẫn cánh tay A-pose); fallback MakeHuman giữ nguyên hành vi cũ.
+- **Fallback**: thiếu `anny-bases.npz` → tự dùng `deform_template` như v5, kèm cảnh báo trong kết quả.
+- **API**: `GET /api/health` thêm `body_model` (tên, license, lưới prior); `body_profile.body_model = "anny" | "template"`.
+- **Kiểm chứng**: `pytest backend/tests` **135 passed** (thêm 7 test `test_anny_body.py`); QA 6 avatar `fit 0.00 cm`, `mesh_valid=True`, watertight 13.718 đỉnh/27.420 mặt; scan thật với 2 ảnh QA → `engine v6`, `body_model=anny`, `fit_status=matched` (chest 80,4 / waist 78,0 / hip 101,6 cm).
+- **Hạn chế còn lại**:
+  - Vòng "mông" đang rơi vào **0,50 H** (hàng cuối của profile), tức vùng trên đùi, nên hip rộng nhưng thấp; đây là hành vi có từ trước, cần một thay đổi riêng cho định nghĩa mốc hông.
+  - Khác biệt nam/nữ là prior dựng hình, chưa kiểm định dân số; đầu/tay/chân vẫn là mô hình, không phải bản sao người dùng.
+  - Chưa có số đo may (flat) cho sản phẩm nên chưa làm heatmap chật/rộng; kế hoạch ở tài liệu nghiên cứu.
+- **Tài liệu nghiên cứu & lộ trình thử đồ**: [`docs/BODY_MODEL_AND_FIT_RESEARCH.md`](BODY_MODEL_AND_FIT_RESEARCH.md).
+
+---
+
+## 11. Bản đồ độ vừa theo vùng — GĐ0 (21/10/2026)
+
+- **Mục tiêu**: trả lời "size này chật/rộng ở đâu" ngay trên mô hình 3D, trước khi có số đo may thật.
+- **Backend** [`backend/app/fitmap.py`](../backend/app/fitmap.py):
+  - `POST /api/fit-map` nhận `{ product_slug|product_id, size, measurements }` (không cần đăng nhập, không lưu DB).
+  - Với mỗi vùng (`chest_cm`, `waist_cm`, `hip_cm` theo loại trang phục), lấy khoảng số đo cơ thể của size, ước lượng chu vi áo = trung điểm khoảng + ease theo nhãn `fit` (slim 4, regular 8, oversized 14 cm), rồi tính `ease_cm = chu vi áo − chu vi cơ thể` và `clearance_cm = ease/2π`.
+  - Ngưỡng: woven (tight <0, snug <2, regular ≤10, loose >10 cm); dệt kim có spandex/elastane/co giãn được nới ngưỡng chật xuống −5 cm.
+  - Trả `confidence: "estimated_from_size_chart"`, `verdict`, `color`, `band` (dải chiều cao chuẩn hoá) và cảnh báo cố định.
+- **Frontend**:
+  - [`frontend/lib/fitMap.ts`](../frontend/lib/fitMap.ts) gọi API.
+  - [`frontend/components/shop/FitMapPanel.tsx`](../frontend/components/shop/FitMapPanel.tsx): chọn size, hiện từng vùng với cơ thể / khoảng size / chu vi áo ước tính / khe hở, thanh màu và chú thích.
+  - [`ScanResult.tsx`](../frontend/components/shop/ScanResult.tsx) tải bản đồ khi có sản phẩm + size gợi ý; nút **Độ vừa** bật/tắt tô màu.
+  - [`BodyViewer.tsx`](../frontend/components/BodyViewer.tsx) nhận `fitBands` và tô màu theo dải chiều cao (vertex colors), giữ nguyên chế độ khối/điểm/khung lưới.
+  - CSS mới trong [`frontend/app/scan-result.css`](../frontend/app/scan-result.css).
+- **Kiểm chứng**: `pytest backend/tests` **144 passed** (thêm 9 test `test_fitmap.py`); `npm run typecheck` pass; gọi thật `POST /api/fit-map` với số đo scan QA (chest 80,4 / waist 78,0) → size M trả `Rộng` ở cả hai vùng, `confidence=estimated_from_size_chart`; dựng thử UI bằng Playwright (`output/fitmap-preview.png`, `output/fit3d-preview.png`), **0 page error**, dải màu ngực/eo/mông hiển thị đúng trên mô hình.
+- **Giới hạn**:
+  - Bảng size là **khoảng số đo cơ thể**, không có số đo may (flat) hay thông số vải; ease theo nhãn fit là giả định, chưa hiệu chỉnh bằng dữ liệu trả hàng.
+  - Chưa mô phỏng vải, đường may, độ rơi; chưa có thử đồ 2D.
+  - Màu trên mô hình là dải chiều cao, không phải từng đỉnh theo khoảng cách áo–cơ thể thật (sẽ làm ở GĐ2 khi có số đo may).
+
+---
+
+## 12. Sửa số đo sau khi quét + 2 áo thun có số đo may (21/10/2026)
+
+### 12.1. Người dùng sửa số đo và mô hình 3D được dựng lại
+
+- **Lưu ngữ cảnh dựng hình**: `reconstruct()` ghi `body_profile.fitting` gồm profile rộng/sâu từ ảnh, giới, chiều cao, basis Anny (weight/muscle), các target chu vi và mốc xương. `process()` chép vào `Job.fitting`, nên **không cần ảnh gốc** để dựng lại.
+- **`PATCH /api/scans/{key}/measurements`** (`MeasurementPatch`: `height_cm`, `chest_cm`, `waist_cm`, `hip_cm`, đều tuỳ chọn):
+  - Giữ nguyên tỷ lệ W/D của ảnh: khi sửa một chu vi, `width_cm`/`depth_cm` của target được nhân cùng tỷ lệ.
+  - Gọi [`refit_avatar()`](../backend/app/reconstruction.py) → dựng lại basis Anny ở chiều cao mới → `fit_measurement_targets` + `smooth_avatar` → ghi đè GLB → `revision += 1`.
+  - Các dòng đã sửa đổi nguồn thành `user_input`, `observed_region = user_reported`, cảnh báo "Số đo bạn nhập lại sau khi quét…". Các dòng khác giữ nguyên nguồn ảnh.
+  - `legacy` guard: thiếu token → 403; chưa hoàn tất scan → 409; không có thay đổi → 400; giá trị ngoài khoảng → 422; lỗi hình học → 400/500 có kiểm soát.
+- **Frontend** ([`ScanResult.tsx`](../frontend/components/shop/ScanResult.tsx)): nút **Sửa số đo** mở form 4 ô (chiều cao/ngực/eo/mông), chỉ gửi các giá trị thay đổi; thành công thì `setJob(updated)`, gọi `onRetry()` để nạp lại tư vấn size, và URL GLB thêm `&v={revision}` để phá cache.
+- **Kiểm chứng thật**: scan QA (ngực 80,4 / eo 78,0 / hông 101,6) → PATCH `chest_cm=90`, `height_cm=175` → `revision=1`, ngực báo 90,0 với nguồn `user_input`, cả 3 vòng khớp `0.00 cm`, chiều cao mesh `1.75 m`.
+
+### 12.2. Hai áo thun có số đo may công bố
+
+| Sản phẩm | Nguồn số đo | Spec dùng cho fit map |
+| :--- | :--- | :--- |
+| `ao-thun-heavy-cotton-regular` — Áo thun Heavy Cotton Regular | [Gildan 5000 spec sheet](https://www.ssactivewear.com/ShopNow/ItemSpecSheet.aspx?ID=16&ColorID=32126&LanguageCode=en) | Vòng ngực áo = 2 × rộng trải phẳng: S 91,4 · M 101,6 · L 111,8 · XL 121,9 cm; kèm dài áo, dài tay |
+| `ao-thun-oversized-supima` — Áo thun Oversized Supima | [Uniqlo Unisex Supima Cotton Oversized T-Shirt](https://www.uniqlo.com/fr/en/products/E487898-000/00?colorDisplayCode=34&sizeDisplayCode=004) | Vòng ngực áo: S 122 · M 128 · L 136 · XL 144 cm; kèm dài áo, rộng vai, dài tay |
+
+- Dữ liệu lưu trong `size_charts.table_json` dưới khoá `garment_specs` + `garment_source` (không cần migration mới); `db._reconstruct_product()` đưa `garment_specs`/`garment_source` ra API.
+- `compute_fit_map()` dùng **số đo may** cho đúng vùng có spec (`basis = "garment_flat_spec"`, `confidence = "published_garment_spec"`), vùng không có spec vẫn ước lượng từ khoảng cơ thể. Cảnh báo nói rõ đây là số công bố, không phải đo lại sản phẩm.
+- [`SizeChartModal`](../frontend/components/shop/SizeChartModal.tsx) hiển thị thêm bảng **Số đo may (trải phẳng)** kèm nguồn.
+- Hệ quả dữ liệu: catalog 162 sản phẩm (thêm 2), 29 bảng size.
+
+### 12.3. Kiểm chứng & giới hạn
+
+- `pytest backend/tests` **148 passed** (thêm `test_refit.py` 3 test, `test_fitmap.py` +1 test spec); `npm run typecheck` pass; preview Playwright 0 page error (`output/scan-edit-preview.png`, `output/sizechart-spec.png`).
+- Gọi thật `POST /api/fit-map` với áo Gildan size M, ngực 94 cm → áo 101,6 cm, ease 7,6 cm, "Vừa", `basis=garment_flat_spec`.
+- **Giới hạn**: chỉ sửa được chiều cao/ngực/eo/mông (không sửa vai/tay); bản đã lưu trong hồ sơ không tự cập nhật sau khi sửa (cần lưu lại); số đo may là số công bố, chưa đo lại lô hàng; size chart cơ thể đi kèm 2 áo là suy ra từ spec, không phải bảng size gốc của hãng.
+### 12.4. Sự cố native MediaPipe khi quét thật (21/10/2026)
+
+- **Hiện tượng**: backend thoát đột ngột (exit 1) ngay sau một `POST /api/scans`, log TFLite: `image_frame.cc:415 Check failed: 1 == ChannelSize() (1 vs. 4)`. Đây là abort native, không bắt được bằng `try/except`.
+- **Giảm thiểu**: `PoseLandmarkerOptions.num_poses` hạ từ `2` xuống `1` (UI vốn chỉ cho một người; tránh nhánh segmentation nhiều pose), và `observe()` chuẩn hoá ảnh về RGB uint8 contiguous (ảnh xám/RGBA được chuyển, layout sai bị từ chối bằng `InvalidPhoto` thay vì đưa vào MediaPipe).
+- **Kiểm chứng**: sau restart, quét full_body + 3 lần upper_body liên tiếp đều `completed`, cùng PID backend, không còn crash.
+- **Đánh đổi**: detector chỉ trả 1 pose nên không còn phát hiện "nhiều người trong khung" bằng số pose; khung hình nhiều người sẽ lấy người nổi bật nhất.
+
+---
+
+## 13. Các vòng phụ ăn theo 3 vòng chính (23/10/2026)
+
+- **Vấn đề**: mô hình chỉ phản ứng ở ngực/eo/mông; các vòng cổ/đùi/bắp chân/cổ chân đứng yên vì phép khớp chu vi chỉ áp dụng quanh 3 mốc chính.
+- **Cách làm** ([`backend/app/proportions.py`](../backend/app/proportions.py)):
+  - Mỗi vòng phụ có một **hệ số tỷ lệ** với vòng dẫn: cổ `0.35 ×` thay đổi tương đối của ngực; đùi `0.60 ×`, bắp chân `0.35 ×`, cổ chân `0.15 ×` thay đổi tương đối của hông. Hệ số bị chặn trong `0.80–1.30`.
+  - Trước khi khớp 3 vòng chính, mô hình nền được phóng/thu các dải quanh mốc cổ (`0.855 H`), đùi (`0.405 H`), bắp chân (`0.235 H`), cổ chân (`0.065 H`), mỗi dải rộng `±4.5% H` với chuyển tiếp cosin. Đùi/bắp chân/cổ chân được scale quanh **tâm từng chân** để không làm lệch hai chân.
+  - Sau đó `fit_measurement_targets` vẫn khớp lại ngực/eo/mông chính xác (`0.00 cm`).
+  - Số đo trong báo cáo được tính từ chính lưới sau khi scale, nên **con số và hình dạng luôn khớp nhau**.
+  - Cùng logic áp dụng cho [`refit_avatar()`](../backend/app/reconstruction.py) khi người dùng sửa số đo.
+- **Ví dụ thật** (scan QA 172 cm): ngực 80,4 / hông 101,6 → cổ 38,0 / đùi 48,5 / bắp chân 35,4 / cổ chân 23,5. Sửa ngực **95**, hông **112** → cổ **40,2** / đùi **51,8** / bắp chân **36,6** / cổ chân **23,8**; ba vòng chính vẫn đúng 95,0 / 78,0 / 112,0.
+- **Minh bạch**: đây là **hệ số dựng hình**, không phải hằng số nhân trắc học; các vòng phụ vẫn mang nguồn `template_model` và cảnh báo mới trong `measurement_details` nói rõ "suy từ vòng chính theo hệ số tỷ lệ", không dùng để chọn size.
+- **Kiểm chứng**: `pytest backend/tests` **152 passed** (thêm 4 test `test_proportions.py`: hệ số, clamp, scale đúng từng vòng, không đổi 3 vòng chính).
+- **Giới hạn**: chưa có vòng tay (bắp tay/cẳng tay) vì cần tách cụm chi trên khỏi thân; hệ số chưa hiệu chỉnh bằng dữ liệu người thật.
+
+---
+
+## 14. Bước 8 — regression/version/archetype (24/10/2026)
+
+- **Trạng thái**: `ENGINE = mediapipe-two-photo-fit-v7` (đổi ở Bước 2); basis Anny **v2-weak**
+  (`anny-bases.npz`, fallback `anny-bases-v1.*`). Bước 7 (đồng bộ định nghĩa scan ↔ mesh) chưa làm.
+- **Đã chạy thật**:
+  - `pytest backend/tests -q`: **161 passed**.
+  - `npm run typecheck`: **PASS**.
+  - `python tools/diag/analyze.py --check`: **25 passed, 11 failed** — baseline S1 vẫn dưới
+    ngưỡng B2–B4; đây là FAIL của ngưỡng cũ, không phải test fail.
+- **3 case K3** (fit / d2 eo `.60` / d2 ngực `.72` / d2 cổ `.855`):
+  - nam TB: `0.34` / `7.178` / `4.030` / `8.427`
+  - nữ gầy: `0.02` / `6.819` / `3.164` / **`32.886`**
+  - nam béo: `0.35` / `7.268` / `5.931` / `9.908`
+- **Render**: `output/runs/qa-2026-10-24/{case}-{front,side}.png`.
+- **18 archetype** (2 giới × 3 dạng × 3 chiều cao): **17/18 fit matched + valid**, 1 lỗi dựng
+  `male-obese-short` 167 cm (hệ số vượt 1.40); fit error cao nhất 0.36 cm.
+  - Ca xấu: `female-slim-average` và `female-average-average` có d2 eo ~`24`; nữ neck
+    `27.6–35.8`; `male-average-short` eo `11.6`/cổ `11.9`; `male-slim-short` eo `11.0`/cổ `13.4`.
+  - Dữ liệu: `output/runs/qa-2026-10-24/archetypes.json`.
+- **Không hứa độ chính xác**: số đo vẫn là ước lượng từ ảnh, chưa validate thước dây; 3 case K3
+  không đại diện toàn bộ không gian; các ca nữ neck/eo cao cho thấy gờ nền vẫn còn.
+- Chi tiết đầy đủ: [`docs/fix/S8.md`](fix/S8.md).
