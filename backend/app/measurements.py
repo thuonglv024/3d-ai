@@ -212,13 +212,53 @@ def validate_glb_mesh(mesh: trimesh.Trimesh, height_cm: float, sections: list[di
     }
 
 
-def fit_measurement_targets(mesh, targets, height_cm, width_targets=None):
+FIT_MAX_ITERATIONS = 12
+FIT_TOLERANCE_CM = 0.05
+RING_MAX_DELTA = 0.20
+
+
+def _smooth_scale_field(y: np.ndarray, levels, factors) -> np.ndarray:
+    """Gaussian RBF through the ring factors, then 1.0 outside the torso.
+
+    The interpolation is exact at each ring, so one fit pass normally reaches the
+    target. ``sigma`` is widened until adjacent ring scales differ by at most
+    ``RING_MAX_DELTA``; the unnormalised basis returns to 1.0 away from the rings.
+    """
+    centers = np.asarray(levels, dtype=float)
+    amps = np.asarray(factors, dtype=float) - 1.0
+    span = max(float(centers.max() - centers.min()), .10)
+    sigma = max(.06, .45 * span)
+    weights = amps.copy()
+    for _ in range(6):
+        overlap = np.exp(-((centers[:, None] - centers[None, :]) / sigma) ** 2)
+        overlap = overlap + np.eye(len(centers)) * 1e-6
+        try:
+            weights = np.linalg.solve(overlap, amps)
+        except np.linalg.LinAlgError:
+            weights = amps.copy()
+        ring = 1.0 + overlap @ weights
+        deltas = np.abs(np.diff(ring))
+        if deltas.size == 0 or float(deltas.max()) <= RING_MAX_DELTA:
+            break
+        sigma *= 1.25
+    basis = np.exp(-((y[:, None] - centers[None, :]) / sigma) ** 2)
+    return 1.0 + basis @ weights
+
+
+def fit_measurement_targets(mesh, targets, height_cm, width_targets=None, fit_mode: str = "pchip"):
     """Fit the avatar to the photo estimates; report fit residual, not accuracy.
 
     ``width_targets`` optionally constrain lateral breadths that are not
     circumferences (e.g. biacromial shoulder width) without adding report rows.
     Each entry: ``{key, label, kind: "width", level, target_cm, width_cm, blend}``.
+
+    ``fit_mode="pchip"`` keeps the historical piecewise interpolation.
+    ``fit_mode="smooth"`` uses a Gaussian ring field with limited adjacent-ring
+    scale differences. Both stop when every circumference is within
+    ``FIT_TOLERANCE_CM`` or after ``FIT_MAX_ITERATIONS``.
     """
+    if fit_mode not in {"pchip", "smooth"}:
+        raise ValueError(f"Unknown fit_mode: {fit_mode!r}")
     mesh = mesh.copy()
     h = height_cm / 100
     width_targets = [dict(target) for target in (width_targets or [])]
@@ -232,8 +272,9 @@ def fit_measurement_targets(mesh, targets, height_cm, width_targets=None):
             target["target_cm"] = current + blend * (target["target_cm"] - current)
             target["width_cm"] = target["target_cm"]
     ordered = sorted(list(targets) + width_targets, key=lambda t: t["level"])
-    for _ in range(4):
-        factors_x, factors_z, centers_z = [], [], []
+    iterations = 0
+    for iteration in range(FIT_MAX_ITERATIONS):
+        factors_x, factors_z, centers_z, errors_now = [], [], [], []
         for target in ordered:
             current, curve = closed_torso_section(mesh, target["level"] * h)
             centers_z.append((curve[:, 2].min() + curve[:, 2].max()) / 2)
@@ -242,6 +283,7 @@ def fit_measurement_targets(mesh, targets, height_cm, width_targets=None):
                 factors_x.append(float(np.clip(raw, .80, 1.25)))
                 factors_z.append(1.0)
                 continue
+            errors_now.append(abs(current - target["target_cm"]))
             factor = target["target_cm"] / current
             if not .70 <= factor <= 1.40:
                 raise InvalidPhoto("Số đo từ hai góc chưa nhất quán với hình thể. Chụp lại cùng tư thế, tay không che thân.")
@@ -257,10 +299,18 @@ def fit_measurement_targets(mesh, targets, height_cm, width_targets=None):
                 factor_x = factor_z = float(factor)
             factors_x.append(factor_x)
             factors_z.append(factor_z)
+        # Stop before another adjustment once the measured circumferences agree.
+        if iteration > 0 and (not errors_now or max(errors_now) <= FIT_TOLERANCE_CM):
+            break
         y = mesh.vertices[:, 1] / h
-        knots = [0, .38] + [t["level"] for t in ordered] + [.84, 1]
-        scale_x = PchipInterpolator(knots, [1, 1] + factors_x + [1, 1])(y)
-        scale_z = PchipInterpolator(knots, [1, 1] + factors_z + [1, 1])(y)
+        if fit_mode == "pchip":
+            knots = [0, .38] + [t["level"] for t in ordered] + [.84, 1]
+            scale_x = PchipInterpolator(knots, [1, 1] + factors_x + [1, 1])(y)
+            scale_z = PchipInterpolator(knots, [1, 1] + factors_z + [1, 1])(y)
+        else:
+            levels = [t["level"] for t in ordered]
+            scale_x = _smooth_scale_field(y, levels, factors_x)
+            scale_z = _smooth_scale_field(y, levels, factors_z)
         vertices = mesh.vertices.copy()
         # Constant offset on outer arms preserves their thickness instead of scaling them.
         torso_edge = np.interp(y, [t["level"] for t in ordered], [t["width_cm"] / height_cm / 2 for t in ordered]) * h
@@ -269,6 +319,7 @@ def fit_measurement_targets(mesh, targets, height_cm, width_targets=None):
         center_z = np.interp(y, [t["level"] for t in ordered], centers_z)
         vertices[:, 2] = center_z + (vertices[:, 2] - center_z) * (1 + (scale_z - 1) * weight)
         mesh.vertices = vertices
+        iterations += 1
     sections, errors = [], []
     for target in targets:
         actual, curve = closed_torso_section(mesh, target["level"] * h)
@@ -280,6 +331,8 @@ def fit_measurement_targets(mesh, targets, height_cm, width_targets=None):
     profile = {
         "fit_status": fit_status,
         "max_fit_error_cm": round(max(errors), 2),
+        "fit_mode": fit_mode,
+        "fit_iterations": iterations,
         "sections": sections,
         "measurement_method": "two_photo_anatomical_calibrated_v2",
         "validation": "not_validated",

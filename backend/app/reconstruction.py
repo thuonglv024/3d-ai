@@ -391,7 +391,7 @@ def deform_template(mesh: trimesh.Trimesh, fractions: np.ndarray, front_width: n
     return mesh
 
 
-def smooth_avatar(mesh: trimesh.Trimesh, targets: list[dict], height_cm: float, width_targets=None):
+def smooth_avatar(mesh: trimesh.Trimesh, targets: list[dict], height_cm: float, width_targets=None, fit_mode: str = "pchip"):
     """One volume-preserving smoothing pass, then re-fit so circumferences stay exact.
 
     Per-slice scaling leaves hard transitions around the armpits and the chest
@@ -410,11 +410,11 @@ def smooth_avatar(mesh: trimesh.Trimesh, targets: list[dict], height_cm: float, 
     if span <= 0 or abs(span - target_height) > 0.02:
         return mesh, None
     smoothed.vertices[:, 1] = (y - y.min()) * (target_height / span)
-    mesh, profile = fit_measurement_targets(smoothed, targets, height_cm, width_targets)
+    mesh, profile = fit_measurement_targets(smoothed, targets, height_cm, width_targets, fit_mode=fit_mode)
     return mesh, profile
 
 
-def refit_avatar(fitting: dict, measurements: dict, overrides: dict, height_cm: float, destination: Path) -> dict:
+def refit_avatar(fitting: dict, measurements: dict, overrides: dict, height_cm: float, destination: Path, fit_mode: str = "pchip") -> dict:
     """Rebuild the avatar after the user edits measurements.
 
     The photo-derived width/depth profile is kept; only the edited circumferences
@@ -469,8 +469,8 @@ def refit_avatar(fitting: dict, measurements: dict, overrides: dict, height_cm: 
     ring_scales = proportions.ring_scales(base_mains, {t["key"]: t["target_cm"] for t in targets})
     proportions.apply_rings(mesh, ring_scales, height_cm / 100)
 
-    mesh, profile = fit_measurement_targets(mesh, targets, height_cm, width_targets)
-    mesh, smoothed = smooth_avatar(mesh, targets, height_cm, width_targets)
+    mesh, profile = fit_measurement_targets(mesh, targets, height_cm, width_targets, fit_mode=fit_mode)
+    mesh, smoothed = smooth_avatar(mesh, targets, height_cm, width_targets, fit_mode=fit_mode)
     if smoothed is not None:
         profile = smoothed
     profile["capture_mode"] = fitting.get("capture_mode", "full_body")
@@ -492,7 +492,7 @@ def refit_avatar(fitting: dict, measurements: dict, overrides: dict, height_cm: 
     return profile
 
 
-def reconstruct(front: np.ndarray, side: np.ndarray, height_cm: float, destination: Path, report: Callable[[str], None], capture_mode: str = "full_body", sex: str = "auto") -> tuple[list[str], dict[str, float | None], dict]:
+def reconstruct(front: np.ndarray, side: np.ndarray, height_cm: float, destination: Path, report: Callable[[str], None], capture_mode: str = "full_body", sex: str = "auto", fit_mode: str = "pchip") -> tuple[list[str], dict[str, float | None], dict]:
     report("Đang nhận diện cơ thể trong hai ảnh…")
     detector = get_detector()
     with _detector_lock:
@@ -553,8 +553,8 @@ def reconstruct(front: np.ndarray, side: np.ndarray, height_cm: float, destinati
             base_mains[target["key"]] = target["target_cm"]
     ring_scales = proportions.ring_scales(base_mains, {t["key"]: t["target_cm"] for t in targets})
     proportions.apply_rings(mesh, ring_scales, height_cm / 100)
-    mesh, profile = fit_measurement_targets(mesh, targets, height_cm, width_targets)
-    mesh, smoothed_profile = smooth_avatar(mesh, targets, height_cm, width_targets)
+    mesh, profile = fit_measurement_targets(mesh, targets, height_cm, width_targets, fit_mode=fit_mode)
+    mesh, smoothed_profile = smooth_avatar(mesh, targets, height_cm, width_targets, fit_mode=fit_mode)
     if smoothed_profile is not None:
         profile = smoothed_profile
     profile["capture_mode"] = capture_mode
