@@ -158,6 +158,41 @@ export function useBodyScan(initialJob?: Job | null, initialMode: "upper_body" |
       return false;
     } finally { setSubmitting(false); }
   }
+  async function buildFromMeasurements(payload: { height_cm: number; sex: "auto" | "female" | "male"; capture_mode: "upper_body" | "full_body"; measurements: Record<string, number | null> }): Promise<boolean> {
+    setError(""); setSubmitting(true);
+    const previousJob = job;
+    setJob(null);
+    try {
+      if (previousJob) {
+        const deleted = await fetch(`/api/scans/${previousJob.id}`, {
+          method: "DELETE",
+          headers: getGuestHeaders(previousJob),
+          credentials: "include",
+        });
+        if (!deleted.ok && deleted.status >= 500) throw new Error("Chưa xóa được phiên cũ.");
+      }
+      const r = await fetch("/api/scans/from-measurements", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        credentials: "include",
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(typeof data.detail === "string" ? data.detail : "Không dựng được hình từ số đo.");
+      if (typeof window !== "undefined" && data?.id && data?.guest_token) {
+        try {
+          sessionStorage.setItem(`morph_scan_guest_token_${data.id}`, data.guest_token);
+        } catch {}
+      }
+      setJob(data); setRotation(false);
+      return true;
+    } catch (e) {
+      setJob(null);
+      setError(e instanceof Error ? e.message : "Không kết nối được backend.");
+      return false;
+    } finally { setSubmitting(false); }
+  }
+
   async function clear() {
     setDeleting(true);
     try {
@@ -174,5 +209,5 @@ export function useBodyScan(initialJob?: Job | null, initialMode: "upper_body" |
     finally { setDeleting(false); }
   }
 
-  return {captureMode,setCaptureMode,sex,setSex,front,side,height,setHeight,consent,setConsent,health,error,setError,job,setJob,camera,setCamera,wireframe,setWireframe,rotation,setRotation,showRings,setShowRings,reset,setReset,privacy,setPrivacy,deleting,setPollRetry,viewport,busy,complete,choose,scan,clear,checkHealth};
+  return {captureMode,setCaptureMode,sex,setSex,front,side,height,setHeight,consent,setConsent,health,error,setError,job,setJob,camera,setCamera,wireframe,setWireframe,rotation,setRotation,showRings,setShowRings,reset,setReset,privacy,setPrivacy,deleting,setPollRetry,viewport,busy,complete,choose,scan,buildFromMeasurements,clear,checkHealth};
 }

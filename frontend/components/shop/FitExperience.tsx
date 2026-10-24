@@ -243,11 +243,22 @@ export default function FitExperience({
             setScanMode("classic");
           }}
           onBuild3D={() => {
-            const pair = aiPairRef.current;
-            if (!pair) return;
-            s.choose("front", pair.front);
-            s.choose("side", pair.side);
-            void s.scan(pair);
+            const result = ai.result;
+            if (!result) return;
+            const m = result.measurements;
+            if (!m) return;
+            const heightCm = m.height_cm || Number(s.height) || 170;
+            void s.buildFromMeasurements({
+              height_cm: heightCm,
+              sex: s.sex,
+              capture_mode: s.captureMode,
+              measurements: {
+                chest_cm: m.chest_cm ?? null,
+                waist_cm: m.waist_cm ?? null,
+                hip_cm: m.hip_cm ?? null,
+                shoulder_width_cm: m.shoulder_width_cm ?? null,
+              },
+            });
           }}
           onOpenSizeChart={onOpenSizeChart}
         />

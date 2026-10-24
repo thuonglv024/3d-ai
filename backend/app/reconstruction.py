@@ -518,6 +518,46 @@ def refit_avatar(fitting: dict, measurements: dict, overrides: dict, height_cm: 
     return profile
 
 
+def build_from_measurements(measurements: dict, height_cm: float, sex: str, capture_mode: str, destination: Path, fit_mode: str = "pchip", ring_mode: str = "field") -> dict:
+    """Build a 3D avatar directly from a set of measurements (no photos/MediaPipe).
+
+    Used by the AI Vision flow: Gemini already produced chest/waist/hip, so there
+    is no need to run the camera detector again. The Anny basis supplies the base
+    shape and W/D ratio at each ring; ``refit_avatar`` then imposes the numbers.
+    """
+    anny_ready, message = anny_body.available()
+    if not anny_ready:
+        raise InvalidPhoto(message or "Chưa có basis Anny để dựng từ số đo.")
+    mesh_sex, sex_source = resolve_sex(sex, measurements, capture_mode)
+    weight, muscle = anny_body.phenotype_from_measurements(measurements, height_cm)
+    base = anny_body.build(mesh_sex, weight, muscle, height_cm)
+    h = height_cm / 100
+    targets = []
+    for key, label, level in (("chest_cm", "Ngực", .72), ("waist_cm", "Eo", .60), ("hip_cm", "Mông", .5334)):
+        _, curve = closed_torso_section(base, level * h)
+        width_cm = float(np.ptp(curve[:, 0]) * 100)
+        depth_cm = float(np.ptp(curve[:, 2]) * 100)
+        target_cm = measurements.get(key)
+        if not target_cm or target_cm <= 0:
+            target_cm = float(closed_torso_section(base, level * h)[0])
+        targets.append({"key": key, "label": label, "target_cm": float(target_cm), "width_cm": width_cm, "depth_cm": depth_cm, "level": level})
+    fitting = {
+        "sex": mesh_sex,
+        "sex_source": sex_source,
+        "capture_mode": capture_mode,
+        "height_cm": height_cm,
+        "body_model": "anny",
+        "prior": {"weight": weight, "muscle": muscle},
+        "targets": targets,
+        "width_targets": [],
+        "levels": {"shoulder": .805, "hip": .534, "neck": .855},
+        "fractions": [],
+        "widths": [],
+        "depths": [],
+    }
+    return refit_avatar(fitting, measurements, {}, height_cm, destination, fit_mode=fit_mode, ring_mode=ring_mode)
+
+
 def reconstruct(front: np.ndarray, side: np.ndarray, height_cm: float, destination: Path, report: Callable[[str], None], capture_mode: str = "full_body", sex: str = "auto", fit_mode: str = "pchip", ring_mode: str = "field") -> tuple[list[str], dict[str, float | None], dict]:
     report("Đang nhận diện cơ thể trong hai ảnh…")
     detector = get_detector()
