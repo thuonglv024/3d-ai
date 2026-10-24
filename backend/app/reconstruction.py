@@ -439,7 +439,7 @@ def smooth_avatar(mesh: trimesh.Trimesh, targets: list[dict], height_cm: float, 
     return candidate, profile
 
 
-def refit_avatar(fitting: dict, measurements: dict, overrides: dict, height_cm: float, destination: Path, fit_mode: str = "pchip") -> dict:
+def refit_avatar(fitting: dict, measurements: dict, overrides: dict, height_cm: float, destination: Path, fit_mode: str = "pchip", ring_mode: str = "field") -> dict:
     """Rebuild the avatar after the user edits measurements.
 
     The photo-derived width/depth profile is kept; only the edited circumferences
@@ -492,7 +492,7 @@ def refit_avatar(fitting: dict, measurements: dict, overrides: dict, height_cm: 
         except InvalidPhoto:
             base_mains[target["key"]] = target["target_cm"]
     ring_scales = proportions.ring_scales(base_mains, {t["key"]: t["target_cm"] for t in targets})
-    proportions.apply_rings(mesh, ring_scales, height_cm / 100)
+    proportions.apply_rings(mesh, ring_scales, height_cm / 100, mode=ring_mode)
 
     mesh, profile = fit_measurement_targets(mesh, targets, height_cm, width_targets, fit_mode=fit_mode)
     mesh, smoothed = smooth_avatar(mesh, targets, height_cm, width_targets, fit_mode=fit_mode)
@@ -503,6 +503,7 @@ def refit_avatar(fitting: dict, measurements: dict, overrides: dict, height_cm: 
     profile["sex_source"] = fitting.get("sex_source", "auto")
     profile["body_model"] = body_model
     profile["proportional_rings"] = proportions.describe(ring_scales)
+    profile["proportional_ring_mode"] = ring_mode
     if fitting.get("prior"):
         profile["body_model_prior"] = fitting["prior"]
     profile["levels"] = fitting["levels"]
@@ -517,7 +518,7 @@ def refit_avatar(fitting: dict, measurements: dict, overrides: dict, height_cm: 
     return profile
 
 
-def reconstruct(front: np.ndarray, side: np.ndarray, height_cm: float, destination: Path, report: Callable[[str], None], capture_mode: str = "full_body", sex: str = "auto", fit_mode: str = "pchip") -> tuple[list[str], dict[str, float | None], dict]:
+def reconstruct(front: np.ndarray, side: np.ndarray, height_cm: float, destination: Path, report: Callable[[str], None], capture_mode: str = "full_body", sex: str = "auto", fit_mode: str = "pchip", ring_mode: str = "field") -> tuple[list[str], dict[str, float | None], dict]:
     report("Đang nhận diện cơ thể trong hai ảnh…")
     detector = get_detector()
     with _detector_lock:
@@ -577,7 +578,7 @@ def reconstruct(front: np.ndarray, side: np.ndarray, height_cm: float, destinati
         except InvalidPhoto:
             base_mains[target["key"]] = target["target_cm"]
     ring_scales = proportions.ring_scales(base_mains, {t["key"]: t["target_cm"] for t in targets})
-    proportions.apply_rings(mesh, ring_scales, height_cm / 100)
+    proportions.apply_rings(mesh, ring_scales, height_cm / 100, mode=ring_mode)
     mesh, profile = fit_measurement_targets(mesh, targets, height_cm, width_targets, fit_mode=fit_mode)
     mesh, smoothed_profile = smooth_avatar(mesh, targets, height_cm, width_targets, fit_mode=fit_mode)
     if smoothed_profile is not None:
@@ -590,6 +591,7 @@ def reconstruct(front: np.ndarray, side: np.ndarray, height_cm: float, destinati
         profile["body_model_prior"] = body_prior
     profile["levels"] = {"shoulder": round(shoulder_level, 4), "hip": round(hip_level, 4), "neck": round(landmarks.get("neck", .855), 4)}
     profile["proportional_rings"] = proportions.describe(ring_scales)
+    profile["proportional_ring_mode"] = ring_mode
     # Everything needed to rebuild the same body after the user edits a
     # measurement: the photo width/depth profile, the chosen base and the
     # fitted targets. Kept in the profile so a PATCH never needs the photos.
