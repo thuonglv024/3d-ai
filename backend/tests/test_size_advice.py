@@ -73,14 +73,22 @@ def test_unit_size_advice_bottom_full_body_matches_range():
     assert res["candidates"] == ["30"]
 
 
-def test_unit_size_advice_no_match():
+def test_unit_size_advice_no_match_when_chest_is_outside_every_row():
     chart = SizeChart(**make_top_chart())
-    # Chest fits L but waist is too large
-    measurements = {"height_cm": 175, "chest_cm": 102, "waist_cm": 110, "hip_cm": None}
+    # Áo chọn size theo vòng ngực; eo lớn không còn phủ quyết size.
+    measurements = {"height_cm": 175, "chest_cm": 150, "waist_cm": 90, "hip_cm": None}
     res = recommend_size(measurements, chart)
     assert res["status"] == "no_match"
     assert res["candidates"] == []
-    assert "Không size nào khớp tất cả số đo" in res["message"]
+    assert "Không size nào khớp" in res["message"]
+
+
+def test_unit_size_advice_ignores_a_waist_outlier_for_tops():
+    chart = SizeChart(**make_top_chart())
+    measurements = {"height_cm": 175, "chest_cm": 102, "waist_cm": 110, "hip_cm": None}
+    res = recommend_size(measurements, chart)
+    assert res["status"] == "matched"
+    assert res["candidates"] == ["L"]
 
 
 # =========================================================================

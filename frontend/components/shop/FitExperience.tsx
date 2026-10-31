@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+﻿import { useEffect, useRef, useState, useCallback } from "react";
 import {
   AlertCircle,
   ArrowRight,
@@ -55,7 +55,7 @@ export default function FitExperience({
   const [advice, setAdvice] = useState<SizeAdviceResult | null>(null);
   const [adviceError, setAdviceError] = useState("");
   const [retry, setRetry] = useState(0);
-  const [scanMode, setScanMode] = useState<"classic" | "ai">("ai");
+  const [scanMode, setScanMode] = useState<"classic" | "ai">("classic");
   const [uploadPair, setUploadPair] = useState<AiUploadPair>({ front: null, side: null });
   const lastUploadSignature = useRef("");
   const aiPairRef = useRef<{ front: File; side: File } | null>(null);
@@ -777,3 +777,4 @@ export default function FitExperience({
     </div>
   );
 }
+

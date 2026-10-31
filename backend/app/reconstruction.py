@@ -1,4 +1,4 @@
-﻿"""CPU body-shape approximation, NOT SAM/photogrammetry/validated anthropometry.
+"""CPU body-shape approximation, NOT SAM/photogrammetry/validated anthropometry.
 
 MediaPipe segments two photos and locates pose landmarks. The central torso
 silhouettes control a smooth width/depth deformation of a CC0 MakeHuman mesh.
@@ -607,6 +607,36 @@ def reconstruct(front: np.ndarray, side: np.ndarray, height_cm: float, destinati
             depths[i] = depths[i]*(1-blend)+np.ptp(curve[:,2])*blend
     report("Đang trích xuất thông số kích thước cơ thể…")
     measurements, targets = estimate_from_profiles(fractions, widths, depths, height_cm, front_shoulders_ratio, True, shoulder_level, hip_level)
+    # The side view is only useful when it shows the waist narrowing. With an arm
+    # hanging in front of the torso (or a 3/4 turn instead of 90°) the depth
+    # profile is flat and the waist circumference becomes fabric plus arm: on
+    # P01b that read 86.6 cm against a 60 cm tape waist. Report it as
+    # unavailable instead of wrong.
+    depth_by_key = {t["key"]: float(t["depth_cm"]) for t in targets if t.get("depth_cm")}
+    waist_unavailable_reason: str | None = None
+    if "waist_cm" in depth_by_key:
+        waist_depth = depth_by_key["waist_cm"]
+        neighbours = [d for k, d in depth_by_key.items() if k in ("chest_cm", "hip_cm")]
+        spread = max(depth_by_key.values()) - min(depth_by_key.values())
+        # Chest, waist and hip depths cannot be near-identical on a real torso:
+        # a spread under 2 cm means the side silhouette is fabric or arm rather
+        # than the body profile (P01b measured 1.2 cm and its waist came out
+        # +26.6 cm). Refuse the waist instead of reporting that number.
+        contaminated = spread < 2.0
+        body_like = bool(neighbours) and waist_depth < min(neighbours) - 1.0
+        if contaminated:
+            waist_unavailable_reason = (
+                "Không đọc được vòng eo: bề dày thân gần như không đổi giữa các mốc "
+                f"({spread:.1f} cm) nên ảnh nghiêng bị tay hoặc nền che. Hãy chụp lại ảnh nghiêng "
+                "với tay đưa ra trước và xoay hẳn 90°."
+            )
+        elif not body_like:
+            waist_unavailable_reason = (
+                "Không đọc được vòng eo: ảnh nghiêng chưa lộ phần thon eo (tay che thân hoặc chưa xoay đủ 90°). "
+                "Hãy chụp lại ảnh nghiêng với tay đưa ra trước và xoay hẳn 90°."
+            )
+        if waist_unavailable_reason:
+            measurements["waist_cm"] = None
     # Arm/clothing diagnostics are measured on the cleaned frontal mask.
     f_shoulder, f_hip = aligned_torso_landmarks(frontal)
     shoulder_span_px = float(abs(frontal.points[11, 0] - frontal.points[12, 0]))
@@ -710,6 +740,7 @@ def reconstruct(front: np.ndarray, side: np.ndarray, height_cm: float, destinati
     # Where the reported shoulder width came from: the outer silhouette at the
     # acromion row, or the landmark span when that row was unusable.
     profile["shoulder_width_source"] = shoulder_source
+    profile["waist_unavailable_reason"] = waist_unavailable_reason
     profile["section_factors_calibrated"] = SECTION_FACTORS_CALIBRATED
     profile["scale_method"] = "height_per_image_upper_body" if capture_mode == "upper_body" else "height_and_per_image_silhouette"
     if capture_mode == "upper_body":
@@ -759,5 +790,6 @@ def reconstruct(front: np.ndarray, side: np.ndarray, height_cm: float, destinati
         "Không phải số đo trực tiếp từ ảnh."
     )
     return warnings, measurements, profile
+
 
 

@@ -182,6 +182,12 @@ def fuse_geometric(
         diff = abs(float(ai_value) - float(geo_value))
         tolerance = GEOMETRY_FUSION_TOLERANCE_CM.get(key, 5.0)
         if diff <= tolerance:
+            if support.get(key, 0) < 2:
+                # Only one model pass saw this metric: averaging it with the
+                # geometric estimate would let a known-biased estimator move the
+                # only AI vote. Keep the model's number; geometry stays a check.
+                estimated_by[key] = "ensemble"
+                continue
             values[key] = round(0.7 * float(ai_value) + 0.3 * float(geo_value), 1)
             metric_confidence[key] = min(1.0, metric_confidence.get(key, 0.5) + 0.05)
             estimated_by[key] = "ensemble+geometry"

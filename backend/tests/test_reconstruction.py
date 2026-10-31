@@ -111,7 +111,10 @@ def test_reconstruct_end_to_end_upper_body_provenance_and_glb_validation(monkeyp
     assert measurements["hip_cm"] is None
     assert measurements["inseam_cm"] is None
     assert measurements["chest_cm"] > 70.0
-    assert measurements["waist_cm"] > 55.0
+    # Fixture nghiêng có bề dày không đổi giữa các mốc (tay/nền che) nên eo phải
+    # bị từ chối kèm lý do, không trả một con số sai.
+    assert measurements["waist_cm"] is None
+    assert profile["waist_unavailable_reason"]
 
     # Profile diagnostics & mesh validation
     assert profile["engine_version"] == ENGINE

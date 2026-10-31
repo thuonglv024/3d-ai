@@ -63,11 +63,13 @@ export function computeClientSizeAdvice(
 ): SizeAdviceResult {
   const isBottom = chart.garment === "bottom";
   const hasHipInChart = isBottom || chart.rows.some((r) => r.hip_cm != null);
+  // Áo chọn size theo vòng ngực: hàng eo trong bảng áo là tham khảo, không bắt
+  // buộc phải có số đo eo. Quần/váy vẫn cần cả eo và mông.
   const required: ("chest_cm" | "waist_cm" | "hip_cm")[] = isBottom
     ? ["waist_cm", "hip_cm"]
     : hasHipInChart
-      ? ["chest_cm", "waist_cm", "hip_cm"]
-      : ["chest_cm", "waist_cm"];
+      ? ["chest_cm", "hip_cm"]
+      : ["chest_cm"];
 
   if (hasHipInChart && (measurements.hip_cm == null || measurements.hip_cm <= 0)) {
     return {

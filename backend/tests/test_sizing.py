@@ -16,10 +16,13 @@ def chart(**changes):
     return SizeChart(**value)
 
 
-def test_size_must_match_all_dimensions_not_height_or_chest_alone():
+def test_top_is_sized_by_chest_and_waist_cannot_veto_it():
+    # Áo chọn size theo vòng ngực: eo lệch khỏi hàng của size không phủ quyết.
     assert recommend_size({'chest_cm':95,'waist_cm':75},chart())['candidates']==['M']
-    assert recommend_size({'chest_cm':95,'waist_cm':65},chart())['status']=='no_match'
-    assert recommend_size({'chest_cm':150,'waist_cm':100},chart())['candidates']==[]
+    assert recommend_size({'chest_cm':95,'waist_cm':65},chart())['candidates']==['M']
+    outside = recommend_size({'chest_cm':150,'waist_cm':100},chart())
+    assert outside['candidates']==[]
+    assert outside['status']=='no_match'
 
 
 def test_overlapping_boundaries_returns_all_candidates_instead_of_guess():

@@ -212,14 +212,26 @@ def test_aggregate_survives_a_failed_member():
 # --- geometry fusion -------------------------------------------------------
 
 
-def test_fusion_blends_when_the_two_estimators_agree():
+def test_fusion_blends_when_two_or_more_passes_agree():
+    agg = aggregated(chest_cm=100.0)
+    agg["support"]["chest_cm"] = 2
     out = fuse_geometric(
-        aggregated(chest_cm=100.0),
+        agg,
         {"available": True, "measurements": {"chest_cm": 102.0}, "warnings": []},
     )
     assert out["values"]["chest_cm"] == 100.6
     assert out["metric_confidence"]["chest_cm"] == 0.55
     assert out["estimated_by"]["chest_cm"] == "ensemble+geometry"
+
+
+def test_fusion_never_moves_a_single_ai_pass_towards_geometry():
+    """1 lượt AI: hình học đã biết lệch nên chỉ được dùng làm cổng, không trộn."""
+    out = fuse_geometric(
+        aggregated(chest_cm=100.0),  # support = 1
+        {"available": True, "measurements": {"chest_cm": 102.0}, "warnings": []},
+    )
+    assert out["values"]["chest_cm"] == 100.0
+    assert out["estimated_by"]["chest_cm"] == "ensemble"
 
 
 def test_fusion_keeps_the_ai_value_and_reports_a_conflict():

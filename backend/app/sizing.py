@@ -166,7 +166,19 @@ def recommend_size(measurements: Optional[dict], chart: SizeChart):
         if any(getattr(row, key) is not None for row in chart.rows)
     ]
 
-    missing = [k for k in dimensions if clean_measurements.get(k) is None]
+    # Áo chọn size theo vòng ngực: hàng eo trong bảng áo chỉ là tham khảo, không
+    # được phủ quyết size và không bắt buộc phải có số đo eo. Quần/váy vẫn cần
+    # cả eo và mông.
+    chest_present = any(getattr(row, "chest_cm") is not None for row in chart.rows)
+    hip_present = any(getattr(row, "hip_cm") is not None for row in chart.rows)
+    # Áo: vòng ngực quyết định size; nếu bảng có vòng mông thì vẫn cần số đo đó.
+    primary_keys = (
+        ["chest_cm"] + (["hip_cm"] if hip_present else [])
+        if (chart.garment or "top") == "top" and chest_present
+        else None
+    )
+    required_dimensions = primary_keys or dimensions
+    missing = [k for k in required_dimensions if clean_measurements.get(k) is None]
 
     labels = {
         "chest_cm": "vòng ngực",
@@ -189,7 +201,8 @@ def recommend_size(measurements: Optional[dict], chart: SizeChart):
                     "max_cm": r_range.max,
                     "within": within,
                 }
-        fits = bool(checks and all(c["within"] for c in checks.values()) and not missing)
+        deciding = [key for key in (primary_keys or list(checks)) if key in checks]
+        fits = bool(checks and deciding and all(checks[key]["within"] for key in deciding) and not missing)
         if fits:
             candidates.append(row.size)
         comparisons.append({"size": row.size, "fits": fits, "checks": checks})
@@ -225,3 +238,5 @@ def recommend_size(measurements: Optional[dict], chart: SizeChart):
         ),
         "warning": warning_text,
     }
+
+
