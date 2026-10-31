@@ -1,4 +1,4 @@
-"""Silhouette helpers: remove arm capsules and flag merged arms / loose clothing.
+﻿"""Silhouette helpers: remove arm capsules and flag merged arms / loose clothing.
 
 The module works on a boolean person mask plus MediaPipe pose landmarks. It is
 deliberately independent of the mesh: the caller decides which mask to use for
@@ -301,3 +301,17 @@ def clothing_looseness(
     if merged:
         reasons.append("arm_merged: " + ", ".join(merged))
     return bool(reasons), reasons
+
+MIN_FRAME_COVERAGE = 0.65
+
+
+def frame_coverage(obs: Any) -> float:
+    """Tỉ lệ chiều cao cơ thể trên chiều cao khung hình.
+
+    Người đứng quá xa làm mask thiếu chân/tóc và mọi số đo bị nhân sai; đây là
+    cổng chặn đầu vào chứ không phải một phép hiệu chỉnh.
+    """
+    image_height = float(obs.mask.shape[0])
+    if image_height <= 0:
+        return 0.0
+    return float(obs.height) / image_height

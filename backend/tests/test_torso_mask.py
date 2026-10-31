@@ -1,4 +1,4 @@
-"""Regression tests for per-image scale, arm capsules, and clothing flags."""
+﻿"""Regression tests for per-image scale, arm capsules, and clothing flags."""
 import numpy as np
 import pytest
 
@@ -6,7 +6,7 @@ from app.camera_fusion import assess_cross_view_quality, extract_per_view_torso_
 from app.images import InvalidPhoto
 from app.measurements import ClothingOrArmMergedError, closed_torso_section, fit_measurement_targets
 from app.reconstruction import Observation, read_template
-from app.torso_mask import clothing_looseness, remove_arm_capsules, row_arm_merged, shoulder_span
+from app.torso_mask import MIN_FRAME_COVERAGE, clothing_looseness, frame_coverage, remove_arm_capsules, row_arm_merged, shoulder_span
 
 
 def _observation(height: float, mask_width_px: int, shape=(400, 400)) -> Observation:
@@ -168,3 +168,12 @@ def test_shoulder_span_rejects_an_implausibly_wide_row():
     ratio, source = shoulder_span(obs)
     assert source == "landmark"
     assert ratio == pytest.approx(100.0 / 800.0, rel=1e-3)
+
+def test_frame_coverage_rejects_a_person_who_is_too_far():
+    # mask cao 400 px, người cao 200 px -> 50% khung: phải bị từ chối
+    obs = _observation(height=200.0, mask_width_px=120)
+    coverage = frame_coverage(obs)
+    assert coverage == pytest.approx(0.5, abs=1e-3)
+    assert coverage < MIN_FRAME_COVERAGE
+    # người chiếm 80% khung thì qua cổng
+    assert frame_coverage(_observation(height=320.0, mask_width_px=120)) >= MIN_FRAME_COVERAGE

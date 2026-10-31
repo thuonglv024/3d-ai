@@ -1,4 +1,4 @@
-"""CPU body-shape approximation, NOT SAM/photogrammetry/validated anthropometry.
+﻿"""CPU body-shape approximation, NOT SAM/photogrammetry/validated anthropometry.
 
 MediaPipe segments two photos and locates pose landmarks. The central torso
 silhouettes control a smooth width/depth deformation of a CC0 MakeHuman mesh.
@@ -23,7 +23,7 @@ from .camera_fusion import aligned_torso_landmarks, assess_cross_view_quality, f
 from .config import MODELS
 from .images import InvalidPhoto
 from .measurements import SECTION_FACTORS_CALIBRATED, closed_torso_section, estimate_from_profiles, fit_measurement_targets, measure_target_sections, scale_lateral, validate_glb_mesh
-from .torso_mask import clothing_looseness, more_visible_arm_side, row_arm_merged, shoulder_span
+from .torso_mask import MIN_FRAME_COVERAGE, clothing_looseness, frame_coverage, more_visible_arm_side, row_arm_merged, shoulder_span
 
 MODEL_PATH = MODELS / "pose_landmarker_full.task"
 TEMPLATE_PATH = MODELS / "body-template.obj"
@@ -566,6 +566,15 @@ def reconstruct(front: np.ndarray, side: np.ndarray, height_cm: float, destinati
         frontal = observe(front, detector, "chính diện", capture_mode)
         lateral = observe(side, detector, "góc nghiêng", capture_mode)
     shared_height = fuse_camera_scale(frontal, lateral)
+    # Cổng A: người phải chiếm đủ khung ở cả hai ảnh, nếu không mask cắt mất
+    # tóc/chân và mọi chu vi bị nhân sai theo chiều cao.
+    for label, observation in (("chính diện", frontal), ("góc nghiêng", lateral)):
+        coverage = frame_coverage(observation)
+        if coverage < MIN_FRAME_COVERAGE:
+            raise InvalidPhoto(
+                f"Ảnh {label}: người chỉ chiếm {coverage * 100:.0f}% chiều cao khung (cần ≥ "
+                f"{MIN_FRAME_COVERAGE * 100:.0f}%). Hãy đứng gần camera hơn, thấy đủ từ đầu đến chân."
+            )
     quality_diagnostics = assess_cross_view_quality(frontal, lateral, shared_height=shared_height)
     front_shoulders = abs(frontal.points[11, 0] - frontal.points[12, 0]) / frontal.height
     side_shoulders = abs(lateral.points[11, 0] - lateral.points[12, 0]) / lateral.height
@@ -735,6 +744,14 @@ def reconstruct(front: np.ndarray, side: np.ndarray, height_cm: float, destinati
         "warnings": list(getattr(frontal, "arm_removal_warnings", [])) + list(getattr(lateral, "arm_removal_warnings", [])),
     }
     profile["arm_merged_rows"] = merged_rows
+    # Cổng A: vai/tay dính vào thân làm chu vi ngực bị cộng phần tay. Chặn thay
+    # vì trả một con số rộng hơn thực tế.
+    for key, label in (("chest_cm", "vòng ngực"), ("waist_cm", "vòng eo")):
+        if merged_rows.get(key):
+            raise InvalidPhoto(
+                f"Tay đang dính vào thân ở mốc {label}. Hãy đưa hai tay ra trước hoặc sang ngang "
+                "khoảng 40 độ rồi quét lại."
+                )
     profile["clothing_looseness_flag"] = bool(looseness_flag)
     profile["clothing_looseness_reasons"] = looseness_reasons
     # Where the reported shoulder width came from: the outer silhouette at the
@@ -790,6 +807,8 @@ def reconstruct(front: np.ndarray, side: np.ndarray, height_cm: float, destinati
         "Không phải số đo trực tiếp từ ảnh."
     )
     return warnings, measurements, profile
+
+
 
 
 

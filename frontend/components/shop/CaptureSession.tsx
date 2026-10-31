@@ -273,7 +273,7 @@ export default function CaptureSession({
     const turnDurationMs =
       typeof win?.__MORPH_TEST_TURN_DURATION_MS__ === "number"
         ? win.__MORPH_TEST_TURN_DURATION_MS__
-        : 2000;
+        : 3000;
     const timer = setTimeout(() => {
       clearSessionBuffers();
       setPhase("running");
@@ -737,4 +737,5 @@ export default function CaptureSession({
     </section>
   );
 }
+
 
