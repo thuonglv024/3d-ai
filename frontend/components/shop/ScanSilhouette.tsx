@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 /**
  * Khung ngắm dạng pictogram: vùng ngoài hình người bị làm mờ, người dùng phải
@@ -20,11 +20,11 @@ const ACCENT: Record<FrameState, string> = {
 
 const HEAD = { cx: 50, cy: 15, r: 9 };
 const BLOCKS = [
-  { x: 37, y: 26, w: 26, h: 34, r: 5 }, // thân
-  { x: 28, y: 28, w: 7, h: 33, r: 3.5 }, // tay trái
-  { x: 65, y: 28, w: 7, h: 33, r: 3.5 }, // tay phải
-  { x: 40, y: 58, w: 8, h: 47, r: 4 }, // chân trái
-  { x: 52, y: 58, w: 8, h: 47, r: 4 }, // chân phải
+  // Thân kéo xuống hết mông (bottom of the buttocks) — khung quét là MÔNG-up,
+  // không phải waist-up: đùi trên nằm ngoài vùng chụp nên không vẽ chân.
+  { x: 36, y: 26, w: 28, h: 46, r: 12 }, // thân + mông
+  { x: 27, y: 28, w: 7, h: 33, r: 3.5 }, // tay trái
+  { x: 66, y: 28, w: 7, h: 33, r: 3.5 }, // tay phải
 ];
 
 function Blocks({ fill, stroke }: { fill: string; stroke?: string }) {
@@ -95,3 +95,4 @@ export function ScanSilhouette({
     </svg>
   );
 }
+

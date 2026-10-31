@@ -658,12 +658,12 @@ const AIM_ZONES: Readonly<Record<"upper_body" | "full_body", readonly AimZone[]>
   upper_body: Object.freeze<AimZone[]>([
     { key: "head", label: "Đầu", yMin: 0.04, yMax: 0.26, xMin: 0.18, xMax: 0.82 },
     { key: "shoulder", label: "Vai", yMin: 0.2, yMax: 0.5, xMin: 0.18, xMax: 0.82 },
-    { key: "hip", label: "Hông", yMin: 0.46, yMax: 0.9, xMin: 0.18, xMax: 0.82 },
+    { key: "hip", label: "Mông", yMin: 0.46, yMax: 0.9, xMin: 0.18, xMax: 0.82 },
   ]),
   full_body: Object.freeze<AimZone[]>([
     { key: "head", label: "Đầu", yMin: 0.02, yMax: 0.16, xMin: 0.18, xMax: 0.82 },
     { key: "shoulder", label: "Vai", yMin: 0.14, yMax: 0.34, xMin: 0.18, xMax: 0.82 },
-    { key: "hip", label: "Hông", yMin: 0.38, yMax: 0.66, xMin: 0.18, xMax: 0.82 },
+    { key: "hip", label: "Mông", yMin: 0.38, yMax: 0.66, xMin: 0.18, xMax: 0.82 },
   ]),
 };
 
@@ -1512,4 +1512,5 @@ export function mapCameraDeviceError(error: unknown): {
     message: "Không mở được camera. Đóng ứng dụng đang dùng camera hoặc kiểm tra thiết bị rồi thử lại.",
   };
 }
+
 
