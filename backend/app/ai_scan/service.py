@@ -1,4 +1,4 @@
-﻿"""Gemini + LangGraph execution for the experimental AI scan.
+"""Gemini + LangGraph execution for the experimental AI scan.
 
 One model call per scan (``MORPH_AI_ENSEMBLE`` can raise it to 5) at
 temperature 0, so a scan costs one request and repeating it does not change the
@@ -28,6 +28,10 @@ class AiScanNotConfigured(RuntimeError):
 
 class AiScanUnavailable(RuntimeError):
     """The model ran but could not support any measurement."""
+
+
+class AiScanQuotaExceeded(AiScanUnavailable):
+    """The provider refused the call for quota/rate reasons (HTTP 429)."""
 
 
 async def run_ai_scan(
@@ -88,10 +92,19 @@ async def run_ai_scan(
     if not ai_supported(state):
         errors = [str(m.get("error") or "") for m in (state.get("member_meta") or []) if m.get("error")]
         detail = f" Lỗi model: {errors[0][:140]}" if errors else ""
-        raise AiScanUnavailable(
+        quota_hit = any(
+            "429" in error or "RESOURCE_EXHAUSTED" in error or "quota" in error.lower() for error in errors
+        )
+        message = (
             "Không lượt AI nào trả về số đo (model lỗi hoặc hết quota), nên chưa có kết quả AI. "
             "Số đo hình học MediaPipe không được dùng thay cho kết quả AI." + detail
         )
+        if quota_hit:
+            raise AiScanQuotaExceeded(
+                "Hết hạn mức gọi AI của key hiện tại (free tier khoảng 20 lượt/ngày cho mỗi model). "
+                "Thử lại sau khi hạn mức đặt lại, đổi key, hoặc dùng chế độ quét 3D (không cần AI)." + detail
+            )
+        raise AiScanUnavailable(message)
 
     result = dict(state.get("result") or {})
     result["elapsed_seconds"] = round(time.perf_counter() - started, 3)
@@ -118,4 +131,5 @@ def ai_supported(state: dict) -> bool:
 def _data_url(data: bytes, mime: str) -> str:
     encoded = base64.b64encode(data).decode("ascii")
     return f"data:{mime};base64,{encoded}"
+
 

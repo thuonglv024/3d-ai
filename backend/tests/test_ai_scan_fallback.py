@@ -78,8 +78,30 @@ def test_run_ai_scan_raises_instead_of_returning_geometry_numbers(monkeypatch):
     monkeypatch.setattr(service, "temperature", lambda: 0.0)
     monkeypatch.setattr(service, "build_graph", lambda *args, **kwargs: _FakeGraph(state))
 
-    with pytest.raises(AiScanUnavailable) as error:
+    with pytest.raises(service.AiScanQuotaExceeded) as error:
         asyncio.run(service.run_ai_scan(b"front", b"side", 156.0, "full_body"))
     message = str(error.value)
-    assert "chưa có kết quả AI" in message
+    assert "hạn mức" in message
     assert "429" in message  # lý do thật được chuyển ra ngoài
+
+
+def test_run_ai_scan_returns_502_not_422_for_a_generic_model_failure(monkeypatch):
+    state = {
+        "values": {"chest_cm": 89.8},
+        "estimated_by": {"chest_cm": "geometry"},
+        "member_meta": [{"role": "anchor", "error": "503 UNAVAILABLE"}],
+        "capture_mode": "upper_body",
+        "sex": "auto",
+        "height_cm": 170.0,
+        "result": {"status": "completed"},
+    }
+    monkeypatch.setattr(service, "is_configured", lambda: True)
+    monkeypatch.setattr(service, "google_api_key", lambda: "test-key")
+    monkeypatch.setattr(service, "configured_model", lambda: "fake-model")
+    monkeypatch.setattr(service, "temperature", lambda: 0.0)
+    monkeypatch.setattr(service, "build_graph", lambda *args, **kwargs: _FakeGraph(state))
+
+    with pytest.raises(AiScanUnavailable) as error:
+        asyncio.run(service.run_ai_scan(b"front", b"side", 170.0, "upper_body"))
+    assert not isinstance(error.value, service.AiScanQuotaExceeded)
+    assert "chưa có kết quả AI" in str(error.value)

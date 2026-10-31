@@ -97,8 +97,12 @@ async def analyze(
         )
     except service.AiScanNotConfigured as exc:
         raise HTTPException(503, str(exc)) from exc
+    except service.AiScanQuotaExceeded as exc:
+        raise HTTPException(429, str(exc)) from exc
     except service.AiScanUnavailable as exc:
-        raise HTTPException(422, str(exc)) from exc
+        # 422 nghĩa là "dữ liệu đầu vào không xử lý được". Ở đây model phía trên
+        # lỗi, nên trả 502 để client biết ảnh/đầu vào không phải nguyên nhân.
+        raise HTTPException(502, str(exc)) from exc
     except asyncio.TimeoutError as exc:
         raise HTTPException(504, "Dịch vụ AI phản hồi quá lâu. Hãy thử lại sau.") from exc
     except Exception as exc:
