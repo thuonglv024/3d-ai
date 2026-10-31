@@ -14,6 +14,7 @@ import {
   type AimAnchorKey,
   type AimFrameEvaluation,
 } from "../../lib/captureQuality";
+import { ScanSilhouette, type FrameState } from "./ScanSilhouette";
 
 type MarkerState = "idle" | "on" | "off";
 
@@ -28,6 +29,7 @@ export default function PoseGuide({
 }) {
   const frame = aim ?? pendingAimFrame(upper ? "upper_body" : "full_body");
   const anchorsByKey = new Map(frame.anchors.map((anchor) => [anchor.key, anchor]));
+  const silhouetteState: FrameState = !aim ? "idle" : aim.ok ? "ready" : "align";
 
   const stateFor = (key: AimAnchorKey): MarkerState => {
     if (!anchorsByKey.has(key)) return "idle";
@@ -38,6 +40,7 @@ export default function PoseGuide({
 
   return (
     <>
+      <ScanSilhouette state={silhouetteState} />
       <svg
         className={`capture-pose-guide ${ready ? "is-ready" : ""}`}
         viewBox="0 0 300 600"
@@ -46,6 +49,7 @@ export default function PoseGuide({
       >
         {upper ? (
           <>
+      <ScanSilhouette state={silhouetteState} />
             <path className="pose-guide-axis" d="M150 40V470" />
             <circle className="pose-guide-silhouette" cx="150" cy="100" r="38" />
             <path
@@ -59,6 +63,7 @@ export default function PoseGuide({
           </>
         ) : (
           <>
+      <ScanSilhouette state={silhouetteState} />
             <path className="pose-guide-axis" d="M150 28V566" />
             <circle className="pose-guide-silhouette" cx="150" cy="62" r="30" />
             <path
