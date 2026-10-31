@@ -1,0 +1,31 @@
+{
+  "brand": "ORICANO",
+  "name": "Bảng size áo ORICANO (số đo áo thật, dạng đo phẳng)",
+  "source": "Ảnh bảng size do người dùng cung cấp, 2026-11-01",
+  "measurement_basis": "garment_flat",
+  "unit": "cm",
+  "notes": [
+    "1/2 Ngực là nửa vòng ngực đo phẳng trên áo: chu vi áo = 2 x 1/2 ngực.",
+    "Dài tay ở bảng này là dài tay áo tính từ đường vai, KHÔNG phải dài tay cơ thể (vai đến cổ tay).",
+    "Rộng vai là số đo trên áo, lớn hơn vai cơ thể một khoảng đường may + độ rộng vai áo."
+  ],
+  "rows": [
+    {"size": "S",   "chest_half_cm": 41, "body_length_cm": 61, "sleeve_length_cm": 17, "shoulder_cm": 38},
+    {"size": "M",   "chest_half_cm": 43, "body_length_cm": 63, "sleeve_length_cm": 18, "shoulder_cm": 39},
+    {"size": "L",   "chest_half_cm": 45, "body_length_cm": 65, "sleeve_length_cm": 19, "shoulder_cm": 40},
+    {"size": "XL",  "chest_half_cm": 47, "body_length_cm": 67, "sleeve_length_cm": 20, "shoulder_cm": 41},
+    {"size": "2XL", "chest_half_cm": 49, "body_length_cm": 69, "sleeve_length_cm": 21, "shoulder_cm": 42}
+  ],
+  "weight_height_table": {
+    "heights_cm": ["1m60-1m65", "1m65-1m72", "1m72-1m75", "1m75-1m85"],
+    "weights_kg": ["45-50", "50-56", "57-64", "65-74", "75-90"],
+    "sizes": [
+      ["S", "M", "L", "XL", "2XL"],
+      ["M", "M/L", "L", "XL", "2XL"],
+      ["M", "M/L", "L", "XL", "2XL"],
+      ["IB EM TƯ VẤN A", "L", "L/XL", "XL", "2XL"]
+    ],
+    "disclaimer": "Nhân tin cho CSKH để được tư vấn chính xác nhất."
+  },
+  "ease_note": "Chênh lệch vòng ngực áo và vòng ngực cơ thể: chu vi áo = 2 x 1/2 ngực. Ví dụ size M = 86 cm chu vi; người ngực 80 cm mặc M được +6 cm cử động."
+}
