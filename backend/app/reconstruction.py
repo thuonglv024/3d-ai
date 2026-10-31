@@ -204,6 +204,15 @@ def observe(image: np.ndarray, detector, name: str, capture_mode: str = "full_bo
     visibility = np.array([p.visibility for p in result.pose_landmarks[0]])
     if not np.isfinite(points).all():
         raise InvalidPhoto("Không đọc được các mốc cơ thể. Hãy chụp lại.")
+    if capture_mode == "full_body":
+        # Hông phải thấy và nằm trong khung; nếu không, hàng eo/hông sẽ được
+        # ngoại suy từ mô hình mẫu nhưng vẫn báo như số đo từ ảnh.
+        hips_visible = max(float(visibility[23]), float(visibility[24]))
+        hips_in_frame = all(0 <= points[i, 0] < w and 0 <= points[i, 1] < h for i in (23, 24))
+        if hips_visible < 0.55 or not hips_in_frame:
+            raise InvalidPhoto(
+                f"Ảnh {name}: chưa thấy rõ hông/cạp quần. Hãy đứng lùi để thấy từ đầu đến hông và chân."
+            )
     if capture_mode == "upper_body":
         # Missing legs must never be interpreted as the person's full pixel height.
         # Scale is explicitly inferred from the template shoulder-to-hip proportion.
@@ -244,6 +253,15 @@ def observe(image: np.ndarray, detector, name: str, capture_mode: str = "full_bo
             raise InvalidPhoto("Ảnh nghiêng: cần thấy rõ vai, hông, đầu gối và ít nhất một bàn chân.")
     if not np.isfinite(points).all():
         raise InvalidPhoto("Không đọc được các mốc cơ thể. Hãy chụp lại.")
+    if capture_mode == "full_body":
+        # Hông phải thấy và nằm trong khung; nếu không, hàng eo/hông sẽ được
+        # ngoại suy từ mô hình mẫu nhưng vẫn báo như số đo từ ảnh.
+        hips_visible = max(float(visibility[23]), float(visibility[24]))
+        hips_in_frame = all(0 <= points[i, 0] < w and 0 <= points[i, 1] < h for i in (23, 24))
+        if hips_visible < 0.55 or not hips_in_frame:
+            raise InvalidPhoto(
+                f"Ảnh {name}: chưa thấy rõ hông/cạp quần. Hãy đứng lùi để thấy từ đầu đến hông và chân."
+            )
     return Observation(mask, points, visibility, top, bottom, float(bottom - top))
 
 
