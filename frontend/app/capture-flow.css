@@ -1925,3 +1925,10 @@
 .scan-silhouette {
   display: none !important;
 }
+
+/* Bỏ nốt khung/marker còn lại của màn chụp: chỉ giữ camera và nút điều khiển. */
+.capture-frame-mark,
+.capture-aim-frame,
+.capture-aim-band {
+  display: none !important;
+}
