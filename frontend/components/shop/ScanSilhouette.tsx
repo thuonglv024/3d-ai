@@ -44,7 +44,7 @@ export function ScanSilhouette({
       viewBox="0 0 100 120"
       preserveAspectRatio="xMidYMid meet"
       aria-hidden="true"
-      style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }}
+      // Khớp vùng quét thật: đỉnh đầu ở ~4% chiều cao khung, đáy mông ở ~78%,\n      // hai bên chừa 18% để người đứng giữa. Không phải hình trang trí giữa màn.\n      style={{ position: "absolute", top: "4%", bottom: "22%", left: "18%", right: "18%", pointerEvents: "none" }}
     >
       <defs>
         <mask id="scan-silhouette-hole">
@@ -59,4 +59,5 @@ export function ScanSilhouette({
     </svg>
   );
 }
+
 
