@@ -157,6 +157,16 @@ def test_langgraph_pipeline_with_fake_model():
         def with_structured_output(self, _schema):
             return FakeStructured()
 
+        async def ainvoke(self, _messages):
+            # Structured output tắt mặc định nên member đi qua đường JSON thường.
+            class _Plain:
+                content = (
+                    '{"chest_cm": 96.0, "waist_cm": 78.0, "hip_cm": 101.0, "shoulder_width_cm": 39.0, '
+                    '"confidence": 0.82, "pose_quality": "good", "image_quality": "good", "notes": "fake"}'
+                )
+
+            return _Plain()
+
     graph = build_graph(FakeModel(), "fake-model")
     state = asyncio.run(
         graph.ainvoke(
