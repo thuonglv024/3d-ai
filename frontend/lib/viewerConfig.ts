@@ -3,8 +3,8 @@
   frameFill: 0.74,
   shoulderLevel: 0.805,
   hipLevel: 0.534,
-  // Cắt ngang đùi trên (khoảng 1/5 dưới mông) để mô hình không bị hụt ở hông.
-  waistLevel: 0.42,
+  // Cắt ngang 1/5 chiều cao mông (không phải dưới mông) để không hụt phần hông.
+  waistLevel: 0.49,
   targetHeight: 1.75,
   offsetY: 0.025,
   rotateSpeed: 0.55,
