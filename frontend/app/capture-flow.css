@@ -1939,3 +1939,17 @@
 .scan-silhouette {
   display: block !important;
 }
+
+/* Sửa lỗi: lần trước ẩn cả SVG cha (.capture-pose-guide) nên silhouette con
+   cũng mất. Bật lại SVG cha, chỉ ẩn các phần hướng dẫn bên trong. */
+.capture-pose-guide {
+  display: block !important;
+}
+.capture-pose-guide .capture-aim-frame,
+.capture-pose-guide .capture-aim-band,
+.capture-pose-guide .capture-aim-anchor,
+.capture-pose-guide .pose-guide-axis,
+.capture-pose-guide .pose-guide-silhouette,
+.capture-frame-mark {
+  display: none !important;
+}
