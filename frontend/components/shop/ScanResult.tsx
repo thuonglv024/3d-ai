@@ -26,6 +26,7 @@ import type { Job, MeasurementDetail } from "../../lib/useBodyScan";
 import type { Product } from "../../lib/catalog";
 import { fetchFitMap, type FitBand, type FitMapResult } from "../../lib/fitMap";
 import FitMapPanel from "./FitMapPanel";
+import type { FitHeatmap } from "../BodyViewer";
 import { useScan, type SizeAdviceResult } from "../../lib/ScanContext";
 import { useAuth } from "../../lib/AuthContext";
 import { useRouter } from "next/navigation";
@@ -151,6 +152,13 @@ export default function ScanResult({
         .map((region) => ({ from: region.band.from, to: region.band.to, color: region.color })),
     [fitMap]
   );
+
+  // Flat-spec products return a continuous per-vertex field. It replaces the
+  // old waist/hip Y bands for those products; other products keep fitBands.
+  const fitHeatmap = useMemo<FitHeatmap | undefined>(() => {
+    const heatmap = (fitMap as (FitMapResult & { heatmap?: FitHeatmap }) | null)?.heatmap;
+    return heatmap?.mode === "continuous_vertex" ? heatmap : undefined;
+  }, [fitMap]);
 
   const router = useRouter();
   const { user } = useAuth();
@@ -701,7 +709,7 @@ export default function ScanResult({
               type="button"
               aria-pressed={fitView}
               onClick={() => setFitView(!fitView)}
-              disabled={!product || fitBands.length === 0}
+              disabled={!product || (!fitHeatmap && fitBands.length === 0)}
               title="Tô màu vùng chật/rộng theo size đang chọn"
             >
               <Paintbrush size={15} />
@@ -729,7 +737,8 @@ export default function ScanResult({
                 technical
                 annotations={rows}
                 selectedMeasurement={selected}
-                fitBands={fitView ? fitBands : undefined}
+                fitBands={fitView && !fitHeatmap ? fitBands : undefined}
+                fitHeatmap={fitView ? fitHeatmap : undefined}
                 onSelectView={() => setRotate(false)}
               />
             </Boundary>

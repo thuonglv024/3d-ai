@@ -7,6 +7,16 @@ import trimesh
 from .images import InvalidPhoto
 
 
+class ClothingOrArmMergedError(InvalidPhoto):
+    """The fitted section is too far from the avatar's current section.
+
+    The code lets the API/UI distinguish a loose-clothing/arm-merge capture from
+    other invalid-photo failures without inventing a measurement.
+    """
+
+    code = "CLOTHING_OR_ARM_MERGED"
+
+
 def scale_lateral(x, scale, radius):
     """Monotone lateral deformation: scale the trunk and translate outer limbs.
 
@@ -322,7 +332,13 @@ def fit_measurement_targets(mesh, targets, height_cm, width_targets=None, fit_mo
             errors_now.append(abs(current - target["target_cm"]))
             factor = target["target_cm"] / current
             if not .70 <= factor <= 1.40:
-                raise InvalidPhoto("Số đo từ hai góc chưa nhất quán với hình thể. Chụp lại cùng tư thế, tay không che thân.")
+                error = ClothingOrArmMergedError(
+                    "Ảnh có vẻ mặc đồ rộng hoặc tay dính thân, hãy mặc đồ ôm và tách tay khỏi người."
+                )
+                error.code = "CLOTHING_OR_ARM_MERGED"
+                error.factor = round(float(factor), 3)
+                error.target_key = target["key"]
+                raise error
             if target.get("depth_cm") is not None and target.get("depth_cm", 0) > 0:
                 cur_w = float(np.ptp(curve[:, 0]) * 100)
                 cur_d = float(np.ptp(curve[:, 2]) * 100)

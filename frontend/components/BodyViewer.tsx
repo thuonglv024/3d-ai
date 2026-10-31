@@ -1,24 +1,67 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useLoader, useThree } from "@react-three/fiber";
 import { Center, ContactShadows, Line, OrbitControls } from "@react-three/drei";
 import { mergeVertices } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import * as THREE from "three";
+import { VIEWER_CONFIG, defaultFrame, frameForBounds, type ViewerFrame } from "../lib/viewerConfig";
 import type {MeasurementDetail} from "../lib/useBodyScan";
 import type { FitBand } from "../lib/fitMap";
 import type { OrbitControls as OrbitControlsType } from "three-stdlib";
 
 export type Section = {key:string;label:string;target_cm:number;model_cm:number;fit_error_cm:number;points_m:[number,number,number][]};
 const SECTION_COLORS: Record<string,string> = {chest_cm:"#194e3d",waist_cm:"#a0521e",hip_cm:"#285b7e",chest:"#194e3d",waist:"#a0521e",hip:"#285b7e"};
-const VIEWS = [{label:"Trước",angle:0},{label:"Nghiêng",angle:Math.PI/2},{label:"Sau",angle:Math.PI},{label:"3/4",angle:Math.PI/4}];
+const VIEWS = [{label:"Chính diện",angle:0},{label:"Nghiêng",angle:Math.PI/2},{label:"Sau",angle:Math.PI}];
 
-function Surface({ object, wireframe, targetHeight, preserveOrigin = false, studio=false, technical=false, points=false, fitBands }: { object: THREE.Object3D; wireframe: boolean; targetHeight: number; preserveOrigin?: boolean; studio?:boolean;technical?:boolean;points?:boolean;fitBands?:FitBand[] }) {
-  const model = useMemo(() => {
+export type FitColorStop = { ease_cm: number; label: string; color: string };
+export type FitHeatmap = {
+  mode: "continuous_vertex";
+  ease_cm: number;
+  taper_cm: number;
+  arm_x_fraction: number;
+  garment_length_cm: number | null;
+  garment_length_measurement_point?: string;
+  shoulder_level: number;
+  hip_level: number;
+  color_stops: FitColorStop[];
+  unknown_color: string;
+  unverified: boolean;
+  sleeve_ease_cm?: number | null;
+  sleeve_length_cm?: number | null;
+};
+
+function applyEaseColor(ease: number, stops: { ease: number; color: THREE.Color }[], target: THREE.Color) {
+  if (!stops.length) return target;
+  if (ease <= stops[0].ease) return target.copy(stops[0].color);
+  for (let i = 1; i < stops.length; i += 1) {
+    const left = stops[i - 1];
+    const right = stops[i];
+    if (ease <= right.ease) {
+      const t = (ease - left.ease) / Math.max(right.ease - left.ease, 1e-6);
+      return target.copy(left.color).lerp(right.color, t);
+    }
+  }
+  return target.copy(stops[stops.length - 1].color);
+}
+
+function Surface({ object, wireframe, targetHeight, preserveOrigin = false, studio=false, technical=false, points=false, fitBands, fitHeatmap, bodyHeightCm, onFrame }: { object: THREE.Object3D; wireframe: boolean; targetHeight: number; preserveOrigin?: boolean; studio?:boolean;technical?:boolean;points?:boolean;fitBands?:FitBand[];fitHeatmap?:FitHeatmap;bodyHeightCm?:number;onFrame?:(frame:ViewerFrame)=>void }) {
+  const { model, frame } = useMemo(() => {
     const copy = object.clone(true);
     const bounds=new THREE.Box3().setFromObject(copy), height=bounds.max.y-bounds.min.y;
+    const scale = height > 0 ? targetHeight / height : 1;
+    copy.scale.setScalar(scale);
+    copy.updateMatrixWorld(true);
+    // Measure the *scaled* mesh: GLB roots may carry their own transform, so
+    // multiplying the raw bbox by the scale can miss the real head top.
+    const scaledBounds = new THREE.Box3().setFromObject(copy);
+    const frame = frameForBounds(
+      scaledBounds.min.y + VIEWER_CONFIG.offsetY,
+      scaledBounds.max.y + VIEWER_CONFIG.offsetY,
+    );
+    const clipPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -frame.cutY);
     copy.traverse((child) => {
       if (child instanceof THREE.Mesh) {
         // Own the geometry; never mutate the shared loader cache.
@@ -29,20 +72,53 @@ function Surface({ object, wireframe, targetHeight, preserveOrigin = false, stud
           geometry.computeVertexNormals();
         }
         child.geometry=geometry;
-        if (fitBands?.length) {
-          // Per-vertex fit colours: horizontal anatomical bands, one colour per
-          // estimated verdict. Kept as geometry colours so the heat map survives
-          // screenshots and wireframe/points modes.
+        if ((fitHeatmap && fitHeatmap.garment_length_cm != null) || fitBands?.length) {
+          // Per-vertex fit colours. The continuous field is used when the API
+          // returns a flat-spec heatmap; older products keep the Y-band path.
           const position = geometry.getAttribute("position");
           const colors = new Float32Array(position.count * 3);
           const color = new THREE.Color();
-          for (let i = 0; i < position.count; i++) {
-            const normalizedY = (position.getY(i) - bounds.min.y) / Math.max(height, 1e-6);
-            const band = fitBands.find((b) => normalizedY >= b.from && normalizedY < b.to);
-            color.set(band?.color ?? "#c9d1c8");
-            colors[i * 3] = color.r;
-            colors[i * 3 + 1] = color.g;
-            colors[i * 3 + 2] = color.b;
+          const realHeightCm = bodyHeightCm ?? 175;
+          if (fitHeatmap && fitHeatmap.garment_length_cm != null) {
+            const shoulder = fitHeatmap.shoulder_level ?? 0.805;
+            const hip = fitHeatmap.hip_level ?? 0.534;
+            const span = Math.max(shoulder - hip, 1e-6);
+            const hemLevel = (shoulder - fitHeatmap.garment_length_cm / Math.max(realHeightCm, 1e-6) - hip) / span;
+            const taperLevel = Math.max((fitHeatmap.taper_cm ?? 4) / Math.max(realHeightCm, 1e-6) / span, 1e-6);
+            const armFraction = fitHeatmap.arm_x_fraction ?? 0.18;
+            const stops = fitHeatmap.color_stops
+              .map((stop) => ({ ease: stop.ease_cm, color: new THREE.Color(stop.color) }))
+              .sort((a, b) => a.ease - b.ease);
+            const gray = new THREE.Color(fitHeatmap.unknown_color || "#c9d1c8");
+            const centerX = (bounds.min.x + bounds.max.x) / 2;
+            for (let i = 0; i < position.count; i++) {
+              const normalizedY = (position.getY(i) - bounds.min.y) / Math.max(height, 1e-6);
+              const level = (normalizedY - hip) / span;
+              const isArm = Math.abs(position.getX(i) - centerX) > armFraction * height;
+              const inTorso = !isArm && level >= hemLevel && level <= 1;
+              if (!inTorso) {
+                color.copy(gray);
+              } else {
+                const edge = Math.min(1, Math.max(0, Math.min(
+                  (1 - level) / taperLevel,
+                  (level - hemLevel) / taperLevel,
+                )));
+                const ease = fitHeatmap.ease_cm * (0.5 - 0.5 * Math.cos(Math.PI * edge));
+                applyEaseColor(ease, stops, color);
+              }
+              colors[i * 3] = color.r;
+              colors[i * 3 + 1] = color.g;
+              colors[i * 3 + 2] = color.b;
+            }
+          } else if (fitBands?.length) {
+            for (let i = 0; i < position.count; i++) {
+              const normalizedY = (position.getY(i) - bounds.min.y) / Math.max(height, 1e-6);
+              const band = fitBands.find((b) => normalizedY >= b.from && normalizedY < b.to);
+              color.set(band?.color ?? "#c9d1c8");
+              colors[i * 3] = color.r;
+              colors[i * 3 + 1] = color.g;
+              colors[i * 3 + 2] = color.b;
+            }
           }
           geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
         }
@@ -54,13 +130,16 @@ function Surface({ object, wireframe, targetHeight, preserveOrigin = false, stud
           }
           geometry.setAttribute("morphCoord",new THREE.BufferAttribute(coordinates,2));
         }
+        const vertexColored = Boolean((fitHeatmap && fitHeatmap.garment_length_cm != null) || fitBands?.length);
         const material = new THREE.MeshStandardMaterial({
-          color: fitBands?.length ? "#ffffff" : technical?"#3d5c4e":studio?"#ffffff":"#4a6858",
-          vertexColors: Boolean(fitBands?.length),
+          color: vertexColored ? "#ffffff" : technical?"#3d5c4e":studio?"#ffffff":"#4a6858",
+          vertexColors: vertexColored,
           roughness: 0.80,
           metalness: 0.04,
           wireframe,
           side: THREE.DoubleSide,
+          clippingPlanes: [clipPlane],
+          clipShadows: true,
         });
         child.material = material;
         if(studio){
@@ -80,18 +159,17 @@ function Surface({ object, wireframe, targetHeight, preserveOrigin = false, stud
         child.castShadow = true;
       }
     });
-    const box = new THREE.Box3().setFromObject(copy);
-    const sizeY = box.getSize(new THREE.Vector3()).y;
-    if (sizeY > 0) {
-      copy.scale.setScalar(targetHeight / sizeY);
-    }
     if(points){
       const cloud=new THREE.Group();copy.updateMatrixWorld(true);
-      copy.traverse(child=>{if(child instanceof THREE.Mesh){const geometry=child.geometry.clone();geometry.applyMatrix4(child.matrixWorld);cloud.add(new THREE.Points(geometry,new THREE.PointsMaterial({color:"#194e3d",size:.006,sizeAttenuation:true})));}});
-      return cloud;
+      copy.traverse(child=>{if(child instanceof THREE.Mesh){const geometry=child.geometry.clone();geometry.applyMatrix4(child.matrixWorld);cloud.add(new THREE.Points(geometry,new THREE.PointsMaterial({color:"#194e3d",size:.006,sizeAttenuation:true,clippingPlanes:[clipPlane]})));}});
+      return {model: cloud, frame};
     }
-    return copy;
-  }, [object, targetHeight, preserveOrigin, studio,technical,points,fitBands]);
+    return {model: copy, frame};
+  }, [object, targetHeight, preserveOrigin, studio,technical,points,fitBands,fitHeatmap,bodyHeightCm]);
+
+  useEffect(() => {
+    onFrame?.(frame);
+  }, [frame, onFrame]);
 
   useEffect(() => {
     model.traverse((child) => {
@@ -114,9 +192,9 @@ function Sample({ wireframe,studio,technical,points }: { wireframe: boolean;stud
   return <Surface object={object} wireframe={wireframe} targetHeight={1.75} studio={studio} technical={technical} points={points}/>;
 }
 
-function Result({ url, wireframe,studio,technical,points,fitBands }: { url: string; wireframe: boolean;studio:boolean;technical:boolean;points:boolean;fitBands?:FitBand[] }) {
+function Result({ url, wireframe,studio,technical,points,fitBands,fitHeatmap,bodyHeightCm,onFrame }: { url: string; wireframe: boolean;studio:boolean;technical:boolean;points:boolean;fitBands?:FitBand[];fitHeatmap?:FitHeatmap;bodyHeightCm?:number;onFrame?:(frame:ViewerFrame)=>void }) {
   const model = useLoader(GLTFLoader, url);
-  return <Surface object={model.scene} wireframe={wireframe} targetHeight={1.75} preserveOrigin studio={studio} technical={technical} points={points} fitBands={fitBands}/>;
+  return <Surface object={model.scene} wireframe={wireframe} targetHeight={1.75} preserveOrigin studio={studio} technical={technical} points={points} fitBands={fitBands} fitHeatmap={fitHeatmap} bodyHeightCm={bodyHeightCm} onFrame={onFrame}/>;
 }
 
 function MeasurementRings({ heightCm, sections }: { heightCm:number; sections:Section[] }) {
@@ -128,35 +206,104 @@ function MeasurementRings({ heightCm, sections }: { heightCm:number; sections:Se
   })}</group>;
 }
 
-function Controls({ reset, autoRotate, angle, revision }: { reset: number; autoRotate: boolean; angle:number; revision:number }) {
+function Controls({ reset, angle, revision, targetY, radius }: { reset: number; angle:number; revision:number; targetY:number; radius:number }) {
   const controls = useRef<OrbitControlsType>(null);
   const camera = useThree(state => state.camera);
+  const invalidate = useThree(state => state.invalidate);
   useEffect(() => {
-    camera.position.set(Math.sin(angle)*3.1, 0.95, Math.cos(angle)*3.1);
-    if (controls.current) {
-      controls.current.target.set(0, 0.88, 0);
-      controls.current.update();
-    }
-  }, [reset, camera, angle, revision]);
-  return <OrbitControls ref={controls} target={[0, 0.88, 0]} enablePan={false} minDistance={1.8} maxDistance={5} maxPolarAngle={Math.PI / 1.85} minPolarAngle={0.2} autoRotate={autoRotate} autoRotateSpeed={0.65} />;
+    const orbit = controls.current;
+    if (!orbit) return;
+    const target = new THREE.Vector3(0, targetY, 0);
+    const start = new THREE.Spherical().setFromVector3(camera.position.clone().sub(target));
+    let delta = angle - start.theta;
+    while (delta > Math.PI) delta -= Math.PI * 2;
+    while (delta < -Math.PI) delta += Math.PI * 2;
+    const duration = 320;
+    const startedAt = performance.now();
+    let frameId = 0;
+    orbit.enabled = false;
+    const step = (now: number) => {
+      const t = Math.min(1, (now - startedAt) / duration);
+      const eased = 1 - Math.pow(1 - t, 3);
+      const theta = start.theta + delta * eased;
+      camera.position.set(
+        target.x + Math.sin(theta) * radius,
+        target.y,
+        target.z + Math.cos(theta) * radius,
+      );
+      orbit.target.copy(target);
+      orbit.update();
+      invalidate();
+      if (t < 1) frameId = requestAnimationFrame(step);
+      else orbit.enabled = true;
+    };
+    frameId = requestAnimationFrame(step);
+    return () => {
+      cancelAnimationFrame(frameId);
+      orbit.enabled = true;
+    };
+  }, [reset, angle, revision, targetY, radius, camera, invalidate]);
+  return (
+    <OrbitControls
+      ref={controls}
+      target={[0, targetY, 0]}
+      enablePan={false}
+      enableZoom={false}
+      minPolarAngle={Math.PI / 2}
+      maxPolarAngle={Math.PI / 2}
+      enableDamping
+      dampingFactor={VIEWER_CONFIG.dampingFactor}
+      rotateSpeed={VIEWER_CONFIG.rotateSpeed}
+      minDistance={radius}
+      maxDistance={radius}
+      touches={{ ONE: THREE.TOUCH.ROTATE }}
+    />
+  );
+}
+
+function ClipController({ cutY, refreshKey }: { cutY:number; refreshKey:string }) {
+  const gl = useThree(state => state.gl);
+  const scene = useThree(state => state.scene);
+  useEffect(() => {
+    gl.localClippingEnabled = true;
+    const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -cutY);
+    const apply = () => {
+      scene.traverse((object) => {
+        const material = (object as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined;
+        if (!material) return;
+        const materials = Array.isArray(material) ? material : [material];
+        for (const item of materials) {
+          item.clippingPlanes = [plane];
+          item.clipShadows = true;
+          item.needsUpdate = true;
+        }
+      });
+    };
+    apply();
+    const timers = [window.setTimeout(apply, 50), window.setTimeout(apply, 250)];
+    return () => {
+      timers.forEach((timer) => window.clearTimeout(timer));
+      gl.localClippingEnabled = false;
+    };
+  }, [gl, scene, cutY, refreshKey]);
+  return null;
 }
 
 export default function BodyViewer({
   url,
   wireframe,
   reset,
-  autoRotate,
   targetHeightCm,
   showRings,
   sections,
   onSelectView,
   studio=false,
-  technical=false, points=false, annotations, selectedMeasurement, fitBands,
+  technical=false, points=false, annotations, selectedMeasurement, fitBands, fitHeatmap,
 }: {
   url?: string;
   wireframe: boolean;
   reset: number;
-  autoRotate: boolean;
+  autoRotate?: boolean;
   targetHeightCm?: number;
   showRings?: boolean;
   sections?: Section[];
@@ -164,17 +311,22 @@ export default function BodyViewer({
   studio?:boolean;
   technical?:boolean;points?:boolean;annotations?:MeasurementDetail[];selectedMeasurement?:string;
   fitBands?:FitBand[];
+  fitHeatmap?:FitHeatmap;
 }) {
   const [view,setView]=useState(0),[revision,setRevision]=useState(0);
+  const [frame,setFrame]=useState<ViewerFrame>(()=>defaultFrame());
+  const handleFrame=useCallback((next:ViewerFrame)=>setFrame((prev)=>(
+    prev.targetY===next.targetY && prev.radius===next.radius && prev.cutY===next.cutY ? prev : next
+  )),[]);
   useEffect(()=>{setView(0);},[reset]);
   return (
     <div className="body-viewer">
-    <Canvas frameloop={autoRotate?"always":"demand"} dpr={[1, 1.5]} camera={{ position: [0, 0.95, 3.1], fov: 42 }} gl={{ antialias: true, alpha: true, preserveDrawingBuffer:technical }} fallback={<p className="viewer-fallback">Trình duyệt chưa hỗ trợ WebGL. Hãy bật tăng tốc đồ họa hoặc mở bằng Chrome.</p>}>
+    <Canvas frameloop="demand" dpr={[1, 1.5]} camera={{ fov: VIEWER_CONFIG.fov }} gl={{ antialias: true, alpha: true, preserveDrawingBuffer:technical }} fallback={<p className="viewer-fallback">Trình duyệt chưa hỗ trợ WebGL. Hãy bật tăng tốc đồ họa hoặc mở bằng Chrome.</p>}>
       <hemisphereLight args={["#ffffff","#7c8e81",2.2]} />
       <directionalLight position={[-3, 4, 5]} intensity={2.2} />
       <directionalLight position={[3, 2, -3]} intensity={1.5} color="#f4f7f1" />
       <Suspense fallback={null}>
-        {url ? <Result url={url} wireframe={wireframe} studio={studio} technical={technical} points={points} fitBands={fitBands}/> : <Sample wireframe={wireframe} studio={studio} technical={technical} points={points}/>}
+        {url ? <Result url={url} wireframe={wireframe} studio={studio} technical={technical} points={points} fitBands={fitBands} fitHeatmap={fitHeatmap} bodyHeightCm={targetHeightCm} onFrame={handleFrame}/> : <Sample wireframe={wireframe} studio={studio} technical={technical} points={points}/>}
       </Suspense>
       {url && showRings && !technical && sections && targetHeightCm && <MeasurementRings heightCm={targetHeightCm} sections={sections}/> }
       {technical&&showRings&&annotations&&annotations.filter(m=>m.points_m.length>1).map(m=><Line key={m.key} points={m.points_m.map(p=>p.map(v=>v*1.75/((targetHeightCm||175)/100)) as [number,number,number])} position={[0,.025,0]} color={m.color} lineWidth={selectedMeasurement===m.key?4.5:2} transparent opacity={!selectedMeasurement||selectedMeasurement===m.key?1:.35}/>) }
@@ -182,10 +334,11 @@ export default function BodyViewer({
       {!points && <ContactShadows position={[0, 0.01, 0]} opacity={0.38} scale={2} blur={1.5} far={1} />}
       {!studio&&!technical&&<><mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.005, 0]}><ringGeometry args={[0.60, 0.605, 96]} /><meshBasicMaterial color="#bcc9bd" side={THREE.DoubleSide} /></mesh>
       <mesh rotation={[-Math.PI / 2, 0, 0]}><circleGeometry args={[0.61, 96]} /><meshBasicMaterial color="#ccd7cb" transparent opacity={0.45} /></mesh></>}
-      <Controls reset={reset} autoRotate={autoRotate} angle={VIEWS[view].angle} revision={revision} />
+      <ClipController cutY={frame.cutY} refreshKey={`${showRings}-${selectedMeasurement||""}-${fitHeatmap?"h":"b"}-${points?"p":"s"}`}/>
+      <Controls reset={reset} angle={VIEWS[view].angle} revision={revision} targetY={frame.targetY} radius={frame.radius} />
     </Canvas>
     {!technical&&url&&showRings&&sections&&<div className="body-legend" aria-label="Chu vi trên avatar"><span>Vòng đo trên avatar</span>{sections.map(s=><div key={s.key}><i style={{background:SECTION_COLORS[s.key]||"#17694c"}}/><span>{s.label}</span><strong>{s.model_cm} <small>cm</small></strong></div>)}</div>}
-    <div className="body-view-presets" aria-label="Góc xem cơ thể">{VIEWS.map((v,i)=><button key={v.label} onClick={()=>{setView(i);setRevision(n=>n+1);onSelectView?.();}} aria-label={`Xem ${v.label.toLowerCase()}`} title={`Xem ${v.label.toLowerCase()} · dừng tự xoay`}>{v.label}</button>)}</div>
+    <div className="body-view-presets" aria-label="Góc xem cơ thể">{VIEWS.map((v,i)=><button key={v.label} onClick={()=>{setView(i);setRevision(n=>n+1);onSelectView?.();}} aria-label={`Xem ${v.label.toLowerCase()}`} title={`Xem ${v.label.toLowerCase()}`}>{v.label}</button>)}</div>
     </div>
   );
 }

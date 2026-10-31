@@ -19,10 +19,11 @@ from . import anny_body
 from . import proportions
 from . import report as _report
 from .anatomy import depth_weights, resolve_sex, shape_sex, template_landmarks
-from .camera_fusion import assess_cross_view_quality, fuse_camera_scale, synchronized_torso_profile as torso_profile
+from .camera_fusion import aligned_torso_landmarks, assess_cross_view_quality, fuse_camera_scale, synchronized_torso_profile as torso_profile
 from .config import MODELS
 from .images import InvalidPhoto
 from .measurements import closed_torso_section, estimate_from_profiles, fit_measurement_targets, measure_target_sections, scale_lateral, validate_glb_mesh
+from .torso_mask import clothing_looseness, more_visible_arm_side, row_arm_merged
 
 MODEL_PATH = MODELS / "pose_landmarker_full.task"
 TEMPLATE_PATH = MODELS / "body-template.obj"
@@ -261,7 +262,7 @@ def capture_feedback(image: np.ndarray, view: str, capture_mode: str = "full_bod
             raise InvalidPhoto("Hướng cả hai vai về camera để chụp chính diện.")
         if view == "side" and shoulder_ratio > .11:
             raise InvalidPhoto("Xoay người thêm, gần 90° so với camera.")
-        torso_profile(obs)
+        torso_profile(obs, arm_sides=(more_visible_arm_side(obs.points, obs.visibility),) if view == "side" else None)
         h, w = image.shape[:2]
         landmarks = [[round(float(p[0] / w), 4), round(float(p[1] / h), 4), round(float(v), 3)] for p, v in zip(obs.points, obs.visibility)]
         key_indices = [11, 12, 23, 24] if capture_mode == "upper_body" else [11, 12, 23, 24, 25, 26, 27, 28]
@@ -566,15 +567,27 @@ def reconstruct(front: np.ndarray, side: np.ndarray, height_cm: float, destinati
         lateral = observe(side, detector, "góc nghiêng", capture_mode)
     shared_height = fuse_camera_scale(frontal, lateral)
     quality_diagnostics = assess_cross_view_quality(frontal, lateral, shared_height=shared_height)
-    front_shoulders = abs(frontal.points[11, 0] - frontal.points[12, 0]) / shared_height
+    front_shoulders = abs(frontal.points[11, 0] - frontal.points[12, 0]) / frontal.height
     side_shoulders = abs(lateral.points[11, 0] - lateral.points[12, 0]) / lateral.height
     if front_shoulders < 0.12:
         raise InvalidPhoto("Ảnh đầu cần chụp chính diện. Hãy hướng cả hai vai về camera.")
     if side_shoulders > front_shoulders * 0.75:
         raise InvalidPhoto("Ảnh thứ hai chưa đủ nghiêng. Hãy xoay người khoảng 90° so với camera.")
     report("Đang khớp đường viền và dựng bề mặt 3D…")
-    fractions, widths = torso_profile(frontal, reference_obs=None, shared_height=shared_height)
-    _, depths = torso_profile(lateral, reference_obs=frontal, shared_height=shared_height)
+    # Each image is converted with its own cm/px scale: widths use the frontal
+    # body height, depths use the lateral body height.
+    fractions, widths = torso_profile(frontal, reference_obs=None, norm_height=frontal.height)
+    if getattr(frontal, "arm_radius_px", None):
+        lateral.arm_radius_hint = (
+            float(np.mean(list(frontal.arm_radius_px.values())))
+            * float(lateral.height) / max(float(frontal.height), 1.0)
+        )
+    _, depths = torso_profile(
+        lateral,
+        reference_obs=frontal,
+        norm_height=lateral.height,
+        arm_sides=(more_visible_arm_side(lateral.points, lateral.visibility),),
+    )
     template = read_template()
     landmarks = template_landmarks(str(TEMPLATE_PATH))
     shoulder_level = landmarks.get("shoulder", .805)
@@ -590,6 +603,29 @@ def reconstruct(front: np.ndarray, side: np.ndarray, height_cm: float, destinati
             depths[i] = depths[i]*(1-blend)+np.ptp(curve[:,2])*blend
     report("Đang trích xuất thông số kích thước cơ thể…")
     measurements, targets = estimate_from_profiles(fractions, widths, depths, height_cm, front_shoulders, True, shoulder_level, hip_level)
+    # Arm/clothing diagnostics are measured on the cleaned frontal mask.
+    f_shoulder, f_hip = aligned_torso_landmarks(frontal)
+    shoulder_span_px = float(abs(frontal.points[11, 0] - frontal.points[12, 0]))
+    depth_keys = ("chest_cm", "waist_cm") if capture_mode == "upper_body" else ("chest_cm", "waist_cm", "hip_cm")
+    merged_rows: dict[str, bool] = {}
+    depths_cm: list[float] = []
+    for target in targets:
+        if target["key"] not in depth_keys:
+            continue
+        frac = (shoulder_level - target["level"]) / max(shoulder_level - hip_level, 1e-9)
+        row_y = f_shoulder[1] + frac * (f_hip[1] - f_shoulder[1])
+        center_x = f_shoulder[0] + frac * (f_hip[0] - f_shoulder[0])
+        merged_rows[target["key"]] = row_arm_merged(
+            frontal.mask, row_y, center_x, shoulder_span_px, float(frontal.height)
+        )
+        depths_cm.append(float(target["depth_cm"]))
+    chest_target = next((t for t in targets if t["key"] == "chest_cm"), None)
+    looseness_flag, looseness_reasons = clothing_looseness(
+        float(chest_target["width_cm"]) if chest_target else None,
+        measurements.get("shoulder_width_cm"),
+        depths_cm,
+        merged_rows,
+    )
     mesh_sex, sex_source = resolve_sex(sex, measurements, capture_mode)
     report("Đang dựng hình thể nam/nữ…")
     anny_ready, _anny_message = anny_body.available()
@@ -652,7 +688,22 @@ def reconstruct(front: np.ndarray, side: np.ndarray, height_cm: float, destinati
     profile["engine_version"] = ENGINE
     profile["uncertainty_cm"] = None
     profile["quality_diagnostics"] = quality_diagnostics
-    profile["scale_method"] = "height_and_multi_anchor_torso_ratio" if capture_mode == "upper_body" else "height_and_shared_camera_silhouette"
+    profile["per_image_scale"] = {
+        "front_body_height_px": round(float(frontal.height), 2),
+        "side_body_height_px": round(float(lateral.height), 2),
+        "front_cm_per_px": round(float(height_cm) / float(frontal.height), 5) if frontal.height > 0 else None,
+        "side_cm_per_px": round(float(height_cm) / float(lateral.height), 5) if lateral.height > 0 else None,
+        "height_diff_ratio": round(abs(float(frontal.height) - float(lateral.height)) / max(float(frontal.height), 1e-9), 4),
+    }
+    profile["arm_removal"] = {
+        "front_radius_px": getattr(frontal, "arm_radius_px", {}),
+        "side_radius_px": getattr(lateral, "arm_radius_px", {}),
+        "warnings": list(getattr(frontal, "arm_removal_warnings", [])) + list(getattr(lateral, "arm_removal_warnings", [])),
+    }
+    profile["arm_merged_rows"] = merged_rows
+    profile["clothing_looseness_flag"] = bool(looseness_flag)
+    profile["clothing_looseness_reasons"] = looseness_reasons
+    profile["scale_method"] = "height_per_image_upper_body" if capture_mode == "upper_body" else "height_and_per_image_silhouette"
     if capture_mode == "upper_body":
         measurements["hip_cm"] = None
         measurements["inseam_cm"] = None
@@ -678,6 +729,11 @@ def reconstruct(front: np.ndarray, side: np.ndarray, height_cm: float, destinati
     )
     if quality_diagnostics.get("cross_view_warning"):
         warnings.append(quality_diagnostics["cross_view_warning"])
+    if looseness_flag:
+        warnings.append(
+            "Cờ cảnh báo quần áo/tay: " + "; ".join(looseness_reasons)
+            + ". Kết quả có thể bị phóng đại bởi đồ rộng hoặc tay dính thân."
+        )
     if anny_ready:
         warnings.append(
             "Hình nền nam/nữ dựng từ mô hình cơ thể Anny (Apache-2.0, asset MakeHuman CC0) rồi mới khớp số đo. "

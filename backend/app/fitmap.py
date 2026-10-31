@@ -17,6 +17,8 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 from .sizing import SizeChart
+from .garment_fit import compute_chest_fit
+from .fit_field import build_heatmap_payload
 
 CONFIDENCE = "estimated_from_size_chart"
 
@@ -120,12 +122,40 @@ def compute_fit_map(product: dict, size: str, measurements: dict) -> dict:
         if isinstance(item, dict) and item.get("size")
     }
     size_spec = specs.get(size)
+    full_spec = product.get("garment_spec")
+    if size_spec is None and isinstance(full_spec, dict):
+        size_spec = next(
+            (item for item in full_spec.get("sizes", []) if str(item.get("size")) == size),
+            None,
+        )
+    flat_value = size_spec.get("chest_flat_cm") if isinstance(size_spec, dict) else None
+    product_has_flat = any(
+        isinstance(item, dict) and item.get("chest_flat_cm") is not None
+        for item in specs.values()
+    )
+    if not product_has_flat and isinstance(full_spec, dict):
+        product_has_flat = any(
+            isinstance(item, dict) and item.get("chest_flat_cm") is not None
+            for item in full_spec.get("sizes", [])
+        )
     stretch = is_stretch(product.get("material"))
     baseline = ease_allowance(product.get("fit"))
     regions = []
     uses_flat_spec = False
+    uses_flat_chest_spec = False
     for key in _regions_for(chart.garment):
         spec = REGIONS[key]
+        if product_has_flat and (key != "chest_cm" or flat_value is None):
+            regions.append({
+                "key": key,
+                "label": spec["label"],
+                "status": "no_garment_data",
+                "verdict": "unknown",
+                "label_text": "Chưa có số đo áo",
+                "band": {"from": spec["band"][0], "to": spec["band"][1]},
+                **VERDICTS["unknown"],
+            })
+            continue
         rng = getattr(row, key)
         value = measurements.get(key)
         if rng is None or value is None or value <= 0:
@@ -139,13 +169,54 @@ def compute_fit_map(product: dict, size: str, measurements: dict) -> dict:
             })
             continue
         body = float(value)
+        if key == "chest_cm" and flat_value is not None:
+            fit_spec = {
+                "fit_style": product.get("fit_style") or product.get("fit") or "boxy",
+                "flat_tolerance_cm": product.get("flat_tolerance_cm", 1.5),
+                "measurement_point_assumption": product.get(
+                    "measurement_point_assumption", "rộng áo phẳng, chưa xác minh"
+                ),
+                "length_measurement_point": product.get("length_measurement_point", "HPS, chưa xác minh"),
+                "sizes": [{
+                    "size": size,
+                    "chest_flat_cm": float(flat_value),
+                    "length_cm": (size_spec or {}).get("length_cm"),
+                }],
+            }
+            fit = compute_chest_fit(body, "photo", fit_spec)["sizes"][0]
+            garment_cm = float(fit["chest_circumference_cm"])
+            ease = float(fit["ease_cm"])
+            verdict = "loose" if fit["label"] == "oversized" else fit["label"]
+            regions.append({
+                "key": key,
+                "label": spec["label"],
+                "status": "estimated",
+                "body_cm": round(body, 1),
+                "range_min_cm": round(rng.min, 1),
+                "range_max_cm": round(rng.max, 1),
+                "garment_estimate_cm": garment_cm,
+                "ease_cm": ease,
+                "clearance_cm": round(ease / 6.2832, 1),
+                "verdict": verdict,
+                "fit_label": fit["label"],
+                "label_text": fit["label_text"],
+                "color": fit["color"],
+                "basis": "garment_flat_spec",
+                "uncertainty_cm": fit["uncertainty_cm"],
+                "is_borderline": fit["is_borderline"],
+                "unverified": fit["unverified"],
+                "band": {"from": spec["band"][0], "to": spec["band"][1]},
+            })
+            uses_flat_spec = True
+            uses_flat_chest_spec = True
+            continue
         midpoint = (rng.min + rng.max) / 2
         garment_cm = midpoint + baseline
         basis = "size_chart_estimate"
-        flat_value = size_spec.get(key) if size_spec else None
-        if flat_value is not None:
+        flat_value_old = size_spec.get(key) if size_spec else None
+        if flat_value_old is not None:
             try:
-                flat_cm = float(flat_value)
+                flat_cm = float(flat_value_old)
             except (TypeError, ValueError):
                 flat_cm = 0.0
             if flat_cm > 0:
@@ -176,7 +247,13 @@ def compute_fit_map(product: dict, size: str, measurements: dict) -> dict:
         overall_key = "unknown"
     else:
         overall_key = max(known, key=lambda r: _ORDER[r["verdict"]])["verdict"]
-    if uses_flat_spec:
+    if uses_flat_chest_spec:
+        warnings = [
+            "Số đo áo dạng phẳng: chu vi = 2 × rộng; ngưỡng fit tạm thời, chưa hiệu chỉnh bằng dữ liệu mặc thử.",
+            "Eo/hông/vai chưa có số đo áo nên trả no_garment_data, không ước lượng.",
+            "Điểm đo rộng ngực và chiều dài áo chưa được xác minh (unverified=true).",
+        ]
+    elif uses_flat_spec:
         warnings = [
             "Số đo may lấy từ bảng thông số đã công bố của hãng (chiều rộng trải phẳng ×2), không phải đo lại sản phẩm thực tế.",
             "Chưa mô phỏng vải, đường may hay độ rơi; cùng một size có thể khác nhau giữa các lô hàng.",
@@ -188,6 +265,20 @@ def compute_fit_map(product: dict, size: str, measurements: dict) -> dict:
         ]
     if stretch:
         warnings.append("Chất liệu có thành phần co giãn: ngưỡng chật được nới cho hàng dệt kim.")
+    heatmap = None
+    if uses_flat_chest_spec:
+        chest_region = next(
+            (r for r in regions if r["key"] == "chest_cm" and r["status"] == "estimated"),
+            None,
+        )
+        if chest_region and (size_spec or {}).get("length_cm") is not None:
+            heatmap = build_heatmap_payload(
+                fit_style=product.get("fit_style") or product.get("fit") or "boxy",
+                ease_cm=chest_region["ease_cm"],
+                spec_size=size_spec or {},
+                unverified=bool(chest_region.get("unverified", True)),
+                length_measurement_point=product.get("length_measurement_point"),
+            )
     return {
         "status": "ok" if len(known) == len(regions) else ("partial" if known else "insufficient_measurements"),
         "size": size,
@@ -199,4 +290,5 @@ def compute_fit_map(product: dict, size: str, measurements: dict) -> dict:
         "confidence": "published_garment_spec" if uses_flat_spec else CONFIDENCE,
         "garment_source": product.get("garment_source"),
         "warnings": warnings,
+        "heatmap": heatmap,
     }

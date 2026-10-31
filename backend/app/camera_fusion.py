@@ -5,6 +5,7 @@ import numpy as np
 from scipy.ndimage import gaussian_filter1d
 
 from .images import InvalidPhoto
+from .torso_mask import more_visible_arm_side, remove_arm_capsules
 
 
 def _nanmedian_small(values: list[float]) -> float:
@@ -166,10 +167,11 @@ def assess_cross_view_quality(frontal, lateral, shared_height: float | None = No
     diff_ratio = abs(projected_lateral_h - float(frontal.height)) / max(float(frontal.height), 1.0)
 
     cross_view_warning = None
-    if diff_ratio > 0.35:
+    if diff_ratio > 0.15:
         cross_view_warning = (
-            f"Chiều cao khung người giữa 2 góc chụp chênh lệch {diff_ratio * 100:.1f}% (>35%); "
-            "hãy đứng nguyên vị trí khi xoay người 90° để hạn chế sai số tỷ lệ."
+            f"Chiều cao khung người giữa 2 góc chụp chênh lệch {diff_ratio * 100:.1f}% (>15%); "
+            "mỗi ảnh được quy đổi cm/px theo chiều cao riêng, nhưng hãy đứng nguyên vị trí "
+            "khi xoay người 90° để hạn chế sai số tỷ lệ."
         )
 
     return {
@@ -177,6 +179,9 @@ def assess_cross_view_quality(frontal, lateral, shared_height: float | None = No
         "detector_confidence_side": round(conf_side, 4),
         "confidence_semantics": "detector_confidence_only_not_measurement_accuracy",
         "height_scale_px": round(h_scale, 2),
+        "front_body_height_px": round(float(frontal.height), 2),
+        "side_body_height_px": round(float(lateral.height), 2),
+        "per_view_scale_note": "cm/px dùng chiều cao từng ảnh; độ sâu không chuẩn hoá bằng shared height.",
         "cross_view_height_ratio": round(height_ratio, 4),
         "cross_view_height_diff_ratio": round(diff_ratio, 4),
         "cross_view_warning": cross_view_warning,
@@ -190,14 +195,41 @@ def synchronized_torso_profile(
     obs,
     reference_obs=None,
     shared_height: float | None = None,
+    norm_height: float | None = None,
+    arm_sides: tuple[str, ...] | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Extract normalized torso silhouette widths/depths using aligned landmarks and shared camera scale."""
+    """Extract normalized silhouette widths/depths for one view.
+
+    ``norm_height`` is the body height *of this image*, so the caller can turn
+    the ratios into cm with that image's own cm/px scale. ``shared_height`` is
+    kept for the legacy paired helper (and its regression test); new callers
+    should pass ``norm_height``. The arm capsules are removed once per
+    Observation before any row is sampled.
+    """
     shoulder, hip = aligned_torso_landmarks(obs, reference_obs=reference_obs)
-    norm_height = float(shared_height if shared_height is not None else obs.height)
-    if not np.isfinite(norm_height) or norm_height <= 0:
+    norm = float(norm_height if norm_height is not None else (shared_height if shared_height is not None else obs.height))
+    if not np.isfinite(norm) or norm <= 0:
         raise InvalidPhoto("Không xác định được chiều cao tham chiếu.")
-    if hip[1] - shoulder[1] < norm_height * 0.15:
+    if hip[1] - shoulder[1] < norm * 0.15:
         raise InvalidPhoto("Không xác định được vùng thân. Hãy đứng thẳng và chụp lại.")
+
+    # Remove the arm capsules once; later calls on the same Observation reuse the
+    # cleaned mask instead of carving it twice.
+    if not hasattr(obs, "arm_mask"):
+        obs.raw_mask = obs.mask
+        removal = remove_arm_capsules(
+            obs.raw_mask,
+            np.asarray(obs.points, dtype=float),
+            np.asarray(obs.visibility, dtype=float),
+            float(obs.height),
+            fallback_radius_px=getattr(obs, "arm_radius_hint", None),
+            sides=arm_sides or ("left", "right"),
+        )
+        obs.mask = removal.mask
+        obs.arm_mask = removal.arm_mask
+        obs.arm_radius_px = removal.radius_px
+        obs.arm_removal_warnings = removal.warnings
+
     fractions = np.linspace(0.12, 1.12, 35)
     sampled = np.minimum(fractions, 0.78) if getattr(obs, "capture_mode", "full_body") == "upper_body" else fractions
     rows = shoulder[1] + sampled * (hip[1] - shoulder[1])
@@ -205,7 +237,7 @@ def synchronized_torso_profile(
     widths = []
     for row, center in zip(rows, centers):
         local = [center_run_width(obs.mask, row + d, center) for d in (-2, -1, 0, 1, 2)]
-        widths.append(_nanmedian_small(local) / norm_height)
+        widths.append(_nanmedian_small(local) / norm)
     widths = np.asarray(widths, dtype=float)
     if not np.all(np.isfinite(widths)) or np.min(widths) < 0.06 or np.max(widths) > 0.40:
         raise InvalidPhoto("Đường viền cơ thể chưa rõ. Hãy dùng nền đơn giản và tránh tay che thân.")
@@ -215,8 +247,31 @@ def synchronized_torso_profile(
 torso_profile = synchronized_torso_profile
 
 
+def extract_per_view_torso_profiles(frontal, lateral) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Widths normalized by the frontal height, depths by the lateral height.
+
+    The two photos can be taken at different distances. Dividing both views by a
+    shared denominator inflated depth whenever the lateral subject was closer;
+    each view now has its own cm/px scale (``height_cm / view.height``).
+    """
+    fractions, widths = synchronized_torso_profile(frontal, reference_obs=None, norm_height=frontal.height)
+    if getattr(frontal, "arm_radius_px", None):
+        hint = float(np.mean(list(frontal.arm_radius_px.values()))) * float(lateral.height) / max(float(frontal.height), 1.0)
+        lateral.arm_radius_hint = hint
+    _, depths = synchronized_torso_profile(
+        lateral,
+        reference_obs=frontal,
+        norm_height=lateral.height,
+        arm_sides=(more_visible_arm_side(lateral.points, lateral.visibility),),
+    )
+    return fractions, widths, depths
+
+
 def extract_paired_torso_profiles(frontal, lateral) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Extract scale-synchronized `(fractions, widths, depths)` for frontal and lateral observations."""
+    """Legacy shared-height extraction, kept for the old D/W regression test.
+
+    New measurement code uses :func:`extract_per_view_torso_profiles`.
+    """
     shared_height = fuse_camera_scale(frontal, lateral)
     fractions, widths = synchronized_torso_profile(frontal, reference_obs=None, shared_height=shared_height)
     _, depths = synchronized_torso_profile(lateral, reference_obs=frontal, shared_height=shared_height)

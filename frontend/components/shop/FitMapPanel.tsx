@@ -1,13 +1,22 @@
 "use client";
 
-import type { FitMapResult, FitVerdict } from "../../lib/fitMap";
+import type { FitMapResult } from "../../lib/fitMap";
 
-const LEGEND: { key: FitVerdict; label: string; color: string }[] = [
+const LEGEND: { key: string; label: string; color: string }[] = [
   { key: "tight", label: "Chật", color: "#b23a2f" },
-  { key: "snug", label: "Sát", color: "#c8851c" },
-  { key: "regular", label: "Vừa", color: "#2f7a4f" },
-  { key: "loose", label: "Rộng", color: "#2f6591" },
+  { key: "snug", label: "Sát", color: "#d08a2e" },
+  { key: "regular", label: "Vừa", color: "#3f8f5c" },
+  { key: "loose", label: "Rộng", color: "#6aa6c8" },
+  { key: "oversized", label: "Quá rộng", color: "#1f4d73" },
 ];
+
+type FitHeatmapInfo = {
+  color_stops?: { ease_cm: number; label?: string; color: string }[];
+  garment_length_cm?: number | null;
+  garment_length_measurement_point?: string;
+  unverified?: boolean;
+  unknown_color?: string;
+};
 
 // The bar spans -8..+20 cm of circumference ease, which covers tight knits to
 // oversized wovens without clipping the interesting range.
@@ -33,6 +42,13 @@ export default function FitMapPanel({
   loading: boolean;
   error: string;
 }) {
+  const heatmap = (fit as (FitMapResult & { heatmap?: FitHeatmapInfo }) | null)?.heatmap;
+  const heatmapStops = heatmap?.color_stops ?? [];
+  const heatmapGradient = heatmapStops.length
+    ? `linear-gradient(90deg, ${heatmapStops
+        .map((stop, index) => `${stop.color} ${(index / Math.max(heatmapStops.length - 1, 1)) * 100}%`)
+        .join(", ")})`
+    : undefined;
   return (
     <section className="fit-map-panel" aria-label="Bản đồ độ vừa theo vùng cơ thể">
       <div className="fit-map-head">
@@ -138,6 +154,27 @@ export default function FitMapPanel({
               </span>
             ))}
           </div>
+          {heatmap && (
+            <div className="fit-map-note" aria-label="Chú thích heatmap liên tục">
+              <span>Màu liên tục theo ease; xám = không có số đo áo (tay / dưới gấu / ngoài thân).</span>
+              {heatmapGradient && (
+                <i
+                  style={{
+                    display: "block",
+                    height: 8,
+                    borderRadius: 4,
+                    margin: "6px 0",
+                    background: heatmapGradient,
+                  }}
+                />
+              )}
+              <span>
+                Gấu {heatmap.garment_length_cm ?? "?"} cm từ HPS
+                {heatmap.garment_length_measurement_point ? ` (${heatmap.garment_length_measurement_point})` : ""}
+                {heatmap.unverified ? " · unverified" : ""}
+              </span>
+            </div>
+          )}
           <p className="fit-map-note">{fit.warnings[0]}</p>
         </div>
       ) : (
