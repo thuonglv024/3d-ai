@@ -44,6 +44,7 @@ async def analyze(
     height_cm: float = Form(..., ge=100, le=230),
     consent: bool = Form(False),
     capture_mode: Literal["full_body", "upper_body"] = Form("upper_body"),
+    sex: Literal["auto", "female", "male"] = Form("auto"),
 ):
     """Estimate measurements from two photos without storing them.
 
@@ -90,6 +91,7 @@ async def analyze(
                 capture_mode,
                 front.content_type or "image/jpeg",
                 side.content_type or "image/jpeg",
+                sex,
             ),
             timeout=REQUEST_TIMEOUT_SECONDS,
         )

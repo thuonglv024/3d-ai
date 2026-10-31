@@ -28,3 +28,6 @@ frontend/.next-review/
 backend/data/
 tools/diag/out/
 tools/mh_proto/out/
+
+# TypeScript incremental build cache (regenerated on every build)
+frontend/tsconfig.tsbuildinfo

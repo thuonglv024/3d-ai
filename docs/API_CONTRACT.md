@@ -186,7 +186,7 @@ Kết quả luôn mang provenance `ai_vision_estimate`, không tạo mô hình 3
 | Method | Endpoint | Mô tả | Request | Response |
 | :--- | :--- | :--- | :--- | :--- |
 | `GET` | `/api/ai-scan/health` | Kiểm tra cấu hình AI (không lộ key) | None | `200 OK`: `{ ready, provider: "google-genai", model, message }` |
-| `POST` | `/api/ai-scan/analyze` | Ước lượng số đo từ 2 ảnh bằng Gemini + LangGraph | `multipart/form-data`: `front`, `side` (≤ 10 MB, khác nhau), `height_cm` (`100..230`), `consent=true`, `capture_mode` | `200 OK`: `AiScanResponse`; `400` consent/ảnh lỗi; `413` quá dung lượng; `422` không ước lượng được; `502` lỗi model; `503` thiếu key/deps; `504` timeout |
+| `POST` | `/api/ai-scan/analyze` | Ước lượng số đo từ 2 ảnh bằng Gemini + LangGraph | `multipart/form-data`: `front`, `side` (≤ 10 MB, khác nhau), `height_cm` (`100..230`), `consent=true`, `capture_mode`, `sex` (`auto`/`female`/`male`, mặc định `auto`) | `200 OK`: `AiScanResponse`; `400` consent/ảnh lỗi; `413` quá dung lượng; `422` không ước lượng được; `502` lỗi model; `503` thiếu key/deps; `504` timeout |
 
 `AiScanResponse`:
 ```typescript
@@ -213,6 +213,9 @@ Kết quả luôn mang provenance `ai_vision_estimate`, không tạo mô hình 3
     label: string;
     value_cm: number | null;
     source: "ai_vision_estimate";
+    confidence: number | null;                 // riêng cho số đo này
+    support: number | null;                    // số thành viên ensemble ước lượng được
+    estimated_by: "ensemble" | "ensemble+geometry" | "geometry" | "ensemble+prior" | null;
   }>;
   confidence: number;               // 0..1
   shape_confidence: number;         // 0..1, riêng cho cặp ngang/sâu
@@ -221,8 +224,36 @@ Kết quả luôn mang provenance `ai_vision_estimate`, không tạo mô hình 3
   warnings: string[];
   elapsed_seconds: number;
   source: "ai_vision_estimate";
+  ensemble: {
+    size: number;
+    members: Array<{ role: string; label: string; confidence: number | null; supported_metrics: number; error?: string | null; pose_quality?: string; notes?: string }>;
+    geometric_available: boolean;
+  };
+  geometric_check: {
+    available: boolean;
+    reason: string;
+    measurements: { chest_cm: number | null; waist_cm: number | null; hip_cm: number | null; shoulder_width_cm: number | null };
+    warnings: string[];
+  };
 }
 ```
+
+### Ensemble, kiểm tra hình học và lớp prior
+
+Mỗi request chạy **3 lượt cùng một model** (role `anchor` / `shape` / `audit`, temperature > 0)
+song song với **1 estimator hình học MediaPipe** trên chính hai ảnh đó.
+
+1. `median` từng số đo qua 3 lượt; độ phân tán giữa các lượt hạ `confidence` và sinh cảnh báo.
+2. Hợp nhất với estimator hình học: lệch trong ngưỡng (`GEOMETRY_FUSION_TOLERANCE_CM`) → trộn 0.7 AI / 0.3 hình học;
+   lệch quá ngưỡng → **giữ số AI**, hạ confidence, cảnh báo nêu cả hai số.
+3. Guard nhân trắc học: |z| > 2.5 hạ confidence số đó xuống ≤ 0.55, |z| > 4.0 xuống ≤ 0.35,
+   **không đổi giá trị**. Bảng prior hiện là tỉ lệ tham khảo tự đặt, chưa dẫn nguồn ANSUR/SizeUK và chưa hiệu chuẩn.
+4. Shrink về prior là **tuỳ chọn, mặc định TẮT** (`MORPH_AI_PRIOR_SHRINK=1` để bật). Khi bật, mọi số bị đổi
+   phải xuất hiện trong `warnings` dạng `96.0 -> 94.8 cm` và `details[].estimated_by = "ensemble+prior"`.
+
+Không lớp nào được phép sửa số đo mà không để lại dấu vết trong `warnings` / `estimated_by`.
+`MORPH_AI_GEOMETRY_CHECK=0` tắt estimator hình học (giảm CPU) và `geometric_check.available` thành `false`.
+
 
 Cấu hình: đặt `GOOGLE_API_KEY` (hoặc `GEMINI_API_KEY`) và tuỳ chọn `MORPH_AI_MODEL`
 trong `backend/.env`; cài `backend/requirements-ai.txt`. Xem

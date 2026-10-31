@@ -16,6 +16,17 @@ export type AiMeasurementDetail = {
   label: string;
   value_cm: number | null;
   source: "ai_vision_estimate";
+  confidence?: number | null;
+  support?: number | null;
+  estimated_by?: string | null;
+};
+
+export type AiEnsembleMember = {
+  role: string;
+  label: string;
+  confidence?: number | null;
+  supported_metrics: number;
+  error?: string | null;
 };
 
 export type AiScanResultData = {
@@ -23,6 +34,7 @@ export type AiScanResultData = {
   provider: "google-genai";
   model: string;
   capture_mode: AiCaptureMode;
+  sex?: "auto" | "female" | "male";
   measurements: {
     height_cm: number;
     chest_cm: number | null;
@@ -44,6 +56,17 @@ export type AiScanResultData = {
   warnings: string[];
   elapsed_seconds: number;
   source: "ai_vision_estimate";
+  ensemble?: {
+    size: number;
+    members: AiEnsembleMember[];
+    geometric_available: boolean;
+  } | null;
+  geometric_check?: {
+    available: boolean;
+    reason: string;
+    measurements: Record<string, number | null>;
+    warnings: string[];
+  } | null;
 };
 
 const OFFLINE_HEALTH: AiScanHealth = {
@@ -85,7 +108,8 @@ export function useAiScan() {
     async (
       pair: { front: File; side: File },
       height: string,
-      captureMode: AiCaptureMode
+      captureMode: AiCaptureMode,
+      sex: "auto" | "female" | "male" = "auto"
     ) => {
       setBusy(true);
       setError("");
@@ -96,6 +120,7 @@ export function useAiScan() {
         body.append("side", pair.side);
         body.append("height_cm", height);
         body.append("capture_mode", captureMode);
+        body.append("sex", sex);
         body.append("consent", "true");
 
         const response = await fetch("/api/ai-scan/analyze", {

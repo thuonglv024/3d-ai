@@ -74,6 +74,29 @@ def configured_model() -> str:
     return (os.getenv("MORPH_AI_MODEL") or DEFAULT_MODEL).strip() or DEFAULT_MODEL
 
 
+DEFAULT_TEMPERATURE = 0.35
+DEFAULT_ENSEMBLE_SIZE = 3
+
+
+def temperature() -> float:
+    """Sampling temperature for ensemble members (0 disables the ensemble's
+    diversity, 1.0 is too noisy for measurements)."""
+    _refresh_env()
+    try:
+        return min(1.0, max(0.0, float((os.getenv("MORPH_AI_TEMPERATURE") or "").strip() or DEFAULT_TEMPERATURE)))
+    except ValueError:
+        return DEFAULT_TEMPERATURE
+
+
+def ensemble_size() -> int:
+    """Number of concurrent AI members (roles are cut to fit, min 1, max 5)."""
+    _refresh_env()
+    try:
+        return max(1, min(5, int((os.getenv("MORPH_AI_ENSEMBLE") or "").strip() or DEFAULT_ENSEMBLE_SIZE)))
+    except ValueError:
+        return DEFAULT_ENSEMBLE_SIZE
+
+
 def is_configured() -> bool:
     return bool(google_api_key())
 

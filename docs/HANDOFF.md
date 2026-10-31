@@ -4,6 +4,56 @@ Tài liệu này tổng hợp trạng thái hiện tại của dự án **MORPH 
 
 ---
 
+## 0. Cập nhật 2026-10-31 — Pilot thật P01b, spec áo A03, lớp AI
+
+### 0.1. Việc đã làm (đều nằm trong commit ngày 2026-10-31 trên `feature/3d-scan`)
+- **AI scan 4 estimator**: 3 lượt `gemini-2.5-flash` (role `anchor`/`shape`/`audit`, temperature 0.35) chạy song song
+  với 1 estimator hình học MediaPipe (`backend/app/ai_scan/geometry.py`) trên chính hai ảnh đó; gộp bằng median,
+  hợp nhất theo ngưỡng (`ensemble.py`), rồi guard nhân trắc học (`priors.py`).
+- **Tách tay khỏi silhouette** (`backend/app/torso_mask.py`) + **fit map dùng số đo áo phẳng thật**
+  (`backend/app/garment_fit.py`, quy ước `chu vi = 2 × rộng phẳng`) + **heatmap ease liên tục theo từng đỉnh**
+  (`backend/app/fit_field.py`, `frontend/lib/viewerConfig.ts`).
+- **Eval trên người thật đầu tiên**: `scripts/eval/eval_pilot.py` (chỉ đọc `backend/app`, ghi ra `output/eval_pilot/`).
+- **Lớp prior sửa chính sách**: mặc định chỉ *cảnh báo*, không sửa số. Shrink về prior là tuỳ chọn
+  (`MORPH_AI_PRIOR_SHRINK=1`), và khi bật thì mọi số bị đổi hiện trong `warnings` (`96.0 -> 94.8 cm`) kèm
+  `estimated_by = "ensemble+prior"`. Lý do: chưa có tập hiệu chuẩn, prior tự đặt sẽ bóp méo cả số đúng —
+  trên P01 (tape eo 60 cm, cao 156 cm) prior nữ `0.45 × 156 = 70.2` sẽ đẩy eo đúng lên ~63 cm.
+
+### 0.2. Số đo được (không phải tuyên bố độ chính xác)
+`backend/.venv/Scripts/python.exe -m pytest backend/tests -q` → **212 passed** (trước đó 161; có 22 test mới cho
+`ensemble`/`priors`/`geometry`/prompt trong `backend/tests/test_ai_scan_layers.py`).
+
+Pilot P01b (1 người, 156 cm, tape ngực 80 / eo 60 / hông 92, mặc áo len dày):
+
+| Vòng | Tape | Pipeline trước (A) | Sau (A) | Lệch sau | Trước (B) | Sau (B) | Lệch sau |
+| :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Ngực | 80 | 137.6 | 89.8 | +9.8 (+12.2%) | 130.2 | 99.9 | +19.9 (+24.9%) |
+| Eo | 60 | 89.3 | 86.6 | **+26.6 (+44.3%)** | 86.6 | 74.0 | +14.0 (+23.3%) |
+| Hông | 92 | 102.7 | 100.5 | +8.5 (+9.2%) | — | 91.1 (`mesh_cut`) | — |
+
+(A = ảnh gốc, B = ảnh crop thân trên; số đọc từ `output/eval_pilot/eval_pilot.json`.)
+
+### 0.3. Giới hạn phải nói rõ khi demo
+- **n = 1**, một bộ đồ, **không có cân nặng**, không có protocol đo thước dây, landmark tape không ghi
+  (xem `backend/data/pilot_selfie/ground_truth.json`). Chỉ là hướng đi, không phải độ chính xác.
+- **Eo vẫn lệch +26.6 cm (44.3%)** — chưa sửa, nguyên nhân chưa chứng minh. Nghi phạm: depth từ ảnh nghiêng gần
+  phẳng (spread 0.1 cm giữa ngực/eo/hông ở mode A), tức tín hiệu ảnh 90° gần như không đóng góp. **Chưa xác minh.**
+- Mode B vẫn `arm_merged = true` → ngực B +24.9% vẫn nhiễm tay áo.
+- Chất lượng Gemini **chưa được đo**: chưa chạy AI thật trên ảnh P01b; mọi con số test là logic, không phải accuracy.
+- Bảng prior trong `priors.py` là tỉ lệ tham khảo tự đặt, **chưa dẫn nguồn ANSUR II / SizeUK** và không phải
+  dữ liệu người Việt. Không được trích như dữ liệu nhân trắc học.
+- 4/7 ảnh `output/eval_pilot/viewer_*.png` trùng byte ⇒ tương tác pan/zoom/resize của viewer **chưa được chứng minh**.
+- Ảnh người thật nằm ở `backend/data/pilot_selfie/` (đã gitignore) và `output/` (đã gitignore) — **không commit**.
+
+### 0.4. Việc tiếp theo (theo thứ tự)
+1. Chạy AI thật trên 2 ảnh P01b (cần người dùng đồng ý gửi ảnh lên Gemini) → con số AI đầu tiên so với tape.
+2. Khám depth gần phẳng (nguyên nhân sai số eo) trước khi sửa bất cứ hệ số nào.
+3. Đưa landmark/pixel đã neo vào prompt + tách lớp "VLM gán nhãn hàng, code đo pixel".
+4. Hiện `details[].confidence`, `ensemble`, `geometric_check` lên UI (hiện chỉ có type, chưa render).
+5. Hiệu chuẩn bias (`C3`) **bị chặn**: cần 30–50 người đo thước dây. Không viết thêm code quanh chỗ này.
+
+---
+
 ## 1. Trạng thái hệ thống hiện tại
 
 ### 1.1. Các phân hệ đã hoàn thiện và hoạt động ổn định
