@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Component, useRef, useState, useEffect, useMemo, type ReactNode } from "react";
@@ -182,8 +182,12 @@ export default function ScanResult({
     }
   }, [job?.id, job?.status, user, savedScans, saveScanToProfile, getGuestToken]);
 
-  const rows = job.body_profile?.measurement_details || [];
+  // Vai tạm ẩn: bảng size dùng vai áo, so với vai cơ thể dễ gây hiểu nhầm.
+  const HIDDEN_METRICS = new Set(["shoulder_width_cm"]);
   const upper = job.body_profile?.capture_mode === "upper_body";
+  const rows = (job.body_profile?.measurement_details || []).filter(
+    (m) => !HIDDEN_METRICS.has(m.key) && !(upper && m.key === "hip_cm"),
+  );
   const value = (m: MeasurementDetail) =>
     m.value_cm == null ? "—" : (m.value_cm / (unit === "in" ? 2.54 : 1)).toFixed(1);
 

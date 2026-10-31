@@ -1,8 +1,10 @@
-{
+﻿{
   "brand": "ORICANO",
   "name": "Bảng size áo ORICANO (số đo áo thật, dạng đo phẳng)",
   "source": "Ảnh bảng size do người dùng cung cấp, 2026-11-01",
   "measurement_basis": "garment_flat",
+  "fit": "body",
+  "fit_note": "Áo thun body: ease ngực mục tiêu 2-4 cm. Vai áo trong bảng KHÔNG so trực tiếp với vai cơ thể nên UI tạm ẩn số vai, chỉ hiện ngực, bụng (eo) và tay.",
   "unit": "cm",
   "notes": [
     "1/2 Ngực là nửa vòng ngực đo phẳng trên áo: chu vi áo = 2 x 1/2 ngực.",
@@ -29,3 +31,4 @@
   },
   "ease_note": "Chênh lệch vòng ngực áo và vòng ngực cơ thể: chu vi áo = 2 x 1/2 ngực. Ví dụ size M = 86 cm chu vi; người ngực 80 cm mặc M được +6 cm cử động."
 }
+
