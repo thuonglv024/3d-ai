@@ -69,6 +69,42 @@ export type AiScanResultData = {
   } | null;
 };
 
+/**
+ * One message per failure mode, so the UI never shows a bare status code and
+ * never blames the photos for an upstream or quota problem.
+ *
+ * FastAPI answers request-validation failures with `detail` as a list; every
+ * other error path uses a Vietnamese string that we keep as-is.
+ */
+export function describeAiError(status: number, detail: unknown): string {
+  if (Array.isArray(detail)) {
+    const parts = detail
+      .map((item) => (item && typeof item === "object" && "msg" in item ? String((item as { msg: unknown }).msg) : String(item)))
+      .filter(Boolean);
+    const fieldHint = parts.length ? ` (${parts.join("; ")})` : "";
+    return `Yêu cầu chưa hợp lệ${fieldHint}. Hãy chọn lại hai ảnh và chiều cao rồi thử lại.`;
+  }
+  if (typeof detail === "string" && detail.trim()) return detail;
+  switch (status) {
+    case 400:
+      return "Ảnh hoặc lựa chọn chưa hợp lệ. Hãy chọn một ảnh chính diện và một ảnh nghiêng khác nhau.";
+    case 413:
+      return "Mỗi ảnh tối đa 10 MB. Hãy chụp lại hoặc giảm kích thước ảnh.";
+    case 422:
+      return "Thiếu hoặc sai thông tin gửi lên (chiều cao, chế độ chụp). Kiểm tra rồi thử lại.";
+    case 429:
+      return "Hết hạn mức gọi AI (free tier khoảng 20 lượt/ngày mỗi model). Thử lại sau hoặc dùng chế độ quét 3D.";
+    case 502:
+      return "Dịch vụ AI phía trên trả lỗi nên chưa có kết quả. Thử lại sau ít phút hoặc dùng chế độ quét 3D.";
+    case 503:
+      return "AI chưa được cấu hình trên máy chủ (thiếu key hoặc thiếu thư viện). Dùng chế độ quét 3D trong lúc chờ.";
+    case 504:
+      return "AI phản hồi quá lâu. Thử lại với ảnh nhỏ hơn, hoặc dùng chế độ quét 3D.";
+    default:
+      return `AI chưa phân tích được hai ảnh (mã ${status}). Hãy thử lại.`;
+  }
+}
+
 const OFFLINE_HEALTH: AiScanHealth = {
   ready: false,
   provider: "google-genai",
@@ -129,11 +165,7 @@ export function useAiScan() {
         });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) {
-          throw new Error(
-            typeof data?.detail === "string"
-              ? data.detail
-              : "AI chưa phân tích được hai ảnh. Hãy thử lại."
-          );
+          throw new Error(describeAiError(response.status, data?.detail));
         }
         setResult(data as AiScanResultData);
       } catch (e) {

@@ -1,4 +1,4 @@
-"""Tests for the experimental AI scan mode.
+﻿"""Tests for the experimental AI scan mode.
 
 No network calls are made here: the endpoint tests use a fake service and the
 LangGraph test uses a fake structured model.
@@ -296,3 +296,51 @@ def test_invalid_api_key_returns_actionable_503(monkeypatch):
         )
     assert response.status_code == 503
     assert "không hợp lệ" in response.json()["detail"]
+
+
+def test_ai_analyze_rejects_oversized_photo():
+    big = b"x" * (10 * 1024 * 1024 + 1)
+    files = {"front": ("front.jpg", big, "image/jpeg"), "side": ("side.jpg", photo("gray"), "image/jpeg")}
+    with TestClient(main.app) as client:
+        response = client.post(
+            "/api/ai-scan/analyze",
+            files=files,
+            data={"height_cm": 170, "capture_mode": "upper_body", "consent": True},
+        )
+    assert response.status_code == 413
+    assert "10 MB" in response.json()["detail"]
+
+
+def test_ai_analyze_maps_timeout_to_504(monkeypatch):
+    import asyncio
+
+    import app.ai_scan.router as ai_router
+
+    async def slow(*_args, **_kwargs):
+        await asyncio.sleep(0.05)
+        return {}
+
+    monkeypatch.setattr(ai_router, "REQUEST_TIMEOUT_SECONDS", 0.01)
+    monkeypatch.setattr(service, "run_ai_scan", slow)
+    with TestClient(main.app) as client:
+        response = client.post(
+            "/api/ai-scan/analyze",
+            files=_analyze_files(),
+            data={"height_cm": 170, "capture_mode": "upper_body", "consent": True},
+        )
+    assert response.status_code == 504
+    assert "quá lâu" in response.json()["detail"]
+
+
+def test_ai_analyze_validation_error_uses_a_list_detail():
+    """FastAPI trả detail dạng list cho request thiếu trường — client phải đọc được."""
+    with TestClient(main.app) as client:
+        response = client.post(
+            "/api/ai-scan/analyze",
+            files=_analyze_files(),
+            data={"capture_mode": "upper_body", "consent": True},
+        )
+    assert response.status_code == 422
+    detail = response.json()["detail"]
+    assert isinstance(detail, list) and detail
+    assert "height_cm" in str(detail[0])
