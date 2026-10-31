@@ -45,6 +45,24 @@ Pilot P01b (1 người, 156 cm, tape ngực 80 / eo 60 / hông 92, mặc áo len
 - 4/7 ảnh `output/eval_pilot/viewer_*.png` trùng byte ⇒ tương tác pan/zoom/resize của viewer **chưa được chứng minh**.
 - Ảnh người thật nằm ở `backend/data/pilot_selfie/` (đã gitignore) và `output/` (đã gitignore) — **không commit**.
 
+### 0.6. Giảm AI xuống 1 lượt + sửa rộng vai thiếu 10 cm (2026-11-01)
+- **AI còn 1 lượt gọi/scan**: `ai_scan/config.py` → `DEFAULT_ENSEMBLE_SIZE = 1`, `DEFAULT_TEMPERATURE = 0.0`.
+  Lý do: người dùng chỉ có hạn mức miễn phí (20 request/ngày) và muốn ít phụ thuộc AI; temperature 0 để 2 lần
+  quét cùng ảnh ra cùng số. `MORPH_AI_ENSEMBLE` vẫn nâng lên tới 5 nếu cần. Docstring `service.py` đã viết lại.
+- **Rộng vai thiếu ~10 cm — tìm ra nguyên nhân**: MediaPipe landmark 11/12 là **tâm khớp vai**, không phải mỏm
+  cùng vai. Đo trên P01b: landmark **28,0 cm**, silhouette tại hàng vai **38,2 cm**, tape **~40 cm**.
+  Sửa (`torso_mask.shoulder_span`): lấy bề rộng run chứa tâm thân tại hàng vai, chỉ fallback về landmark khi hàng
+  đó không dùng được (không có run, hoặc tỉ lệ ngoài 0,16–0,32 H). Nguồn được ghi vào
+  `profile["shoulder_width_source"]` = `silhouette` / `landmark`.
+  Đo lại P01b: **28,0 → 38,4 cm**, source `silhouette`.
+- Test: 3 test mới trong `test_torso_mask.py` (ưu tiên silhouette, fallback landmark, từ chối hàng quá rộng).
+  Tổng **220 passed**.
+- `backend/.env` (gitignored) đổi `MORPH_AI_MODEL=gemini-flash-latest` vì key mới không còn dùng được
+  `gemini-2.5-flash` (404 "no longer available to new users"). Model mới vẫn hay trả 503 với request có ảnh +
+  structured output — đây là lý do AI mode chập chờn, không phải lỗi code.
+- Còn lại: eo +23,9 cm (depth gần phẳng, mốc eo), và `fuse_geometric` vẫn trộn 0,7 AI / 0,3 hình học — nên tắt
+  trộn khi chỉ có 1 lượt AI, vì hình học là nguồn sai số đã biết.
+
 ### 0.5. Bỏ hệ số lõm cứng + không trả số hình học thay AI (2026-11-01)
 - **Bối cảnh**: người dùng đo thật thấy ngực 91 cm bị đọc thành 101 cm (**+10 cm**); v1 (1 lượt AI) thì
   "đúng trong 1–2 cm". Đo lại trên P01b cho thấy sai số ngực tách thành 2 phần:

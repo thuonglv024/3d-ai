@@ -1,4 +1,4 @@
-"""Configuration for the experimental Gemini/LangGraph scan mode.
+﻿"""Configuration for the experimental Gemini/LangGraph scan mode.
 
 ``backend/.env`` is re-read whenever the file changes, so adding or rotating
 ``GOOGLE_API_KEY`` takes effect on the next request instead of requiring a
@@ -74,8 +74,8 @@ def configured_model() -> str:
     return (os.getenv("MORPH_AI_MODEL") or DEFAULT_MODEL).strip() or DEFAULT_MODEL
 
 
-DEFAULT_TEMPERATURE = 0.35
-DEFAULT_ENSEMBLE_SIZE = 3
+DEFAULT_TEMPERATURE = 0.0
+DEFAULT_ENSEMBLE_SIZE = 1
 
 
 def temperature() -> float:
@@ -110,3 +110,4 @@ def configuration_message() -> str:
         f"Chưa cấu hình GOOGLE_API_KEY (hoặc GEMINI_API_KEY). "
         f"Thêm key vào {location} rồi thử lại."
     )
+

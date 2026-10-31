@@ -8,7 +8,7 @@ separated.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Mapping
+from typing import Any, Mapping
 
 import numpy as np
 
@@ -241,6 +241,37 @@ def row_arm_merged(
     width = float(run[1] - run[0])
     reference = 1.30 * shoulder_span_px
     return len(runs) == 1 and width > reference
+
+
+# Plausible biacromial span as a fraction of body height. Used only to reject a
+# silhouette row that is obviously wrong (arms raised, merged with a background
+# object), never to invent a value.
+SHOULDER_RATIO_MIN = 0.16
+SHOULDER_RATIO_MAX = 0.32
+
+
+def shoulder_span(obs: Any) -> tuple[float, str]:
+    """Shoulder span as a fraction of body height, with its source.
+
+    MediaPipe landmarks 11/12 sit at the glenohumeral joint centres, not on the
+    outer acromion, so their distance is systematically narrower than a tape
+    shoulder measurement: 28.0 cm against a 40 cm tape shoulder on the
+    tape-measured subject P01b, while the silhouette row at the same height is
+    38.2 cm. The tape follows the outer silhouette, so prefer that row and fall
+    back to the landmark span only when the row is unusable.
+
+    Returns ``(ratio, source)`` where source is "silhouette" or "landmark".
+    """
+    height = max(float(obs.height), 1.0)
+    landmark = abs(float(obs.points[11, 0]) - float(obs.points[12, 0]))
+    y = float((obs.points[11, 1] + obs.points[12, 1]) / 2.0)
+    center = float((obs.points[11, 0] + obs.points[12, 0]) / 2.0)
+    run = _run_containing(row_runs(obs.mask, y), center)
+    if run is not None:
+        ratio = float(run[1] - run[0]) / height
+        if SHOULDER_RATIO_MIN <= ratio <= SHOULDER_RATIO_MAX:
+            return ratio, "silhouette"
+    return landmark / height, "landmark"
 
 
 def clothing_looseness(

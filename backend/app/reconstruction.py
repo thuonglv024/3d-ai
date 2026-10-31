@@ -1,4 +1,4 @@
-"""CPU body-shape approximation, NOT SAM/photogrammetry/validated anthropometry.
+﻿"""CPU body-shape approximation, NOT SAM/photogrammetry/validated anthropometry.
 
 MediaPipe segments two photos and locates pose landmarks. The central torso
 silhouettes control a smooth width/depth deformation of a CC0 MakeHuman mesh.
@@ -22,8 +22,8 @@ from .anatomy import depth_weights, resolve_sex, shape_sex, template_landmarks
 from .camera_fusion import aligned_torso_landmarks, assess_cross_view_quality, fuse_camera_scale, synchronized_torso_profile as torso_profile
 from .config import MODELS
 from .images import InvalidPhoto
-from .measurements import closed_torso_section, estimate_from_profiles, fit_measurement_targets, measure_target_sections, scale_lateral, validate_glb_mesh
-from .torso_mask import clothing_looseness, more_visible_arm_side, row_arm_merged
+from .measurements import SECTION_FACTORS_CALIBRATED, closed_torso_section, estimate_from_profiles, fit_measurement_targets, measure_target_sections, scale_lateral, validate_glb_mesh
+from .torso_mask import clothing_looseness, more_visible_arm_side, row_arm_merged, shoulder_span
 
 MODEL_PATH = MODELS / "pose_landmarker_full.task"
 TEMPLATE_PATH = MODELS / "body-template.obj"
@@ -573,6 +573,10 @@ def reconstruct(front: np.ndarray, side: np.ndarray, height_cm: float, destinati
         raise InvalidPhoto("Ảnh đầu cần chụp chính diện. Hãy hướng cả hai vai về camera.")
     if side_shoulders > front_shoulders * 0.75:
         raise InvalidPhoto("Ảnh thứ hai chưa đủ nghiêng. Hãy xoay người khoảng 90° so với camera.")
+    # Reported shoulder width follows the outer silhouette at the acromion row,
+    # not the landmark centres (28.0 vs a 40 cm tape shoulder on P01b). The
+    # landmark span above stays as the pose check for the two views.
+    front_shoulders_ratio, shoulder_source = shoulder_span(frontal)
     report("Đang khớp đường viền và dựng bề mặt 3D…")
     # Each image is converted with its own cm/px scale: widths use the frontal
     # body height, depths use the lateral body height.
@@ -602,7 +606,7 @@ def reconstruct(front: np.ndarray, side: np.ndarray, height_cm: float, destinati
             widths[i] = widths[i]*(1-blend)+np.ptp(curve[:,0])*blend
             depths[i] = depths[i]*(1-blend)+np.ptp(curve[:,2])*blend
     report("Đang trích xuất thông số kích thước cơ thể…")
-    measurements, targets = estimate_from_profiles(fractions, widths, depths, height_cm, front_shoulders, True, shoulder_level, hip_level)
+    measurements, targets = estimate_from_profiles(fractions, widths, depths, height_cm, front_shoulders_ratio, True, shoulder_level, hip_level)
     # Arm/clothing diagnostics are measured on the cleaned frontal mask.
     f_shoulder, f_hip = aligned_torso_landmarks(frontal)
     shoulder_span_px = float(abs(frontal.points[11, 0] - frontal.points[12, 0]))
@@ -703,6 +707,10 @@ def reconstruct(front: np.ndarray, side: np.ndarray, height_cm: float, destinati
     profile["arm_merged_rows"] = merged_rows
     profile["clothing_looseness_flag"] = bool(looseness_flag)
     profile["clothing_looseness_reasons"] = looseness_reasons
+    # Where the reported shoulder width came from: the outer silhouette at the
+    # acromion row, or the landmark span when that row was unusable.
+    profile["shoulder_width_source"] = shoulder_source
+    profile["section_factors_calibrated"] = SECTION_FACTORS_CALIBRATED
     profile["scale_method"] = "height_per_image_upper_body" if capture_mode == "upper_body" else "height_and_per_image_silhouette"
     if capture_mode == "upper_body":
         measurements["hip_cm"] = None
@@ -751,3 +759,5 @@ def reconstruct(front: np.ndarray, side: np.ndarray, height_cm: float, destinati
         "Không phải số đo trực tiếp từ ảnh."
     )
     return warnings, measurements, profile
+
+

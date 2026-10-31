@@ -6,7 +6,7 @@ from app.camera_fusion import assess_cross_view_quality, extract_per_view_torso_
 from app.images import InvalidPhoto
 from app.measurements import ClothingOrArmMergedError, closed_torso_section, fit_measurement_targets
 from app.reconstruction import Observation, read_template
-from app.torso_mask import clothing_looseness, remove_arm_capsules, row_arm_merged
+from app.torso_mask import clothing_looseness, remove_arm_capsules, row_arm_merged, shoulder_span
 
 
 def _observation(height: float, mask_width_px: int, shape=(400, 400)) -> Observation:
@@ -137,3 +137,34 @@ def test_arm_capsule_rejects_destructive_profile_removal():
     removal = remove_arm_capsules(mask, points, visibility, body_height_px=300.0)
     assert removal.mask.sum() == mask.sum()
     assert any("bỏ qua" in warning for warning in removal.warnings)
+
+
+def test_shoulder_span_prefers_the_silhouette_over_the_joint_centres():
+    """Landmark 11/12 là tâm khớp vai, hẹp hơn vai thật ~10 cm (P01b: 28 vs 40).
+
+    Đo trên silhouette tại hàng vai cho 38,4 cm; helper phải chọn nguồn đó.
+    """
+    obs = _observation(height=800.0, mask_width_px=200)
+    ratio, source = shoulder_span(obs)
+    assert source == "silhouette"
+    assert ratio == pytest.approx(200 / 800.0, rel=1e-3)  # 0.25 * height
+    assert ratio * 170.0 == pytest.approx(42.5, abs=0.1)  # cm ở người cao 170
+    # Landmark của fixture chỉ rộng 100 px = 0.125 * height, tức 21 cm ở 170 cm.
+    landmark_ratio = 100.0 / 800.0
+    assert landmark_ratio < ratio
+
+
+def test_shoulder_span_falls_back_to_landmarks_when_the_row_is_unusable():
+    obs = _observation(height=800.0, mask_width_px=120)
+    obs.mask[:] = False  # hàng vai không còn run nào chứa tâm
+    ratio, source = shoulder_span(obs)
+    assert source == "landmark"
+    assert ratio == pytest.approx(100.0 / 800.0, rel=1e-3)
+
+
+def test_shoulder_span_rejects_an_implausibly_wide_row():
+    # Run rộng 360/800 = 0.45 H: nghi tay giơ/che nền, phải quay về landmark.
+    obs = _observation(height=800.0, mask_width_px=360)
+    ratio, source = shoulder_span(obs)
+    assert source == "landmark"
+    assert ratio == pytest.approx(100.0 / 800.0, rel=1e-3)

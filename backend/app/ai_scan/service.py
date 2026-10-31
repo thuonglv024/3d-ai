@@ -1,13 +1,14 @@
 """Gemini + LangGraph execution for the experimental AI scan.
 
-Each request runs a three-member ensemble of the same model with three role
-prompts, concurrently with a MediaPipe geometric estimator over the same two
-photos. That is four estimates from two inputs, not four independent
-measurements: the members share the model, the photos and the clothing, so
-their errors are correlated. Median aggregation buys robustness against one
-deviant pass, and the geometric estimate buys a second route through the
-project's own pixel-to-centimetre pipeline. Neither is calibrated against tape
-measurements, so the result stays labelled as a visual estimate.
+One model call per scan (``MORPH_AI_ENSEMBLE`` can raise it to 5) at
+temperature 0, so a scan costs one request and repeating it does not change the
+number. The MediaPipe geometric estimator runs concurrently on the same two
+photos as a cross-check, not as a second opinion to average with: it comes from
+the same photos and clothing, so their errors are correlated, and its numbers
+are only adopted for a metric the model left empty.
+
+Neither route is calibrated against tape measurements, so the result stays
+labelled as a visual estimate.
 """
 
 from __future__ import annotations
