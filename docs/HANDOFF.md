@@ -56,6 +56,12 @@ Pilot P01b (1 người, 156 cm, tape ngực 80 / eo 60 / hông 92, mặc áo len
   bắp/cẳng tay/đùi/bắp chân **chưa đo**.
 - **Ca nam 170 cm (tape 99/88/46; 29/28; dài tay 90)**: chưa có lần chạy hợp lệ — ảnh chính diện là nửa thân
   (chạm mép), ảnh nghiêng tay duỗi ngang làm silhouette vượt ngưỡng 0,40 H nên bị từ chối đúng.
+- **Cập nhật 2026-11-01 (mảng 2, bước 1–2)**: đã ẩn nút Test API khỏi màn quét (`83d2fb8`), thêm overlay
+  hình người `ScanSilhouette` (SVG, mờ 40% vùng ngoài, đổi màu idle/align/ready) và gắn vào `PoseGuide`
+  (`6cb1b23`, `bf35628`). `state` suy từ `aim.ok`, chưa so khớp hình dáng thật.
+- **Còn thiếu của mảng 2**: (a) ảnh chụp Playwright cho 3 trạng thái, (b) silhouette co giãn theo tỉ lệ
+  vai–hông, (c) tối giản `/scan` còn 1 nút chụp + 1 dòng hướng dẫn + chỉ báo 1/2–2/2.
+- **Chặn dữ liệu**: A2b (bắp/cẳng tay) và C2 (trừ hao áo) cần ảnh tay rời thân và một cặp ảnh áo bó/áo rộng.
 - **Còn lại theo kế hoạch**: U2 chặn thiếu vùng đo bằng landmark 23/24, U5 ẩn hông khi
   `upper_body`, A2b/A2c bắp-cẳng tay-đùi-bắp chân (mặt cắt vuông góc), C2/C3 trừ hao áo theo silhouette
   (trần 3 cm, có nhãn), K1 chạy `tape_eval` cho 2 người. K2/K3 **bị chặn**: cần ≥8 người có tape.
@@ -414,4 +420,5 @@ Thay lưới MakeHuman trung tính bằng **basis Anny** đã nướng sẵn, gi
 - **Không hứa độ chính xác**: số đo vẫn là ước lượng từ ảnh, chưa validate thước dây; 3 case K3
   không đại diện toàn bộ không gian; các ca nữ neck/eo cao cho thấy gờ nền vẫn còn.
 - Chi tiết đầy đủ: [`docs/fix/S8.md`](fix/S8.md).
+
 
