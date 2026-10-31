@@ -1932,3 +1932,10 @@
 .capture-aim-band {
   display: none !important;
 }
+
+/* Khung người "mở": hiện lại silhouette nhưng KHÔNG làm tối vùng ngoài
+   (dim = 0), chỉ còn nét viền người để người dùng tự canh. */
+.capture-pose-guide .scan-silhouette,
+.scan-silhouette {
+  display: block !important;
+}

@@ -29,7 +29,7 @@ const ACCENT: Record<FrameState, string> = {
 
 export function ScanSilhouette({
   state = "idle",
-  dim = 0.4,
+  dim = 0,
   scale = 1,
 }: {
   state?: FrameState;
@@ -59,3 +59,4 @@ export function ScanSilhouette({
     </svg>
   );
 }
+
