@@ -1,4 +1,5 @@
-﻿import { useEffect, useRef, useState, useCallback } from "react";
+import { AiApiTestButton } from "./AiApiTestButton";
+import { useEffect, useRef, useState, useCallback } from "react";
 import {
   AlertCircle,
   ArrowRight,
@@ -433,6 +434,7 @@ export default function FitExperience({
           </p>
         </div>
         <div className="scan-mode-switch" role="group" aria-label="Chọn chế độ quét">
+          <AiApiTestButton />
           <button
             type="button"
             className={scanMode === "ai" ? "is-active" : ""}
@@ -777,4 +779,3 @@ export default function FitExperience({
     </div>
   );
 }
-
