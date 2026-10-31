@@ -219,6 +219,45 @@ def test_ai_analyze_returns_result_from_service(monkeypatch):
     assert body["source"] == "ai_vision_estimate"
 
 
+def _analyze_files():
+    return {
+        "front": ("front.jpg", photo("white"), "image/jpeg"),
+        "side": ("side.jpg", photo("gray"), "image/jpeg"),
+    }
+
+
+def test_ai_analyze_maps_quota_to_429(monkeypatch):
+    async def quota(*_args, **_kwargs):
+        raise service.AiScanQuotaExceeded(
+            "Hết hạn mức gọi AI của key hiện tại (free tier khoảng 20 lượt/ngày cho mỗi model)."
+        )
+
+    monkeypatch.setattr(service, "run_ai_scan", quota)
+    with TestClient(main.app) as client:
+        response = client.post(
+            "/api/ai-scan/analyze",
+            files=_analyze_files(),
+            data={"height_cm": 170, "capture_mode": "upper_body", "consent": True},
+        )
+    assert response.status_code == 429
+    assert "hạn mức" in response.json()["detail"]
+
+
+def test_ai_analyze_maps_upstream_failure_to_502(monkeypatch):
+    async def unavailable(*_args, **_kwargs):
+        raise service.AiScanUnavailable("Không lượt AI nào trả về số đo. Lỗi model: 503 UNAVAILABLE")
+
+    monkeypatch.setattr(service, "run_ai_scan", unavailable)
+    with TestClient(main.app) as client:
+        response = client.post(
+            "/api/ai-scan/analyze",
+            files=_analyze_files(),
+            data={"height_cm": 170, "capture_mode": "upper_body", "consent": True},
+        )
+    assert response.status_code == 502
+    assert "503" in response.json()["detail"]
+
+
 def test_env_file_is_reloaded_without_restart(monkeypatch, tmp_path):
     from app.ai_scan import config as ai_config
 
