@@ -1,4 +1,4 @@
-"""Gemini + LangGraph execution for the experimental AI scan.
+﻿"""Gemini + LangGraph execution for the experimental AI scan.
 
 One model call per scan (``MORPH_AI_ENSEMBLE`` can raise it to 5) at
 temperature 0, so a scan costs one request and repeating it does not change the
@@ -57,7 +57,7 @@ async def run_ai_scan(
         model=model_name,
         api_key=google_api_key(),
         temperature=temperature(),
-        max_retries=1,
+        max_retries=0,
     )
     graph = build_graph(model, model_name, roles=MEMBER_ROLES[: ensemble_size()])
     started = time.perf_counter()
@@ -118,3 +118,4 @@ def ai_supported(state: dict) -> bool:
 def _data_url(data: bytes, mime: str) -> str:
     encoded = base64.b64encode(data).decode("ascii")
     return f"data:{mime};base64,{encoded}"
+

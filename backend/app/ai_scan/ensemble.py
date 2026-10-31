@@ -1,4 +1,4 @@
-"""Three-member concurrent AI ensemble with deterministic aggregation.
+﻿"""Three-member concurrent AI ensemble with deterministic aggregation.
 
 Instead of one Gemini call, the scan fires three structured-output calls at the
 same time (asyncio.gather), each with a different role prompt, while the
@@ -16,8 +16,13 @@ A single-member failure degrades the ensemble instead of failing the request.
 from __future__ import annotations
 
 import asyncio
+import json
 import statistics
 from typing import Any
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
@@ -36,7 +41,13 @@ MEMBER_ROLES: tuple[str, ...] = ("anchor", "shape", "audit")
 
 
 async def analyze_member(model: Any, role: str, state: dict[str, Any]) -> dict[str, Any]:
-    """One ensemble member: one structured Gemini call for its role."""
+    """One ensemble member: one Gemini call for its role.
+
+    Structured output (function calling) is tried first. On free tiers the model
+    frequently answers 503 UNAVAILABLE to tool-calling requests with images
+    while plain vision requests still work, so a failure falls back to a plain
+    JSON answer parsed locally. Same schema, same prompt, different transport.
+    """
     structured = model.with_structured_output(VisionMeasurementEstimate)
     messages = [
         SystemMessage(content=SYSTEM_PROMPT),
@@ -58,7 +69,11 @@ async def analyze_member(model: Any, role: str, state: dict[str, Any]) -> dict[s
             ]
         ),
     ]
-    estimate = await structured.ainvoke(messages)
+    try:
+        estimate = await asyncio.wait_for(structured.ainvoke(messages), timeout=45)
+    except Exception as exc:  # noqa: BLE001 - transport fallback, see docstring
+        logger.info("Structured call failed (%s); retrying as plain JSON", str(exc)[:120])
+        estimate = await _json_fallback(model, messages, role)
     if isinstance(estimate, dict):
         estimate = VisionMeasurementEstimate.model_validate(estimate)
     return {
@@ -66,6 +81,30 @@ async def analyze_member(model: Any, role: str, state: dict[str, Any]) -> dict[s
         "label": ROLE_LABELS_VI.get(role, role),
         "estimate": estimate.model_dump(),
     }
+
+
+def _schema_fields() -> list[str]:
+    return list(VisionMeasurementEstimate.model_fields)
+
+
+async def _json_fallback(model: Any, messages: list[Any], role: str) -> VisionMeasurementEstimate:
+    """Ask for the same payload as plain JSON and parse it without tools."""
+    keys = ", ".join(_schema_fields())
+    instruction = (
+        "Return ONE JSON object and nothing else (no markdown fence), using exactly these keys: "
+        f"{keys}. Use null for any value you cannot support. Numbers are centimetres."
+    )
+    plain_messages = [SystemMessage(content=instruction)] + list(messages)
+    response = await model.ainvoke(plain_messages)
+    text = response.content if hasattr(response, "content") else str(response)
+    if isinstance(text, list):  # Gemini returns content parts
+        text = "".join(part.get("text", "") if isinstance(part, dict) else str(part) for part in text)
+    cleaned = str(text).strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+    start, end = cleaned.find("{"), cleaned.rfind("}")
+    if start < 0 or end <= start:
+        raise ValueError(f"{role}: model không trả JSON hợp lệ")
+    payload = json.loads(cleaned[start:end + 1])
+    return VisionMeasurementEstimate.model_validate(payload)
 
 
 async def gather_members(model: Any, state: dict[str, Any], roles: tuple[str, ...] = MEMBER_ROLES) -> list[dict[str, Any]]:
@@ -237,3 +276,6 @@ def member_summaries(validated_members: list[dict[str, Any]]) -> list[dict[str, 
             "error": None,
         })
     return summaries
+
+
+
