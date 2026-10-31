@@ -1,4 +1,4 @@
-"""Số đo tay từ mốc MediaPipe: dài tay, bắp tay, cẳng tay.
+﻿"""Số đo tay từ mốc MediaPipe: dài tay, bắp tay, cẳng tay.
 
 MediaPipe cho tâm khớp (vai 11, khuỷu 13, cổ tay 15) nên **dài tay** tính được
 trực tiếp và đáng tin: đây là tổng hai đoạn thẳng trên ảnh nhân cm/px.
@@ -71,3 +71,59 @@ def arm_measurements(
         "bicep_cm": limb_girth_cm(upper_radius_px, cm_per_px),
         "forearm_cm": limb_girth_cm(lower_radius_px, cm_per_px),
     }
+
+
+def _axis_frame(start, end):
+    dx = float(end[0]) - float(start[0])
+    dy = float(end[1]) - float(start[1])
+    length = math.hypot(dx, dy)
+    if length <= 0:
+        return None
+    return (dx / length, dy / length), (-dy / length, dx / length), length
+
+
+def cross_section_width_px(mask, start, end, fractions=(0.4, 0.5, 0.6)) -> float | None:
+    """Bề rộng mặt nạ cắt **vuông góc** với trục xương tại các mốc của đoạn.
+
+    Cắt ngang hàng ảnh sẽ làm cánh tay nằm chéo bị rộng giả (1/cos góc); phép
+    cắt vuông góc tránh lỗi đó. Trả trung vị của các mốc, None nếu không cắt được.
+    """
+    frame = _axis_frame(start, end)
+    if frame is None:
+        return None
+    _axis, normal, _length = frame
+    height, width = mask.shape
+    widths: list[float] = []
+    for fraction in fractions:
+        cx = float(start[0]) + (float(end[0]) - float(start[0])) * fraction
+        cy = float(start[1]) + (float(end[1]) - float(start[1])) * fraction
+        if not (0 <= int(cy) < height and 0 <= int(cx) < width):
+            continue
+        if not mask[int(cy), int(cx)]:
+            continue
+        total = 0.0
+        for direction in (1.0, -1.0):
+            step = 0.0
+            while step < 400.0:
+                px = cx + direction * normal[0] * (step + 0.5)
+                py = cy + direction * normal[1] * (step + 0.5)
+                if not (0 <= int(py) < height and 0 <= int(px) < width) or not mask[int(py), int(px)]:
+                    break
+                step += 0.5
+            total += step
+        if total > 0:
+            widths.append(total)
+    if len(widths) < 2:
+        return None
+    return float(sorted(widths)[len(widths) // 2])
+
+
+def limb_girth_from_mask(mask, start, end, cm_per_px: float) -> float | None:
+    """Chu vi chi từ mặt cắt vuông góc: coi tiết diện tròn, C = π * bề rộng."""
+    width_px = cross_section_width_px(mask, start, end)
+    if width_px is None or cm_per_px <= 0:
+        return None
+    radius_cm = width_px * cm_per_px / 2.0
+    if not (MIN_LIMB_RADIUS_CM <= radius_cm <= MAX_LIMB_RADIUS_CM):
+        return None
+    return round(2 * math.pi * radius_cm, 1)
