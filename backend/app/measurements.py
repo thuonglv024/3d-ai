@@ -27,11 +27,24 @@ def scale_lateral(x, scale, radius):
     return x + (scale - 1) * radius / np.tanh(1) * np.tanh(x / radius)
 
 
+# Calibration hook for the concavity correction: measured perimeter /
+# ellipse perimeter, per level. Values are 1.0 on purpose.
+#
+# They used to be 1/(1-0.0747) = +8.07% (chest), +3.21% (waist), +6.23% (hip),
+# invented in-code from no data. On the only subject with tape measurements
+# (P01b, tape chest 80 / waist 60 / hip 92) the chest ellipse was already
+# 83.1 cm (+3.1) and the factor pushed it to 89.8 cm: +6.7 cm of a +9.8 cm
+# error came from the constant, not the silhouette. Removing them brings the
+# chest to +3.1 cm on that subject.
+#
+# Re-enable only with a fitted value from >=8 tape-measured people, and record
+# the sample size and fit method next to the number.
 ANATOMICAL_SECTION_FACTORS = {
-    "chest_cm": 1.0 / (1.0 - 0.074710),  # +8.07% (~7.47% concavity compensation for chest/scapula/sternum)
-    "waist_cm": 1.0 / (1.0 - 0.031088),  # +3.21% (~3.11% concavity compensation for waist/lumbar)
-    "hip_cm": 1.0 / (1.0 - 0.058685),    # +6.23% (~5.87% concavity compensation for gluteal/hip contour)
+    "chest_cm": 1.0,
+    "waist_cm": 1.0,
+    "hip_cm": 1.0,
 }
+SECTION_FACTORS_CALIBRATED = False
 
 
 def ellipse_perimeter(width: float, depth: float) -> float:

@@ -64,7 +64,16 @@ def test_hip_target_stays_in_pelvic_band_not_upper_thigh():
         assert hip["level"] > .52
 
 
-def test_anatomical_calibration_matches_template_sections_within_tolerance():
+def test_anatomical_calibration_is_identity_until_fitted(monkeypatch):
+    """k mặc định 1,0: số báo cáo = chu vi ellipse; hệ số chỉ bật khi đã fit.
+
+    Đo trên P01b cho thấy ellipse (83,1 cm) đã cao hơn tape (80 cm), nên hệ số
+    +8,07% cũ làm sai thêm. Test này khoá lại: (a) mặc định không phóng đại,
+    (b) khoảng cách ellipse ↔ mặt cắt mesh thật là 2–10 cm, và (c) khi có hệ số
+    fit từ dữ liệu thì cơ chế calibration đóng được khoảng cách đó.
+    """
+    from app import measurements as measurements_module
+
     template=read_template()
     mesh_170=template.copy();mesh_170.apply_scale(1.70)
     fractions=np.linspace(.12,1.12,35)
@@ -76,7 +85,26 @@ def test_anatomical_calibration_matches_template_sections_within_tolerance():
         depths.append(float(np.ptp(curve[:,2])))
     widths=np.asarray(widths);depths=np.asarray(depths)
     _,targets=estimate_from_profiles(fractions,widths,depths,170,.22)
+    measured_gaps={}
     for target in targets:
+        assert target['target_cm'] == pytest.approx(target['ellipse_cm'], rel=1e-9)
+        if target['key'] not in measurements_module.ANATOMICAL_SECTION_FACTORS:
+            continue
+        actual_cm,_=closed_torso_section(mesh_170,target['level']*1.70)
+        gap=actual_cm-target['target_cm']
+        # Mesh người mẫu có tiết diện "bo tròn" nên chu vi cắt lớn hơn ellipse;
+        # mức chênh tuỳ tầng (ngực rõ hơn eo), đo được ~1,5–6 cm.
+        assert 0.5 < gap < 12.0
+        measured_gaps[target['key']]=actual_cm/target['ellipse_cm']
+    assert measured_gaps
+    assert all(1.01 < factor < 1.20 for factor in measured_gaps.values())
+
+    for key,factor in measured_gaps.items():
+        monkeypatch.setitem(measurements_module.ANATOMICAL_SECTION_FACTORS,key,factor)
+    _,fitted_targets=estimate_from_profiles(fractions,widths,depths,170,.22)
+    for target in fitted_targets:
+        if target['key'] not in measured_gaps:
+            continue
         actual_cm,_=closed_torso_section(mesh_170,target['level']*1.70)
         assert abs(target['target_cm']-actual_cm)<1.5
         assert anatomical_perimeter(target['width_cm'],target['depth_cm'],target['key'])==pytest.approx(actual_cm,abs=1.5)
@@ -139,9 +167,9 @@ def test_local_side_silhouette_bump_does_not_create_a_back_spike():
     assert np.max(np.abs(np.diff(back)))<.012
 
 
-def test_baseline_vs_calibrated_perimeter_comparison():
-    """Keep baseline (apply_anatomical_calibration=False) vs calibrated (True) comparable."""
-    from app.measurements import ANATOMICAL_SECTION_FACTORS
+def test_baseline_vs_calibrated_perimeter_comparison(monkeypatch):
+    """Calibration flag is a no-op while the factors are 1.0; the path still works."""
+    from app import measurements as measurements_module
 
     fractions = np.linspace(0.12, 1.12, 35)
     widths = np.full(35, 0.19)
@@ -155,9 +183,17 @@ def test_baseline_vs_calibrated_perimeter_comparison():
     for t_raw, t_cal in zip(targets_raw, targets_cal):
         key = t_raw["key"]
         assert t_raw["k_anatomy"] == 1.0
-        assert t_cal["k_anatomy"] == pytest.approx(ANATOMICAL_SECTION_FACTORS[key], rel=1e-4)
-        assert t_cal["target_cm"] == pytest.approx(t_raw["ellipse_cm"] * ANATOMICAL_SECTION_FACTORS[key], rel=1e-5)
-        assert vals_cal[key] > vals_raw[key]
+        assert t_cal["k_anatomy"] == pytest.approx(measurements_module.ANATOMICAL_SECTION_FACTORS[key], rel=1e-4)
+        assert t_cal["target_cm"] == pytest.approx(t_raw["ellipse_cm"] * measurements_module.ANATOMICAL_SECTION_FACTORS[key], rel=1e-5)
+        # Hệ số đang là 1,0 (chưa hiệu chuẩn) nên bật cờ không được làm số to lên.
+        assert vals_cal[key] == pytest.approx(vals_raw[key], rel=1e-9)
+
+    # Cơ chế vẫn còn: khi có hệ số đã hiệu chuẩn thì calibration phải làm tăng số.
+    monkeypatch.setitem(measurements_module.ANATOMICAL_SECTION_FACTORS, "chest_cm", 1.1)
+    vals_boosted, _ = estimate_from_profiles(
+        fractions, widths, depths, 172.0, 0.22, apply_anatomical_calibration=True
+    )
+    assert vals_boosted["chest_cm"] > vals_raw["chest_cm"]
 
 
 def test_sensitivity_to_height_error_and_clothing_dilation():

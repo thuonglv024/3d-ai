@@ -45,6 +45,26 @@ Pilot P01b (1 người, 156 cm, tape ngực 80 / eo 60 / hông 92, mặc áo len
 - 4/7 ảnh `output/eval_pilot/viewer_*.png` trùng byte ⇒ tương tác pan/zoom/resize của viewer **chưa được chứng minh**.
 - Ảnh người thật nằm ở `backend/data/pilot_selfie/` (đã gitignore) và `output/` (đã gitignore) — **không commit**.
 
+### 0.5. Bỏ hệ số lõm cứng + không trả số hình học thay AI (2026-11-01)
+- **Bối cảnh**: người dùng đo thật thấy ngực 91 cm bị đọc thành 101 cm (**+10 cm**); v1 (1 lượt AI) thì
+  "đúng trong 1–2 cm". Đo lại trên P01b cho thấy sai số ngực tách thành 2 phần:
+  ellipse 83,1 cm (+3,1 so tape 80) và **hệ số lõm cứng +8,07% thêm 6,7 cm** → 89,8 (+9,8).
+  Hơn 2/3 sai số là do hằng số tự bịa trong code, không phải do đường viền.
+- **Sửa 1** (`backend/app/measurements.py`): `ANATOMICAL_SECTION_FACTORS` = **1,0** cho cả 3 vòng, thêm
+  `SECTION_FACTORS_CALIBRATED = False`. Chỉ bật lại khi có hệ số fit từ ≥8 người đo tape.
+  Đo lại P01b ngay sau sửa (deterministic, không gọi AI): ngực **89,8 → 83,1** (+9,8 → **+3,1**),
+  hông **100,5 → 94,6** (+8,5 → **+2,6**), eo 86,6 → 83,9 (**+23,9**, vẫn hỏng — nguyên nhân khác: depth phẳng).
+- **Sửa 2** (`backend/app/ai_scan/service.py`): thêm `ai_supported(state)`. Khi cả 3 lượt AI lỗi, pipeline cũ vẫn
+  trả `completed` với số của MediaPipe (đã quan sát: 89,8/86,6/100,5 với 3 member `error`, confidence 0,5).
+  Nay `run_ai_scan` **raise `AiScanUnavailable`** kèm lỗi model thật, không đội lốt kết quả AI.
+- Test: `backend/tests/test_ai_scan_fallback.py` (5 test) + cập nhật `test_photo_measurements.py`:
+  mặc định k=1,0 thì `target_cm == ellipse_cm`, khoảng cách ellipse ↔ mặt cắt mesh 0,5–12 cm, và khi
+  monkeypatch hệ số đã fit thì calibration đóng được khoảng cách đó. Tổng **217 passed**.
+- **Chặn còn lại**: thí nghiệm A–E (`scripts/eval/ab_ai_v1_v2.py`) chưa chạy được vì key mới chỉ dùng được
+  `gemini-3.8-flash`, model này trả **503 UNAVAILABLE** cho mọi request có ảnh (đã thử ảnh gốc và ảnh 512px);
+  `gemini-2.5-flash` báo 404 "no longer available to new users"; key cũ hết quota 20 lượt/ngày (reset ~14 h).
+- Việc tiếp theo: (1) chạy A–E khi có model vision hoạt động; (2) xử lý eo +23,9 cm (depth gần phẳng, mốc eo).
+
 ### 0.4. Việc tiếp theo (theo thứ tự)
 1. Chạy AI thật trên 2 ảnh P01b (cần người dùng đồng ý gửi ảnh lên Gemini) → con số AI đầu tiên so với tape.
 2. Khám depth gần phẳng (nguyên nhân sai số eo) trước khi sửa bất cứ hệ số nào.

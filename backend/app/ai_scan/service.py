@@ -80,10 +80,38 @@ async def run_ai_scan(
             "AI không ước lượng được số đo nào từ hai ảnh. "
             "Hãy chụp lại với ánh sáng tốt hơn, đủ thân trên và giữ tư thế thẳng."
         )
+    # Geometry fills in any metric the model missed, which is fine as a
+    # cross-check. What is not fine is every number coming from MediaPipe while
+    # the response still claims to be an AI measurement: a failed model call
+    # must surface as an error, not as a confident-looking result.
+    if not ai_supported(state):
+        errors = [str(m.get("error") or "") for m in (state.get("member_meta") or []) if m.get("error")]
+        detail = f" Lỗi model: {errors[0][:140]}" if errors else ""
+        raise AiScanUnavailable(
+            "Không lượt AI nào trả về số đo (model lỗi hoặc hết quota), nên chưa có kết quả AI. "
+            "Số đo hình học MediaPipe không được dùng thay cho kết quả AI." + detail
+        )
 
     result = dict(state.get("result") or {})
     result["elapsed_seconds"] = round(time.perf_counter() - started, 3)
     return AiScanResponse.model_validate(result).model_dump()
+
+
+def ai_supported(state: dict) -> bool:
+    """True when at least one shown metric came from the model, not from geometry.
+
+    ``estimated_by`` is set per metric by the fusion step: "ensemble",
+    "ensemble+geometry", "geometry", "ensemble+prior". Only the geometry-only
+    value counts as "no AI estimate".
+    """
+    estimated_by = state.get("estimated_by") or {}
+    values = state.get("values") or {}
+    for key, source in estimated_by.items():
+        if values.get(key) is None:
+            continue
+        if source and source != "geometry":
+            return True
+    return False
 
 
 def _data_url(data: bytes, mime: str) -> str:
