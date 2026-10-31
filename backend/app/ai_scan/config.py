@@ -15,7 +15,7 @@ ENV_FILE = BACKEND_ROOT / ".env"
 
 PROVIDER = "google-genai"
 DEFAULT_MODEL = "gemini-2.5-flash"
-REQUEST_TIMEOUT_SECONDS = 180
+REQUEST_TIMEOUT_SECONDS = 120
 
 _ENV_MTIME: float | None = None
 _ENV_LOADED: dict[str, str] = {}
@@ -110,5 +110,6 @@ def configuration_message() -> str:
         f"Chưa cấu hình GOOGLE_API_KEY (hoặc GEMINI_API_KEY). "
         f"Thêm key vào {location} rồi thử lại."
     )
+
 
 

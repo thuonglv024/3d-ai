@@ -26,13 +26,13 @@ logger = logging.getLogger(__name__)
 
 # Structured output (tool calling) is what the free tier answers 503 to.
 STRUCTURED_TIMEOUT_SECONDS = 45
-JSON_TIMEOUT_SECONDS = 120
+JSON_TIMEOUT_SECONDS = 60
 
 
 def structured_enabled() -> bool:
     import os
 
-    return os.getenv('MORPH_AI_STRUCTURED', '1').strip().lower() not in {'0', 'false', 'off'}
+    return os.getenv('MORPH_AI_STRUCTURED', '0').strip().lower() in {'1', 'true', 'on', 'yes'}
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
@@ -288,6 +288,8 @@ def member_summaries(validated_members: list[dict[str, Any]]) -> list[dict[str, 
             "error": None,
         })
     return summaries
+
+
 
 
 
