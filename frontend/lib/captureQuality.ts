@@ -1,4 +1,4 @@
-/**
+﻿/**
  * MORPH Studio — Camera Input Quality, Geometry Preservation & Best-Frame Selection
  *
  * Explicit, configurable quality gates for the two-photo webcam capture flow:
@@ -44,7 +44,7 @@ export const CAMERA_QUALITY_THRESHOLDS: Readonly<CameraQualityThresholds> = Obje
   maxLandmarkMotion: 0.018,
   minLandmarkVisibility: 0.55,
   minStableFramesBeforeCountdown: 3,
-  countdownDurationMs: 5000,
+  countdownDurationMs: 2000,
   bestFrameWindowMs: 1600,
   maxCrossViewScaleDrift: 0.18,
   maxCrossViewShoulderYDrift: 0.12,
@@ -1269,3 +1269,4 @@ export function mapCameraDeviceError(error: unknown): {
     message: "Không mở được camera. Đóng ứng dụng đang dùng camera hoặc kiểm tra thiết bị rồi thử lại.",
   };
 }
+

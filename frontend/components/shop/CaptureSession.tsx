@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import {
@@ -273,7 +273,7 @@ export default function CaptureSession({
     const turnDurationMs =
       typeof win?.__MORPH_TEST_TURN_DURATION_MS__ === "number"
         ? win.__MORPH_TEST_TURN_DURATION_MS__
-        : 4000;
+        : 2000;
     const timer = setTimeout(() => {
       clearSessionBuffers();
       setPhase("running");
@@ -737,3 +737,4 @@ export default function CaptureSession({
     </section>
   );
 }
+
