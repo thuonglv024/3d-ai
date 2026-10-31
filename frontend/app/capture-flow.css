@@ -1918,3 +1918,10 @@
 .capture-pose-guide .pose-guide-silhouette {
   display: none !important;
 }
+
+/* Theo yêu cầu: bỏ toàn bộ khung hướng dẫn, chỉ còn camera. Giữ component để
+   có thể bật lại sau; ẩn bằng CSS nên không đụng logic camera/scan. */
+.capture-pose-guide,
+.scan-silhouette {
+  display: none !important;
+}
