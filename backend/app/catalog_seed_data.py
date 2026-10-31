@@ -154,6 +154,8 @@ EXPANSION_TEMPLATES = {
         ("Áo thun Mercerized Bóng Mịn", "ao-thun-mercerized-bong-min", 560000, 650000, "Sợi xử lý mercerized ánh bóng sang trọng", "100% Mercerized Cotton", "Tailored fit"),
         ("Áo thun In Chữ Tối Giản Studio", "ao-thun-in-chu-toi-gian-studio", 430000, 490000, "Chi tiết slogan in nổi vi mô trước ngực", "100% Combed Cotton", "Relaxed fit"),
         ("Áo thun Cổ Thuyền Bateaux Dáng Rộng", "ao-thun-co-thuyen-bateaux-dang-rong", 460000, 520000, "Thiết kế cổ thuyền thanh thoát bay bổng", "Cotton lụa mềm mát", "Oversized fit"),
+        ("Áo thun Heavy Cotton Regular", "ao-thun-heavy-cotton-regular", 390000, 450000, "Cotton dày 180gsm phom chuẩn unisex", "100% Cotton Heavy 180gsm", "Regular fit"),
+        ("Áo thun Oversized Supima", "ao-thun-oversized-supima", 520000, 590000, "Supima cotton phom oversize buông rộng", "100% Supima Cotton 220gsm", "Oversized fit"),
     ],
     "so-mi": [
         ("Sơ mi Lụa Pha Cotton Mịn Mượt", "so-mi-lua-pha-cotton-min-muot", 690000, 790000, "Ánh bóng nhẹ từ sợi tơ tằm thượng hạng", "80% Cotton 20% Silk", "Relaxed fit thanh lịch"),
@@ -322,6 +324,51 @@ DEFAULT_SIZES = {
     "vay": ["XS", "S", "M", "L"],
 }
 
+# Two demo t-shirts with published flat garment measurements (searched from the
+# brands' spec sheets). `chest_cm` here is the garment chest circumference taken
+# as 2 x the flat half-chest; the body ranges in `rows` are derived for the size
+# recommender, while `garment_specs` drive the fit map directly.
+GARMENT_SPEC_PRODUCTS = {
+    "ao-thun-heavy-cotton-regular": {
+        "chart_name": "Bảng size Áo thun Heavy Cotton (Gildan 5000)",
+        "sizes": ["S", "M", "L", "XL"],
+        "rows": [
+            {"size": "S", "chest_cm": {"min": 82, "max": 90}, "waist_cm": {"min": 66, "max": 80}},
+            {"size": "M", "chest_cm": {"min": 90, "max": 98}, "waist_cm": {"min": 74, "max": 88}},
+            {"size": "L", "chest_cm": {"min": 98, "max": 106}, "waist_cm": {"min": 82, "max": 96}},
+            {"size": "XL", "chest_cm": {"min": 106, "max": 114}, "waist_cm": {"min": 90, "max": 104}},
+        ],
+        "specs": [
+            {"size": "S", "chest_cm": 91.4, "length_cm": 71.1, "sleeve_cm": 39.7},
+            {"size": "M", "chest_cm": 101.6, "length_cm": 73.7, "sleeve_cm": 43.2},
+            {"size": "L", "chest_cm": 111.8, "length_cm": 76.2, "sleeve_cm": 47.0},
+            {"size": "XL", "chest_cm": 121.9, "length_cm": 78.7, "sleeve_cm": 50.8},
+        ],
+        "source": "Gildan 5000 spec sheet: chest width laid flat x2, body length, sleeve length",
+        "image": "/products/v2/ao-thun-essential.jpg",
+        "detail": "/products/v2/ao-thun-essential-detail.jpg",
+    },
+    "ao-thun-oversized-supima": {
+        "chart_name": "Bảng size Áo thun Oversized Supima (Uniqlo)",
+        "sizes": ["S", "M", "L", "XL"],
+        "rows": [
+            {"size": "S", "chest_cm": {"min": 84, "max": 92}, "waist_cm": {"min": 66, "max": 80}},
+            {"size": "M", "chest_cm": {"min": 92, "max": 100}, "waist_cm": {"min": 74, "max": 88}},
+            {"size": "L", "chest_cm": {"min": 100, "max": 108}, "waist_cm": {"min": 82, "max": 96}},
+            {"size": "XL", "chest_cm": {"min": 108, "max": 116}, "waist_cm": {"min": 90, "max": 104}},
+        ],
+        "specs": [
+            {"size": "S", "chest_cm": 122.0, "length_cm": 69.0, "shoulder_cm": 61.5, "sleeve_cm": 54.5},
+            {"size": "M", "chest_cm": 128.0, "length_cm": 72.0, "shoulder_cm": 64.0, "sleeve_cm": 57.0},
+            {"size": "L", "chest_cm": 136.0, "length_cm": 75.0, "shoulder_cm": 67.0, "sleeve_cm": 59.5},
+            {"size": "XL", "chest_cm": 144.0, "length_cm": 77.0, "shoulder_cm": 71.0, "sleeve_cm": 61.5},
+        ],
+        "source": "Uniqlo Unisex Supima Cotton Oversized T-Shirt: body width x2, length, shoulder, sleeve",
+        "image": "/products/v2/ao-thun-oversized-heavyweight.jpg",
+        "detail": "/products/v2/ao-thun-oversized-heavyweight-detail.jpg",
+    },
+}
+
 
 def _load_base_products() -> list[dict]:
     """Loads the original 22 products from catalog_data.json."""
@@ -432,12 +479,18 @@ def _build_seed_products() -> tuple[list[dict], list[dict]]:
 
         for idx, (name, slug, price, orig_price, subtitle, material, fit) in enumerate(templates):
             pid = slug
+            spec = GARMENT_SPEC_PRODUCTS.get(slug)
+            if spec:
+                sizes = list(spec["sizes"])
             # 2 to 3 colors per product
             prod_colors = [palettes[idx % len(palettes)], palettes[(idx + 1) % len(palettes)]]
             if idx % 3 == 0:
                 prod_colors.append(palettes[(idx + 2) % len(palettes)])
 
-            if slug in V2_MAP:
+            if spec:
+                image_url = spec["image"]
+                gallery = [spec["image"], spec["detail"]]
+            elif slug in V2_MAP:
                 image_url, detail_url = V2_MAP[slug]
                 gallery = [image_url, detail_url]
             else:
@@ -520,6 +573,23 @@ def _build_seed_products() -> tuple[list[dict], list[dict]]:
                 "variants": variants,
                 "images": images,
             }
+            if spec:
+                chart_id = f"chart-{slug}"
+                if chart_id not in known_chart_ids:
+                    known_chart_ids.add(chart_id)
+                    charts_out.append({
+                        "id": chart_id,
+                        "name": spec["chart_name"],
+                        "garment": "top",
+                        "source": "user_provided",
+                        "measurement_basis": "body_cm",
+                        "table_json": json.dumps(
+                            {"rows": spec["rows"], "garment_specs": spec["specs"], "garment_source": spec["source"]},
+                            ensure_ascii=False,
+                        ),
+                    })
+                p["size_chart_id"] = chart_id
+                p["garment_specs"] = spec["specs"]
             products_out.append(p)
 
     return products_out, charts_out

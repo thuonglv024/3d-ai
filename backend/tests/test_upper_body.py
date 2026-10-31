@@ -2,7 +2,7 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 from app.images import InvalidPhoto
-from app.reconstruction import observe, capture_feedback, read_template
+from app.reconstruction import ENGINE, observe, capture_feedback, read_template
 from app.report import measurement_report
 
 
@@ -100,7 +100,7 @@ def test_model_dimensions_have_provenance_and_unknown_lengths_stay_null():
 
     # Template-derived limbs/head/neck and unavailable lengths
     for row in rows_upper:
-        assert row["engine_version"] == "mediapipe-two-photo-fit-v4"
+        assert row["engine_version"] == ENGINE
         assert row["uncertainty_cm"] is None
         assert isinstance(row["quality_warnings"], list) and len(row["quality_warnings"]) >= 1
         if row["key"] in {"head_cm", "neck_cm", "thigh_cm", "calf_cm", "ankle_cm"}:

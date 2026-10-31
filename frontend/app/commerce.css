@@ -6340,3 +6340,19 @@ button.shop-secondary:active:not(:disabled) {
   transform: translateY(-1px);
   box-shadow: 0 4px 14px rgba(198, 161, 91, 0.35);
 }
+
+/* Flat garment measurements for products with published spec sheets */
+.shop-garment-specs {
+  margin-top: 18px;
+}
+
+.shop-garment-specs h3 {
+  font-size: 15px;
+  margin: 0 0 4px;
+}
+
+.shop-garment-specs p {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: 0 0 10px;
+}

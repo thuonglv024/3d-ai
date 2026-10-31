@@ -44,6 +44,7 @@ async def analyze(
     height_cm: float = Form(..., ge=100, le=230),
     consent: bool = Form(False),
     capture_mode: Literal["full_body", "upper_body"] = Form("upper_body"),
+    sex: Literal["auto", "female", "male"] = Form("auto"),
 ):
     """Estimate measurements from two photos without storing them.
 
@@ -90,6 +91,7 @@ async def analyze(
                 capture_mode,
                 front.content_type or "image/jpeg",
                 side.content_type or "image/jpeg",
+                sex,
             ),
             timeout=REQUEST_TIMEOUT_SECONDS,
         )
@@ -101,6 +103,13 @@ async def analyze(
         raise HTTPException(504, "Dịch vụ AI phản hồi quá lâu. Hãy thử lại sau.") from exc
     except Exception as exc:
         logger.exception("AI scan failed")
+        detail = f"{type(exc).__name__} {exc}".lower()
+        if any(hint in detail for hint in ("api key", "api_key", "unauthenticated", "permission_denied", " 401", " 403")):
+            raise HTTPException(
+                503,
+                "GOOGLE_API_KEY trong backend/.env không hợp lệ hoặc đã hết hạn. "
+                "Cập nhật key mới từ Google AI Studio — backend tự đọc lại file, không cần khởi động lại.",
+            ) from exc
         raise HTTPException(
             502,
             "Không phân tích được ảnh bằng AI. Kiểm tra kết nối và cấu hình API key rồi thử lại.",

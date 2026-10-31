@@ -7,6 +7,16 @@ import trimesh
 from .images import InvalidPhoto
 
 
+class ClothingOrArmMergedError(InvalidPhoto):
+    """The fitted section is too far from the avatar's current section.
+
+    The code lets the API/UI distinguish a loose-clothing/arm-merge capture from
+    other invalid-photo failures without inventing a measurement.
+    """
+
+    code = "CLOTHING_OR_ARM_MERGED"
+
+
 def scale_lateral(x, scale, radius):
     """Monotone lateral deformation: scale the trunk and translate outer limbs.
 
@@ -40,10 +50,17 @@ def anatomical_perimeter(width: float, depth: float, key: str | None = None) -> 
     return base
 
 
-def estimate_from_profiles(fractions, widths, depths, height_cm, shoulder_ratio, apply_anatomical_calibration: bool = True):
-    """Corresponding shoulder-to-hip rows; circumference uses calibrated anatomical sections."""
+def estimate_from_profiles(fractions, widths, depths, height_cm, shoulder_ratio, apply_anatomical_calibration: bool = True, shoulder_level: float = .805, hip_level: float = .515):
+    """Corresponding shoulder-to-hip rows; circumference uses calibrated anatomical sections.
+
+    ``shoulder_level``/``hip_level`` are the mesh's own skeletal landmarks in
+    normalised height, so sections sit on real joints instead of fixed constants.
+    """
     base_circumferences = np.array([ellipse_perimeter(w, d) * height_cm for w, d in zip(widths, depths)])
-    definitions = [("chest_cm", "Ngực", .30, .44, "max"), ("waist_cm", "Eo", .52, .78, "min"), ("hip_cm", "Mông", .95, 1.12, "max")]
+    # Hip: search 0.95–1.02 of the shoulder-hip span, not 1.12. With the
+    # template landmarks (0.805/0.534) this is ~0.528–0.547 H, i.e. the pelvic
+    # band around hip_level ±0.03 H; 1.12 slid down onto the upper thigh.
+    definitions = [("chest_cm", "Ngực", .30, .44, "max"), ("waist_cm", "Eo", .52, .78, "min"), ("hip_cm", "Mông", .95, 1.02, "max")]
     values = {"height_cm": round(height_cm, 1), "shoulder_width_cm": round(shoulder_ratio * height_cm, 1), "inseam_cm": None}
     targets = []
     for key, title, low, high, choice in definitions:
@@ -61,7 +78,7 @@ def estimate_from_profiles(fractions, widths, depths, height_cm, shoulder_ratio,
             "target_cm": value,
             "ellipse_cm": float(base_circumferences[i]),
             "k_anatomy": round(float(k_factor), 5),
-            "level": float(.805 - fractions[i] * (.805 - .515)),
+            "level": float(shoulder_level - fractions[i] * (shoulder_level - hip_level)),
             "width_cm": float(widths[i] * height_cm),
             "depth_cm": float(depths[i] * height_cm),
         })
@@ -205,19 +222,123 @@ def validate_glb_mesh(mesh: trimesh.Trimesh, height_cm: float, sections: list[di
     }
 
 
-def fit_measurement_targets(mesh, targets, height_cm):
-    """Fit the avatar to the photo estimates; report fit residual, not accuracy."""
+FIT_MAX_ITERATIONS = 12
+FIT_TOLERANCE_CM = 0.05
+RING_MAX_DELTA = 0.20
+
+
+def _smooth_scale_field(y: np.ndarray, levels, factors) -> np.ndarray:
+    """Gaussian RBF through the ring factors, then 1.0 outside the torso.
+
+    The interpolation is exact at each ring, so one fit pass normally reaches the
+    target. ``sigma`` is widened until adjacent ring scales differ by at most
+    ``RING_MAX_DELTA``; the unnormalised basis returns to 1.0 away from the rings.
+    """
+    centers = np.asarray(levels, dtype=float)
+    amps = np.asarray(factors, dtype=float) - 1.0
+    span = max(float(centers.max() - centers.min()), .10)
+    sigma = max(.06, .45 * span)
+    weights = amps.copy()
+    for _ in range(6):
+        overlap = np.exp(-((centers[:, None] - centers[None, :]) / sigma) ** 2)
+        overlap = overlap + np.eye(len(centers)) * 1e-6
+        try:
+            weights = np.linalg.solve(overlap, amps)
+        except np.linalg.LinAlgError:
+            weights = amps.copy()
+        ring = 1.0 + overlap @ weights
+        deltas = np.abs(np.diff(ring))
+        if deltas.size == 0 or float(deltas.max()) <= RING_MAX_DELTA:
+            break
+        sigma *= 1.25
+    basis = np.exp(-((y[:, None] - centers[None, :]) / sigma) ** 2)
+    return 1.0 + basis @ weights
+
+
+def measure_target_sections(mesh, targets, height_cm, fit_mode: str = "pchip", iterations: int = 0):
+    """Measure every target on the mesh and return the provenance profile."""
+    h = height_cm / 100
+    sections, errors = [], []
+    for target in targets:
+        actual, curve = closed_torso_section(mesh, target["level"] * h)
+        error = abs(actual - target["target_cm"])
+        errors.append(error)
+        sections.append({
+            "key": target["key"],
+            "label": target["label"],
+            "target_cm": round(target["target_cm"], 1),
+            "model_cm": round(actual, 1),
+            "fit_error_cm": round(error, 2),
+            "points_m": np.round(curve, 5).tolist(),
+        })
+    mesh.fix_normals()
+    fit_status = "matched" if max(errors) <= 1.5 else "approximate"
+    profile = {
+        "fit_status": fit_status,
+        "max_fit_error_cm": round(max(errors), 2),
+        "fit_mode": fit_mode,
+        "fit_iterations": iterations,
+        "sections": sections,
+        "measurement_method": "two_photo_anatomical_calibrated_v2",
+        "validation": "not_validated",
+        "uncertainty_cm": None,
+        "note": "Sai lệch fit chỉ so avatar với số ước lượng từ ảnh, không phải sai số so với cơ thể thật.",
+    }
+    try:
+        profile["mesh_validation"] = validate_glb_mesh(mesh, height_cm, sections)
+    except InvalidPhoto:
+        pass
+    return mesh, profile
+
+
+def fit_measurement_targets(mesh, targets, height_cm, width_targets=None, fit_mode: str = "pchip"):
+    """Fit the avatar to the photo estimates; report fit residual, not accuracy.
+
+    ``width_targets`` optionally constrain lateral breadths that are not
+    circumferences (e.g. biacromial shoulder width) without adding report rows.
+    Each entry: ``{key, label, kind: "width", level, target_cm, width_cm, blend}``.
+
+    ``fit_mode="pchip"`` keeps the historical piecewise interpolation.
+    ``fit_mode="smooth"`` uses a Gaussian ring field with limited adjacent-ring
+    scale differences. Both stop when every circumference is within
+    ``FIT_TOLERANCE_CM`` or after ``FIT_MAX_ITERATIONS``.
+    """
+    if fit_mode not in {"pchip", "smooth"}:
+        raise ValueError(f"Unknown fit_mode: {fit_mode!r}")
     mesh = mesh.copy()
     h = height_cm / 100
-    ordered = sorted(targets, key=lambda t: t["level"])
-    for _ in range(4):
-        factors_x, factors_z, centers_z = [], [], []
+    width_targets = [dict(target) for target in (width_targets or [])]
+    for target in width_targets:
+        blend = float(target.get("blend", 1.0))
+        if blend < 1.0:
+            # Blend once against the current breadth; blending inside the loop
+            # would converge to the raw landmark value after four iterations.
+            _, curve = closed_torso_section(mesh, target["level"] * h)
+            current = float(np.ptp(curve[:, 0]) * 100)
+            target["target_cm"] = current + blend * (target["target_cm"] - current)
+            target["width_cm"] = target["target_cm"]
+    ordered = sorted(list(targets) + width_targets, key=lambda t: t["level"])
+    iterations = 0
+    for iteration in range(FIT_MAX_ITERATIONS):
+        factors_x, factors_z, centers_z, errors_now = [], [], [], []
         for target in ordered:
             current, curve = closed_torso_section(mesh, target["level"] * h)
             centers_z.append((curve[:, 2].min() + curve[:, 2].max()) / 2)
+            if target.get("kind") == "width":
+                raw = target["target_cm"] / max(float(np.ptp(curve[:, 0]) * 100), 1e-4)
+                factors_x.append(float(np.clip(raw, .80, 1.25)))
+                factors_z.append(1.0)
+                continue
+            errors_now.append(abs(current - target["target_cm"]))
             factor = target["target_cm"] / current
             if not .70 <= factor <= 1.40:
-                raise InvalidPhoto("Số đo từ hai góc chưa nhất quán với hình thể. Chụp lại cùng tư thế, tay không che thân.")
+                error = ClothingOrArmMergedError(
+                    "Ảnh có vẻ mặc đồ rộng hoặc tay dính thân, hãy mặc đồ ôm và tách tay khỏi người."
+                )
+                error.code = "CLOTHING_OR_ARM_MERGED"
+                error.factor = round(float(factor), 3)
+                error.target_key = target["key"]
+                raise error
             if target.get("depth_cm") is not None and target.get("depth_cm", 0) > 0:
                 cur_w = float(np.ptp(curve[:, 0]) * 100)
                 cur_d = float(np.ptp(curve[:, 2]) * 100)
@@ -230,10 +351,18 @@ def fit_measurement_targets(mesh, targets, height_cm):
                 factor_x = factor_z = float(factor)
             factors_x.append(factor_x)
             factors_z.append(factor_z)
+        # Stop before another adjustment once the measured circumferences agree.
+        if iteration > 0 and (not errors_now or max(errors_now) <= FIT_TOLERANCE_CM):
+            break
         y = mesh.vertices[:, 1] / h
-        knots = [0, .38] + [t["level"] for t in ordered] + [.84, 1]
-        scale_x = PchipInterpolator(knots, [1, 1] + factors_x + [1, 1])(y)
-        scale_z = PchipInterpolator(knots, [1, 1] + factors_z + [1, 1])(y)
+        if fit_mode == "pchip":
+            knots = [0, .38] + [t["level"] for t in ordered] + [.84, 1]
+            scale_x = PchipInterpolator(knots, [1, 1] + factors_x + [1, 1])(y)
+            scale_z = PchipInterpolator(knots, [1, 1] + factors_z + [1, 1])(y)
+        else:
+            levels = [t["level"] for t in ordered]
+            scale_x = _smooth_scale_field(y, levels, factors_x)
+            scale_z = _smooth_scale_field(y, levels, factors_z)
         vertices = mesh.vertices.copy()
         # Constant offset on outer arms preserves their thickness instead of scaling them.
         torso_edge = np.interp(y, [t["level"] for t in ordered], [t["width_cm"] / height_cm / 2 for t in ordered]) * h
@@ -242,25 +371,5 @@ def fit_measurement_targets(mesh, targets, height_cm):
         center_z = np.interp(y, [t["level"] for t in ordered], centers_z)
         vertices[:, 2] = center_z + (vertices[:, 2] - center_z) * (1 + (scale_z - 1) * weight)
         mesh.vertices = vertices
-    sections, errors = [], []
-    for target in targets:
-        actual, curve = closed_torso_section(mesh, target["level"] * h)
-        error = abs(actual - target["target_cm"])
-        errors.append(error)
-        sections.append({"key": target["key"], "label": target["label"], "target_cm": round(target["target_cm"], 1), "model_cm": round(actual, 1), "fit_error_cm": round(error, 2), "points_m": np.round(curve, 5).tolist()})
-    mesh.fix_normals()
-    fit_status = "matched" if max(errors) <= 1.5 else "approximate"
-    profile = {
-        "fit_status": fit_status,
-        "max_fit_error_cm": round(max(errors), 2),
-        "sections": sections,
-        "measurement_method": "two_photo_anatomical_calibrated_v2",
-        "validation": "not_validated",
-        "uncertainty_cm": None,
-        "note": "Sai lệch fit chỉ so avatar với số ước lượng từ ảnh, không phải sai số so với cơ thể thật.",
-    }
-    try:
-        profile["mesh_validation"] = validate_glb_mesh(mesh, height_cm, sections)
-    except InvalidPhoto:
-        pass
-    return mesh, profile
+        iterations += 1
+    return measure_target_sections(mesh, targets, height_cm, fit_mode=fit_mode, iterations=iterations)

@@ -6,8 +6,8 @@
 
 ## 1. Tính năng nổi bật
 
-- **Cửa hàng Thời trang 160 Sản phẩm**:
-  - Danh mục 160 sản phẩm (80 Nam / 80 Nữ, chia đều 10 danh mục $\times$ 8 sản phẩm) với đầy đủ biến thể màu sắc, tồn kho theo size và bảng thông số `size_chart` riêng cho từng sản phẩm.
+- **Cửa hàng Thời trang 162 Sản phẩm**:
+  - Danh mục 162 sản phẩm (160 sản phẩm gốc + 2 mẫu áo thun có **số đo may trải phẳng** công bố từ Gildan 5000 và Uniqlo Supima Oversized) với đầy đủ biến thể màu sắc, tồn kho theo size và bảng thông số `size_chart` riêng cho từng sản phẩm.
   - Bộ lọc đa chiều theo giới tính, danh mục, khoảng giá, từ khóa tìm kiếm và danh sách yêu thích (**Wishlist**) đồng bộ mượt mà với giỏ hàng.
 - **Quét Hình Thể 3D Tự Động Qua Webcam (Camera-Only)**:
   - Hỗ trợ chế độ mặc định **Quét Thân Trên (`upper_body`)** phù hợp góc webcam laptop/PC và chế độ **Quét Toàn Thân (`full_body`)**.
@@ -16,10 +16,14 @@
 - **Pipeline Tối Ưu Hóa 3D Body Scan 3 Tầng (`< 15 ms` xử lý toán học)**:
   - **Tầng 1 (Multi-Anchor Height Observation)**: Kết hợp mỏ neo Đỉnh đầu $\rightarrow$ Vai (`0.195 H`) và Vai $\rightarrow$ Hông (`0.290 H`) bằng hàm Huber/Tanh giới hạn biên độ, ổn định chiều cao tham chiếu với sai số $\le \pm 1.20\%$.
   - **Tầng 2 (Camera Scale Fusion)**: Đồng bộ mốc giải phẫu và dùng chung hệ số quy đổi chiều cao giữa góc chính diện và góc nghiêng 90°, bảo toàn tuyệt đối tỷ lệ Độ sâu / Bề rộng ($D/W$).
-  - **Tầng 3 (Anatomical Calibration & PCHIP Mesh Fitting)**: Bù trừ độ lõm giải phẫu mặt cắt ngang (`ANATOMICAL_SECTION_FACTORS`) tại Ngực, Eo, Hông và biến dạng lưới 3D chuẩn **MakeHuman** xuất file `.glb` trực quan.
+  - **Tầng 3 (Anatomical Calibration & PCHIP Mesh Fitting)**: Bù trừ độ lõm giải phẫu mặt cắt ngang (`ANATOMICAL_SECTION_FACTORS`) tại Ngực, Eo, Hông và khớp lưới 3D với số đo. Lưới nền là **basis Anny** (Apache-2.0, asset MakeHuman CC0) sinh sẵn cho nam/nữ, kèm fallback MakeHuman; xuất file `.glb` trực quan.
 - **Minh Bạch Nguồn Số Đo & Hồ Sơ Hình Thể (`BodyProfile`)**:
   - Phân biệt rõ 5 nguồn dữ liệu: `photo_estimate`, `photo_with_prior`, `template_model`, `user_input`, `unavailable`.
   - Cho phép nhập bổ sung số đo phần dưới (`hip_cm`, `inseam_cm`) khi quét `upper_body` để tư vấn chính xác cả quần, chân váy và đầm liền.
+  - **Sửa số đo sau khi quét**: chỉnh chiều cao/ngực/eo/mông ngay trên màn hình kết quả; backend dựng lại mô hình 3D và cập nhật gợi ý size, ghi nguồn `user_input` cho các dòng đã sửa.
+- **Bản Đồ Độ Vừa Theo Vùng (Beta)**:
+  - Chọn size của sản phẩm để tô màu ngực/eo/mông trên mô hình 3D theo mức **chật / sát / vừa / rộng**, kèm chênh lệch chu vi và khe hở ước tính.
+  - Ước lượng từ khoảng số đo cơ thể trong bảng size và nhãn `fit`/chất liệu; **chưa phải** số đo may trải phẳng hay mô phỏng vải. API: `POST /api/fit-map`.
 - **Tài Khoản, Biểu Đồ Lịch Sử & Đặt Hàng Nguyên Tử**:
   - Xác thực qua `HttpOnly` session cookie (`morph_session`, băm `SHA-256` trong SQLite, mật khẩu băm `PBKDF2-HMAC-SHA256` 200.000 vòng) kèm cơ chế khóa tạm thời khi đăng nhập sai quá 5 lần.
   - Biểu đồ theo dõi tiến trình số đo ([`BodyChart.tsx`](file:///d:/MORPH-AI/frontend/components/shop/BodyChart.tsx)) với trục thời gian tuyến tính và gom cụm thông minh.
@@ -47,15 +51,16 @@ MORPH-AI/
 │   ├── app/
 │   │   ├── main.py                  # Điểm vào FastAPI, định tuyến REST API & quản lý phiên quét
 │   │   ├── auth.py                  # Xác thực người dùng, PBKDF2-HMAC-SHA256 & session cookie
-│   │   ├── catalog.py               # Quản lý 160 sản phẩm, biến thể, size chart & gợi ý size
-│   │   ├── seed_160_catalog.py      # Dữ liệu khởi tạo 160 sản phẩm thời trang
+│   │   ├── catalog.py               # Quản lý 162 sản phẩm, biến thể, size chart & gợi ý size
+│   │   ├── seed_160_catalog.py      # Dữ liệu khởi tạo catalog (160 gốc + 2 mẫu số đo may)
 │   │   ├── orders.py                # Xử lý đơn hàng nguyên tử, trừ tồn kho & Idempotency-Key
 │   │   ├── history.py               # Lưu trữ lịch sử quét 3D và hồ sơ số đo cá nhân
 │   │   ├── reconstruction.py        # Tầng 1 & 2: Phân tích ảnh MediaPipe & biến dạng lưới 3D
 │   │   ├── camera_fusion.py         # Tầng 2: Đồng bộ tỷ lệ Camera chính diện & nghiêng 90°
 │   │   ├── measurements.py          # Tầng 3: Hiệu chuẩn giải phẫu & khớp lưới PCHIP (.glb)
-│   │   └── models/                  # Model MediaPipe (.task) và lưới cơ sở MakeHuman (.obj)
-│   └── tests/                       # Bộ 95 unit & integration tests (pytest)
+│   │   ├── anny_body.py             # Basis Anny (nam/nữ × cân nặng × cơ) + fallback MakeHuman
+│   │   └── models/                  # Model MediaPipe (.task), basis Anny (.npz) và lưới dự phòng (.obj)
+│   └── tests/                       # Bộ 135 unit & integration tests (pytest)
 ├── frontend/                        # Next.js 15 App Router Frontend (React 19, TypeScript)
 │   ├── AGENTS.md                    # Hướng dẫn thiết kế giao diện dành cho Agent
 │   ├── app/                         # Các trang: /, /products/[id], /scan, /checkout, /orders/[id], /account

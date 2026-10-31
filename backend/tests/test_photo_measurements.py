@@ -51,6 +51,19 @@ def test_estimates_depend_on_both_views_and_do_not_invent_inseam():
     assert first['shoulder_width_cm']==38.5
 
 
+def test_hip_target_stays_in_pelvic_band_not_upper_thigh():
+    """v7: hip max is searched in 0.95–1.02 of the shoulder-hip span, not 1.12."""
+    fractions = np.linspace(.12, 1.12, 35)
+    for height_cm, width, depth in ((175.0, .22, .16), (162.0, .19, .14), (172.0, .25, .19)):
+        widths = width + .02 * np.exp(-((fractions - 1.0) / .05) ** 2)
+        depths = depth + .01 * np.exp(-((fractions - 1.0) / .05) ** 2)
+        _, targets = estimate_from_profiles(fractions, widths, depths, height_cm, .22, True, .805, .534)
+        hip = next(t for t in targets if t["key"] == "hip_cm")
+        assert .52 <= hip["level"] <= .545
+        # The old 1.12 search would land at ~0.501 H.
+        assert hip["level"] > .52
+
+
 def test_anatomical_calibration_matches_template_sections_within_tolerance():
     template=read_template()
     mesh_170=template.copy();mesh_170.apply_scale(1.70)

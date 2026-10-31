@@ -1847,3 +1847,7 @@
     min-height: 138px;
   }
 }
+
+.scan-setup-wide {
+  grid-column: 1 / -1;
+}

@@ -1,0 +1,66 @@
+{
+  "schema": 1,
+  "step": 1,
+  "cases": {
+    "a_male_average": {
+      "height_cm": 175.0,
+      "max_fit_error_cm": 0.0,
+      "fit_status": "matched",
+      "fit_calls": 2,
+      "fit_iterations": 8,
+      "build_s": 0.4471,
+      "hip_level": 0.5,
+      "hip_landmark_level": 0.534,
+      "d2_0.50": 1.848,
+      "d2_0.60": 8.117,
+      "d2_0.72": 3.613,
+      "d2_0.855": 14.784,
+      "d2_0.405": 0.503,
+      "d2_0.235": 1.549,
+      "mesh_valid": true
+    },
+    "b_female_slim": {
+      "height_cm": 162.0,
+      "max_fit_error_cm": 0.0,
+      "fit_status": "matched",
+      "fit_calls": 2,
+      "fit_iterations": 8,
+      "build_s": 0.9307,
+      "hip_level": 0.5,
+      "hip_landmark_level": 0.534,
+      "d2_0.50": 2.194,
+      "d2_0.60": 6.807,
+      "d2_0.72": 3.08,
+      "d2_0.855": 31.194,
+      "d2_0.405": 0.648,
+      "d2_0.235": 0.708,
+      "mesh_valid": true
+    },
+    "c_male_obese": {
+      "height_cm": 172.0,
+      "max_fit_error_cm": 0.0,
+      "fit_status": "matched",
+      "fit_calls": 2,
+      "fit_iterations": 8,
+      "build_s": 0.9294,
+      "hip_level": 0.5,
+      "hip_landmark_level": 0.534,
+      "d2_0.50": 2.053,
+      "d2_0.60": 27.582,
+      "d2_0.72": 5.48,
+      "d2_0.855": 8.108,
+      "d2_0.405": 1.014,
+      "d2_0.235": 1.171,
+      "mesh_valid": true
+    }
+  },
+  "verification": {
+    "runs": [
+      "tools\\diag\\out\\metrics_run1.json",
+      "tools\\diag\\out\\metrics_run2.json"
+    ],
+    "max_diff_cm": 0.0,
+    "epsilon_cm": 0.01,
+    "build_s_excluded_from_diff": true
+  }
+}

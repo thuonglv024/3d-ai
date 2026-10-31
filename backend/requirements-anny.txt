@@ -1,0 +1,9 @@
+# Optional: only needed to regenerate backend/models/anny-bases.npz.
+# The backend itself reads the baked basis and does NOT import Anny/torch at runtime,
+# so this is not part of requirements.txt (it pulls torch + warp-lang, ~1 GB).
+#
+# Install:
+#   backend/.venv/Scripts/python.exe -m pip install -r backend/requirements-anny.txt
+# Regenerate:
+#   backend/.venv/Scripts/python.exe verification/scripts/build_anny_bases.py
+anny>=0.6,<0.7

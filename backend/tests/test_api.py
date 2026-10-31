@@ -15,7 +15,7 @@ def test_validation_lifecycle_and_deletion(monkeypatch, tmp_path):
     monkeypatch.setattr(main, "DATA", tmp_path)
     monkeypatch.setattr(main, "readiness", lambda: (True, "Ready"))
 
-    def fake_reconstruct(front, side, height, path, report):
+    def fake_reconstruct(front, side, height, path, report, capture_mode="full_body", sex="auto"):
         report("testing")
         path.write_bytes(b"glTF-test-only")
         return ["test only"], {"height_cm": height, "chest_cm": 95, "waist_cm": 75, "hip_cm": 100, "inseam_cm": None}, {"fit_status": "matched", "validation": "not_validated"}

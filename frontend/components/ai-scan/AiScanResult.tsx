@@ -3,6 +3,7 @@
 import {
   AlertCircle,
   ArrowRight,
+  Camera,
   CheckCircle2,
   RotateCcw,
   ScanLine,
@@ -30,6 +31,7 @@ export default function AiScanResult({
   onReset,
   onSwitchTo3D,
   onOpenSizeChart,
+  onBuild3D,
 }: {
   result: AiScanResultData;
   product: Product;
@@ -37,6 +39,7 @@ export default function AiScanResult({
   onReset: () => void;
   onSwitchTo3D: () => void;
   onOpenSizeChart?: () => void;
+  onBuild3D: () => void;
 }) {
   const upper = result.capture_mode === "upper_body";
   const advice = computeClientSizeAdvice(result.measurements, product.chart);
@@ -69,6 +72,8 @@ export default function AiScanResult({
         AI Vision ước lượng số đo trực tiếp từ hai ảnh chính diện và nghiêng. Đây là
         tính năng thử nghiệm, <strong>chưa kiểm chứng trên người thật</strong> và không
         dùng cho may đo. Ảnh chỉ được xử lý trong bộ nhớ, không lưu trên máy chủ MORPH.
+        Bạn có thể dựng mô hình 3D từ chính hai ảnh này; mô hình do MediaPipe dựng theo
+        đường viền, còn số đo AI ở trên chỉ dùng để gợi ý size.
       </p>
 
       <div className="ai-scan-meta">
@@ -197,14 +202,18 @@ export default function AiScanResult({
       )}
 
       <div className="ai-scan-actions">
+        <button className="scan-size-apply-btn" type="button" onClick={onBuild3D}>
+          <ScanLine size={15} />
+          Dựng mô hình 3D từ hai ảnh này
+          <ArrowRight size={14} />
+        </button>
         <button className="scan-btn-subtle" type="button" onClick={onReset}>
           <RotateCcw size={15} />
           Quét lại bằng AI
         </button>
         <button className="scan-btn-subtle" type="button" onClick={onSwitchTo3D}>
-          <ScanLine size={15} />
-          Chuyển sang quét 3D
-          <ArrowRight size={14} />
+          <Camera size={15} />
+          Quét 3D bằng camera
         </button>
       </div>
     </div>

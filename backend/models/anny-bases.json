@@ -1,0 +1,43 @@
+{
+  "source": "Anny 0.6.1 (NAVER Labs Europe), topology=anny, local_changes=v2-weak",
+  "basis_version": 2,
+  "license": "Apache-2.0 code; MPFB2 MakeHuman assets CC0-1.0",
+  "frame": "Y up, feet at y=0, front +Z, height 1.0, centred on x/z",
+  "sexes": [
+    "female",
+    "male"
+  ],
+  "weights": [
+    0.3,
+    0.5,
+    0.7
+  ],
+  "muscles": [
+    0.35,
+    0.6
+  ],
+  "local_changes": {
+    "female": {
+      "breast-volume-vert-up": 0.15,
+      "breast-point-incr": 0.05,
+      "buttocks-volume-incr": 0.1,
+      "hip-scale-horiz-incr": 0.1,
+      "hip-trans-out": 0.05
+    },
+    "male": {
+      "torso-vshape-incr": 0.25,
+      "torso-muscle-pectoral-incr": 0.05,
+      "l-upperarm-shoulder-muscle-incr": 0.2,
+      "r-upperarm-shoulder-muscle-incr": 0.2,
+      "buttocks-volume-incr": 0.02
+    }
+  },
+  "smoothing": {
+    "passes": 0,
+    "lamb": 0.45,
+    "nu": 0.48
+  },
+  "vertex_count": 13718,
+  "face_count": 27420,
+  "generated_at": "2026-10-24"
+}

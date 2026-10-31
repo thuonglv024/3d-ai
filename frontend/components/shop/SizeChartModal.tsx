@@ -71,6 +71,38 @@ export default function SizeChartModal({
           </tbody>
         </table>
 
+        {product.garment_specs && product.garment_specs.length > 0 && (
+          <div className="shop-garment-specs">
+            <h3>Số đo may (trải phẳng)</h3>
+            <p>
+              Vòng ngực áo = chiều rộng ngực trải phẳng × 2.{" "}
+              {product.garment_source ? `Nguồn: ${product.garment_source}.` : ""}
+            </p>
+            <table className="shop-size-table">
+              <thead>
+                <tr>
+                  <th>Size</th>
+                  <th>Vòng ngực áo</th>
+                  <th>Dài áo</th>
+                  <th>Rộng vai</th>
+                  <th>Dài tay</th>
+                </tr>
+              </thead>
+              <tbody>
+                {product.garment_specs.map((spec) => (
+                  <tr key={spec.size}>
+                    <th>{spec.size}</th>
+                    <td>{spec.chest_cm != null ? `${spec.chest_cm} cm` : "—"}</td>
+                    <td>{spec.length_cm != null ? `${spec.length_cm} cm` : "—"}</td>
+                    <td>{spec.shoulder_cm != null ? `${spec.shoulder_cm} cm` : "—"}</td>
+                    <td>{spec.sleeve_cm != null ? `${spec.sleeve_cm} cm` : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
         <div className="chart-disclaimer">
           <p>
             Nếu số đo của bạn nằm giữa hai size, hãy chọn size lớn hơn nếu thích mặc rộng rãi hoặc size nhỏ hơn nếu thích ôm vừa vặn.

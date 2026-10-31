@@ -1,0 +1,21 @@
+{
+  "source": "Anny 0.6.1 (NAVER Labs Europe), topology=anny, local_changes=default",
+  "license": "Apache-2.0 code; MPFB2 MakeHuman assets CC0-1.0",
+  "frame": "Y up, feet at y=0, front +Z, height 1.0, centred on x/z",
+  "sexes": [
+    "female",
+    "male"
+  ],
+  "weights": [
+    0.3,
+    0.5,
+    0.7
+  ],
+  "muscles": [
+    0.35,
+    0.6
+  ],
+  "vertex_count": 13718,
+  "face_count": 27420,
+  "generated_at": "2026-10-21"
+}

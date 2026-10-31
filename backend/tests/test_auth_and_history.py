@@ -30,7 +30,7 @@ def test_app_and_db(tmp_path, monkeypatch):
     monkeypatch.setenv("MORPH_ORDERS_DB", str(db_file))
     monkeypatch.setattr(main, "readiness", lambda: (True, "Ready"))
 
-    def fake_reconstruct(front, side, height, path, report, capture_mode="full_body"):
+    def fake_reconstruct(front, side, height, path, report, capture_mode="full_body", sex="auto"):
         report("testing")
         path.write_bytes(b"glTF-test-only")
         return (

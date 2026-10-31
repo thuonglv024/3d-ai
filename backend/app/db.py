@@ -485,6 +485,8 @@ def _reconstruct_product(
                     "source": row["chart_source"] or parsed_chart.get("source", "illustrative"),
                     "measurement_basis": row["chart_measurement_basis"] or parsed_chart.get("measurement_basis", "body_cm"),
                     "rows": parsed_chart.get("rows", []),
+                    "garment_specs": parsed_chart.get("garment_specs", []),
+                    "garment_source": parsed_chart.get("garment_source"),
                 }
             elif isinstance(parsed_chart, list):
                 chart = {
@@ -493,6 +495,7 @@ def _reconstruct_product(
                     "source": row["chart_source"] or "illustrative",
                     "measurement_basis": row["chart_measurement_basis"] or "body_cm",
                     "rows": parsed_chart,
+                    "garment_specs": [],
                 }
         except Exception:
             chart = None
@@ -523,6 +526,8 @@ def _reconstruct_product(
         "isNew": bool(row["is_new"]),
         "isFeatured": bool(row["is_featured"]),
         "chart": chart,
+        "garment_specs": (chart or {}).get("garment_specs", []),
+        "garment_source": (chart or {}).get("garment_source"),
         "variants": variants,
         "images": [
             {

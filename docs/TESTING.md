@@ -17,7 +17,7 @@ Tài liệu này mô tả cấu trúc kiểm thử hiện tại của **MORPH AI
 
 ---
 
-## 2. Chạy bộ kiểm thử Backend (`pytest` — 107 tests)
+## 2. Chạy bộ kiểm thử Backend (`pytest` — 148 tests)
 
 Luôn sử dụng Python trong môi trường ảo của dự án (`backend/.venv/Scripts/python.exe`), không dùng alias Python của Windows Store:
 
@@ -36,7 +36,7 @@ D:\MORPH-AI\backend\.venv\Scripts\python.exe -m pytest D:\MORPH-AI\backend\tests
 3. **[`test_camera_fusion.py`](file:///d:/MORPH-AI/backend/tests/test_camera_fusion.py)**:
    - Kiểm thử Tầng 2 ([`camera_fusion.py`](file:///d:/MORPH-AI/backend/app/camera_fusion.py)): đồng bộ mốc giải phẫu `aligned_torso_landmarks`, khóa tỷ lệ quy đổi chung `fuse_camera_scale`, kiểm định chênh lệch khoảng cách đứng `assess_cross_view_quality` và bảo toàn tỷ lệ $D/W$ (`0.00%` sai lệch).
 4. **[`test_catalog_db.py`](file:///d:/MORPH-AI/backend/tests/test_catalog_db.py)**:
-   - Kiểm tra seed 160 sản phẩm (80 Nam, 80 Nữ, 10 danh mục $\times$ 8 sản phẩm), bảng size, biến thể màu/tồn kho và bộ lọc tìm kiếm.
+   - Kiểm tra seed 162 sản phẩm (5 danh mục, gồm 2 áo thun có số đo may), bảng size, biến thể màu/tồn kho và bộ lọc tìm kiếm.
 5. **[`test_orders.py`](file:///d:/MORPH-AI/backend/tests/test_orders.py)**:
    - Kiểm tra đặt hàng `POST /api/orders`, chuẩn hóa số điện thoại Việt Nam, trừ tồn kho nguyên tử (`BEGIN IMMEDIATE;`), chống đặt vượt tồn kho (`400 Bad Request` + rollback), chống trùng đơn qua `Idempotency-Key` (`409 Conflict` nếu khác payload) và phân quyền xem đơn hàng (`order_token` / chủ đơn).
 6. **[`test_photo_measurements.py`](file:///d:/MORPH-AI/backend/tests/test_photo_measurements.py)** & **[`test_measurements.py`](file:///d:/MORPH-AI/backend/tests/test_measurements.py)**:
@@ -45,6 +45,14 @@ D:\MORPH-AI\backend\.venv\Scripts\python.exe -m pytest D:\MORPH-AI\backend\tests
    - Kiểm thử thuật toán gợi ý size theo từng nhóm trang phục (`top`, `bottom`, `dress`, `outerwear`), lọc bỏ `template_model` / `unavailable` / `<= 0` qua `filter_valid_sizing_measurements`, và xử lý biên giữa 2 size.
 8. **[`test_upper_body.py`](file:///d:/MORPH-AI/backend/tests/test_upper_body.py)**, **[`test_capture.py`](file:///d:/MORPH-AI/backend/tests/test_capture.py)**, **[`test_reconstruction.py`](file:///d:/MORPH-AI/backend/tests/test_reconstruction.py)** & **[`test_images.py`](file:///d:/MORPH-AI/backend/tests/test_images.py)**:
    - Kiểm thử Tầng 1 ([`reconstruction.py`](file:///d:/MORPH-AI/backend/app/reconstruction.py)): hàm `estimate_upper_body_height` đa mỏ neo, độ nhạy với chiều cao nhập lệch $\pm 5\text{ cm}$ / trang phục dày / góc xoay lệch, và kiểm tra đầy đủ metadata provenance trong [`report.py`](file:///d:/MORPH-AI/backend/app/report.py).
+9. **[`test_anny_body.py`](file:///d:/MORPH-AI/backend/tests/test_anny_body.py)**:
+   - Kiểm tra basis Anny: frame mét/Y-up/chân ở `y=0`, prior cân nặng làm rộng eo, prior giới làm thay đổi hình học, ánh xạ `weight` bị chặn biên, fit lại chu vi `0.00 cm` và báo lỗi rõ khi thiếu asset.
+10. **[`test_anatomy.py`](file:///d:/MORPH-AI/backend/tests/test_anatomy.py)**:
+   - Kiểm tra `resolve_sex`, `shape_sex`, `depth_weights`, `template_landmarks` và fallback `deform_template` của engine cũ.
+11. **[`test_fitmap.py`](file:///d:/MORPH-AI/backend/tests/test_fitmap.py)**:
+   - Kiểm tra ước lượng chật/rộng theo vùng, ngưỡng dệt kim/dệt thoi, size không tồn tại, thiếu số đo, `basis=garment_flat_spec` khi sản phẩm có số đo may công bố và endpoint `/api/fit-map`.
+12. **[`test_refit.py`](file:///d:/MORPH-AI/backend/tests/test_refit.py)**:
+   - Kiểm tra `refit_avatar` dựng lại chu vi theo số đo sửa tay, đổi chiều cao mô hình, đổi nguồn sang `user_input`, và `PATCH /api/scans/{key}/measurements` (403/400/404, `revision`, `overrides`).
 
 ---
 

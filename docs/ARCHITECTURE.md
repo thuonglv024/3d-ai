@@ -16,7 +16,7 @@ graph TD
     FastAPI["FastAPI Backend (Python 3.11)"]
     MediaPipe["MediaPipe Pose Landmarker & Segmentation (CPU)"]
     Fusion["Pipeline 3 Tầng: Multi-Anchor + Camera Fusion + Anatomical Fit"]
-    MakeHuman["CC0 MakeHuman Template Deformer (.glb)"]
+    MakeHuman["Anny Body Basis (.npz) + MakeHuman fallback (.obj)"]
     SQLite[(".runtime/orders.db (SQLite WAL)")]
 
     Client -->|HTTP + HttpOnly Cookie morph_session| Proxy
@@ -70,9 +70,9 @@ graph TD
 
 ### 3.3. Cửa Hàng Thời Trang Đa Sản Phẩm (`Catalog` & `Storefront`)
 - **Cơ sở dữ liệu Catalog SQLite** ([`backend/app/catalog.py`](file:///d:/MORPH-AI/backend/app/catalog.py), [`backend/app/seed.py`](file:///d:/MORPH-AI/backend/app/seed.py), [`backend/app/catalog_seed_data.py`](file:///d:/MORPH-AI/backend/app/catalog_seed_data.py)):
-  - **160 sản phẩm** chia đều cho 5 danh mục: Áo thun (`ao-thun`), Sơ mi (`so-mi`), Áo khoác (`ao-khoac`), Quần (`quan`), Váy & Đầm (`vay`) — mỗi danh mục 32 sản phẩm.
-  - **1.671 biến thể SKU** (`product_variants`) theo màu sắc × kích cỡ × tồn kho thực tế (`stock`).
-  - **27 bảng size** (`size_charts`) tính theo số đo cơ thể (`body_cm`).
+  - **162 sản phẩm** trên 5 danh mục: Áo thun (`ao-thun`, 34 sản phẩm — gồm 2 mẫu có số đo may công bố), Sơ mi (`so-mi`), Áo khoác (`ao-khoac`), Quần (`quan`), Váy & Đầm (`vay`) — mỗi danh mục còn lại 32 sản phẩm.
+  - **1.691 biến thể SKU** (`product_variants`) theo màu sắc × kích cỡ × tồn kho thực tế (`stock`).
+  - **29 bảng size** (`size_charts`) tính theo số đo cơ thể (`body_cm`), 2 bảng kèm `garment_specs` (số đo may trải phẳng).
   - **320 ảnh sản phẩm studio v2** tại `frontend/public/products/v2/` (tỷ lệ 3:4 `1200×1600px`, gồm ảnh chính và ảnh phóng to chi tiết chất liệu, quản lý tại `backend/scripts/catalog_asset_manifest_v2.json`).
 - **Trải nghiệm tìm kiếm & lọc** ([`StorefrontHome.tsx`](file:///d:/MORPH-AI/frontend/components/shop/StorefrontHome.tsx), [`ProductFilter.tsx`](file:///d:/MORPH-AI/frontend/components/shop/ProductFilter.tsx)):
   - Phân trang 24 sản phẩm/trang đồng bộ hai chiều với URL query params (`?page=...&category=...&sort=...`).

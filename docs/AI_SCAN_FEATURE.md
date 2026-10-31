@@ -91,14 +91,16 @@ Có thể test graph mà không gọi mạng bằng một fake model (xem
    Có thể dùng biến môi trường `GEMINI_API_KEY` thay cho `GOOGLE_API_KEY`.
    `MORPH_AI_MODEL` có thể đổi sang model Gemini khác hỗ trợ ảnh.
 
-3. Khởi động lại backend. Kiểm tra:
+3. Không cần khởi động lại: backend đọc lại `backend/.env` mỗi khi file thay đổi
+   (thêm/rotate key có hiệu lực ở request kế tiếp). Kiểm tra:
 
    ```powershell
    curl http://127.0.0.1:8000/api/ai-scan/health
    ```
 
    Khi chưa có key, endpoint trả `ready: false` và UI hiển thị
-   “Chưa cấu hình GOOGLE_API_KEY”; **không sinh kết quả giả**.
+   “Chưa cấu hình GOOGLE_API_KEY”; **không sinh kết quả giả**. Nếu key sai/hết hạn,
+   `/analyze` trả `503` với thông báo cập nhật key, không phải lỗi chung 502.
 
 ---
 
@@ -140,12 +142,20 @@ Response `200` (rút gọn):
     "chest_cm": 95.0,
     "waist_cm": 77.0,
     "hip_cm": null,
-    "shoulder_width_cm": 39.0
+    "shoulder_width_cm": 39.0,
+    "chest_width_cm": 31.0,
+    "chest_depth_cm": 22.0,
+    "waist_width_cm": 27.0,
+    "waist_depth_cm": 19.0,
+    "hip_width_cm": null,
+    "hip_depth_cm": null
   },
   "details": [
-    { "key": "chest_cm", "label": "Vòng ngực", "value_cm": 95.0, "source": "ai_vision_estimate" }
+    { "key": "chest_cm", "label": "Vòng ngực", "value_cm": 95.0, "source": "ai_vision_estimate" },
+    { "key": "chest_width_cm", "label": "Ngang ngực", "value_cm": 31.0, "source": "ai_vision_estimate" }
   ],
   "confidence": 0.72,
+  "shape_confidence": 0.64,
   "pose_quality": "good",
   "notes": "...",
   "warnings": [],
@@ -176,8 +186,12 @@ file, không lưu job/DB. Kết quả AI không được tự động lưu vào 
      AI **tự động phân tích** ngay; không cần bấm thêm.
 - Thêm **khung tư thế** (đầu/vai/eo/hông/bàn chân) trên preview camera, chuyển sang màu vàng
   khi tư thế và chất lượng ảnh đạt.
+- Số đo AI gồm cả **cặp ngang/sâu** (`chest_width/depth`, `waist_width/depth`, và hông khi
+  `full_body`) để mô tả hình khối thân; mỗi cặp được kiểm tra chéo với chu vi tương ứng
+  (lệch > 8% sinh cảnh báo, không tự sửa số).
 - Kết quả AI tái sử dụng `computeClientSizeAdvice` để gợi ý size và các class kết quả sẵn có;
-  có nút “Quét lại bằng AI” và “Chuyển sang quét 3D”.
+  có nút **Dựng mô hình 3D từ hai ảnh này** (tái dùng `POST /api/scans`, mesh do MediaPipe
+  dựng từ đường viền), **Quét lại bằng AI** và **Quét 3D bằng camera**.
 
 ---
 
@@ -203,7 +217,9 @@ phải kiểm định trên người thật.
 1. AI ước lượng **không có ground truth** và chưa được kiểm định trên người thật.
 2. Chất lượng phụ thuộc ánh sáng, trang phục, góc chụp và model Gemini; kết quả có thể `null`
    hoặc bị cảnh báo.
-3. Không tạo mô hình 3D, không lưu lịch sử, không thay thế `/api/scans`.
+3. Endpoint AI **không tạo GLB** và không lưu lịch sử. Nếu người dùng bấm **Dựng mô hình 3D
+   từ hai ảnh này**, frontend gọi `POST /api/scans` với đúng hai ảnh đó: mô hình do MediaPipe
+   dựng từ đường viền, còn số đo AI chỉ dùng để gợi ý size — hai nguồn không trộn số.
 4. Chi phí và độ trễ phụ thuộc tài khoản Gemini; endpoint có timeout 90 giây.
 5. Không dùng mode này cho mục đích y tế, may đo chuyên nghiệp hoặc nhận diện danh tính.
 

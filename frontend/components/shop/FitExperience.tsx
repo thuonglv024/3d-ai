@@ -58,6 +58,7 @@ export default function FitExperience({
   const [scanMode, setScanMode] = useState<"classic" | "ai">("ai");
   const [uploadPair, setUploadPair] = useState<AiUploadPair>({ front: null, side: null });
   const lastUploadSignature = useRef("");
+  const aiPairRef = useRef<{ front: File; side: File } | null>(null);
   const ai = useAiScan();
   const aiUnavailable = ai.health !== null && !ai.health.ready;
   const validHeight =
@@ -89,6 +90,7 @@ export default function FitExperience({
     if (lastUploadSignature.current === uploadSignature) return;
     if (!uploadPair.front || !uploadPair.side) return;
     lastUploadSignature.current = uploadSignature;
+    aiPairRef.current = { front: uploadPair.front, side: uploadPair.side };
     void ai.analyze({ front: uploadPair.front, side: uploadPair.side }, s.height, s.captureMode);
   }, [
     uploadSignature,
@@ -137,6 +139,16 @@ export default function FitExperience({
 
   const currentJob: Job | null = s.job || scanContext.job;
   const isBusy = s.busy || currentJob?.status === "queued" || currentJob?.status === "processing";
+
+  // When the AI result is used to build the 3D model, keep the AI measurements
+  // visible until the job actually completes; only then swap to the classic view.
+  useEffect(() => {
+    if (scanMode === "ai" && ai.result && currentJob?.status === "completed") {
+      ai.reset();
+      resetAiUpload();
+      setScanMode("classic");
+    }
+  }, [scanMode, ai.result, currentJob?.status, ai.reset, resetAiUpload]);
 
   useEffect(() => {
     if (!active) setCapturing(false);
@@ -230,8 +242,32 @@ export default function FitExperience({
             resetAiUpload();
             setScanMode("classic");
           }}
+          onBuild3D={() => {
+            const result = ai.result;
+            if (!result) return;
+            const m = result.measurements;
+            if (!m) return;
+            const heightCm = m.height_cm || Number(s.height) || 170;
+            void s.buildFromMeasurements({
+              height_cm: heightCm,
+              sex: s.sex,
+              capture_mode: s.captureMode,
+              measurements: {
+                chest_cm: m.chest_cm ?? null,
+                waist_cm: m.waist_cm ?? null,
+                hip_cm: m.hip_cm ?? null,
+                shoulder_width_cm: m.shoulder_width_cm ?? null,
+              },
+            });
+          }}
           onOpenSizeChart={onOpenSizeChart}
         />
+        {isBusy && <p className="scan-loading">Đang dựng mô hình 3D…</p>}
+        {s.error && (
+          <p className="fit-error" role="alert" style={{ margin: "0 24px 16px" }}>
+            {s.error}
+          </p>
+        )}
       </div>
     );
   }
@@ -288,6 +324,24 @@ export default function FitExperience({
     );
   }
 
+  if (currentJob && currentJob.status === "failed") {
+    return (
+      <div className="fit-experience">
+        {renderProductContextBar()}
+        <div className="scan-intro">
+          <h1>Chưa dựng được mô hình 3D</h1>
+          <p role="alert">
+            {currentJob.error || s.error || scanContext.jobError ||
+              "Ảnh chưa đủ thông tin để dựng hình. Hãy quét lại hoặc thử ảnh khác."}
+          </p>
+          <button type="button" className="shop-primary" onClick={() => void handleReset()}>
+            Quét lại
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (capturing && active) {
     return (
       <div className="fit-experience fit-experience-capturing">
@@ -299,6 +353,7 @@ export default function FitExperience({
           onComplete={(pair) => {
             setCapturing(false);
             if (scanMode === "ai") {
+              aiPairRef.current = pair;
               void ai.analyze(pair, s.height, s.captureMode);
               return;
             }
@@ -570,6 +625,22 @@ export default function FitExperience({
                 }
               />
             </div>
+            {scanMode !== "ai" && (
+              <div className="scan-framing-field scan-setup-wide">
+                <span className="scan-field-label">Dáng cơ thể cho mô hình 3D</span>
+                <CustomSelect
+                  id="scan-sex"
+                  value={s.sex}
+                  onChange={(val) => s.setSex(val as "auto" | "female" | "male")}
+                  ariaLabel="Dáng cơ thể cho mô hình 3D"
+                  options={[
+                    { value: "auto", label: "Tự động", sublabel: "Ước lượng từ tỉ lệ số đo" },
+                    { value: "female", label: "Nữ", sublabel: "Vai hẹp hơn, ngực và hông nữ" },
+                    { value: "male", label: "Nam", sublabel: "Vai rộng hơn, ngực phẳng" },
+                  ]}
+                />
+              </div>
+            )}
           </div>
           <div className="scan-preparation">
             <Sun size={20} />

@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from dataclasses import asdict, dataclass, field
 from hashlib import sha256
 import logging
+import os
 from pathlib import Path
 import secrets
 import threading
@@ -12,12 +13,15 @@ from typing import Literal, Optional, Union
 from uuid import uuid4
 
 import numpy as np
+from pydantic import BaseModel, Field
 
 from fastapi import FastAPI, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from .config import DATA, MAX_UPLOAD, RESULT_TTL_SECONDS
 from .images import InvalidPhoto, decode_photo
-from .reconstruction import ENGINE, capture_feedback, close_detector, readiness, reconstruct
+from . import anny_body
+from .fitmap import FitMapRequest, compute_fit_map
+from .reconstruction import ENGINE, build_from_measurements, capture_feedback, close_detector, readiness, reconstruct, refit_avatar
 from .sizing import (
     SizeChart,
     SizingRecommendRequest,
@@ -41,6 +45,13 @@ MAX_STORED_JOBS = 50
 JOB_PROCESSING_TIMEOUT_SECONDS = 120
 
 
+class MeasurementModelRequest(BaseModel):
+    height_cm: float = Field(..., ge=100, le=230)
+    sex: Literal["auto", "female", "male"] = "auto"
+    capture_mode: Literal["full_body", "upper_body"] = "full_body"
+    measurements: dict[str, Optional[float]] = Field(default_factory=dict)
+
+
 class SessionCancelled(Exception):
     """Raised when a job session was deleted while being processed."""
 
@@ -62,7 +73,11 @@ class Job:
     user_id: str | None = None
     guest_token: str | None = None
     capture_mode: str = "full_body"
+    sex: str = "auto"
     height_cm: float = 170.0
+    revision: int = 0
+    fitting: dict = field(default_factory=dict)
+    overrides: dict = field(default_factory=dict)
 
 
 jobs: dict[str, Job] = {}
@@ -171,7 +186,13 @@ def auto_save_scan_if_enabled(job: Job) -> None:
 @app.get("/api/health")
 def health():
     ready, message = readiness()
-    return {"ready": ready, "engine": ENGINE, "message": message, "retention_seconds": RESULT_TTL_SECONDS}
+    return {
+        "ready": ready,
+        "engine": ENGINE,
+        "body_model": anny_body.describe(),
+        "message": message,
+        "retention_seconds": RESULT_TTL_SECONDS,
+    }
 
 
 @app.post("/api/capture-check")
@@ -196,7 +217,7 @@ async def check_capture(photo: UploadFile = File(...), view: Literal["front", "s
     return JSONResponse(result, headers={"Cache-Control": "no-store"})
 
 
-def process(key: str, front_image: np.ndarray, side_image: np.ndarray, height_cm: float, capture_mode: str = "full_body"):
+def process(key: str, front_image: np.ndarray, side_image: np.ndarray, height_cm: float, capture_mode: str = "full_body", sex: str = "auto"):
     started = time.perf_counter()
     started_wall = time.time()
     with lock:
@@ -213,7 +234,7 @@ def process(key: str, front_image: np.ndarray, side_image: np.ndarray, height_cm
 
     path = DATA / f"{key}.glb"
     try:
-        result = reconstruct(front_image, side_image, height_cm, path, report, capture_mode) if capture_mode == "upper_body" else reconstruct(front_image, side_image, height_cm, path, report)
+        result = reconstruct(front_image, side_image, height_cm, path, report, capture_mode, sex)
         if isinstance(result, tuple) and len(result) == 3:
             warnings, measurements, profile = result
         elif isinstance(result, tuple) and len(result) == 2:
@@ -232,6 +253,7 @@ def process(key: str, front_image: np.ndarray, side_image: np.ndarray, height_cm
             job.warnings = warnings
             job.measurements = measurements
             job.body_profile = profile
+            job.fitting = profile.get("fitting", {})
             job.elapsed_seconds = round(time.perf_counter() - started, 4)
             job.finished = time.time()
 
@@ -253,6 +275,63 @@ def process(key: str, front_image: np.ndarray, side_image: np.ndarray, height_cm
                 jobs[key].finished = time.time()
 
 
+def process_measurements(key: str, req: MeasurementModelRequest):
+    started = time.perf_counter()
+    with lock:
+        if key not in jobs:
+            return
+        jobs[key].status = "processing"
+        jobs[key].started_processing = time.time()
+    path = DATA / f"{key}.glb"
+    try:
+        profile = build_from_measurements(req.measurements, req.height_cm, req.sex, req.capture_mode, path)
+        measurements = dict(req.measurements)
+        measurements["height_cm"] = req.height_cm
+        with lock:
+            if key not in jobs or jobs[key].status == "failed":
+                path.unlink(missing_ok=True)
+                return
+            job = jobs[key]
+            job.status = "completed"
+            job.stage = "Đã dựng hình"
+            job.model_url = f"/api/scans/{key}/model"
+            job.warnings = []
+            job.measurements = measurements
+            job.body_profile = profile
+            job.fitting = profile.get("fitting", {})
+            job.elapsed_seconds = round(time.perf_counter() - started, 4)
+            job.finished = time.time()
+        auto_save_scan_if_enabled(job)
+    except Exception as exc:
+        path.unlink(missing_ok=True)
+        logger.exception("Measurement build failed for job %s", key)
+        with lock:
+            if key in jobs:
+                jobs[key].status = "failed"
+                jobs[key].stage = "Cần kiểm tra số đo"
+                jobs[key].error = str(exc) if isinstance(exc, InvalidPhoto) else "Không dựng được hình từ số đo."
+                jobs[key].finished = time.time()
+
+
+@app.post("/api/scans/from-measurements", status_code=202)
+async def create_scan_from_measurements(request: Request, req: MeasurementModelRequest):
+    ready, _ = readiness()
+    if not ready:
+        raise HTTPException(503, "Backend chưa sẵn sàng.")
+    cleanup()
+    user = get_optional_user(request)
+    user_id = user["id"] if user else None
+    guest_token = None if user_id else secrets.token_urlsafe(24)
+    key = uuid4().hex
+    with lock:
+        if sum(j.status in {"queued", "processing"} for j in jobs.values()) >= MAX_ACTIVE_JOBS:
+            raise HTTPException(429, "Hàng đợi đã đầy. Hãy thử lại sau.")
+        jobs[key] = Job(id=key, user_id=user_id, guest_token=guest_token, capture_mode=req.capture_mode, sex=req.sex, height_cm=req.height_cm)
+        response = asdict(jobs[key])
+    executor.submit(process_measurements, key, req)
+    return response
+
+
 @app.post("/api/scans", status_code=202)
 async def create_scan(
     request: Request,
@@ -261,6 +340,7 @@ async def create_scan(
     height_cm: float = Form(..., ge=100, le=230),
     consent: bool = Form(False),
     capture_mode: Literal["full_body", "upper_body"] = Form("full_body"),
+    sex: Literal["auto", "female", "male"] = Form("auto"),
 ):
     if not consent:
         raise HTTPException(400, "Cần đồng ý xử lý ảnh trước khi scan.")
@@ -302,10 +382,11 @@ async def create_scan(
             user_id=user_id,
             guest_token=guest_token,
             capture_mode=capture_mode,
+            sex=sex,
             height_cm=height_cm,
         )
         response = asdict(jobs[key])
-    executor.submit(process, key, front_image, side_image, height_cm, capture_mode)
+    executor.submit(process, key, front_image, side_image, height_cm, capture_mode, sex)
     return response
 
 
@@ -321,6 +402,72 @@ def get_scan(key: str, request: Request, guest_token: Optional[str] = Query(None
         if job.user_id is not None:
             payload["guest_token"] = None
         return payload
+
+
+class MeasurementPatch(BaseModel):
+    height_cm: Optional[float] = Field(None, ge=100, le=230)
+    chest_cm: Optional[float] = Field(None, ge=40, le=200)
+    waist_cm: Optional[float] = Field(None, ge=30, le=200)
+    hip_cm: Optional[float] = Field(None, ge=40, le=200)
+
+
+@app.patch("/api/scans/{key}/measurements")
+def patch_measurements(key: str, req: MeasurementPatch, request: Request, guest_token: Optional[str] = Query(None)):
+    """Apply user-corrected measurements and rebuild the avatar without the photos."""
+    cleanup()
+    with lock:
+        job = jobs.get(key)
+        if job is None:
+            raise HTTPException(404, "Phiên đã hết hạn hoặc không tồn tại.")
+        check_scan_access(job, request, guest_token=guest_token)
+        if job.status != "completed":
+            raise HTTPException(409, "Cần hoàn tất quét trước khi sửa số đo.")
+        changes = {name: value for name, value in req.model_dump().items() if value is not None}
+        if not changes:
+            raise HTTPException(400, "Chưa có số đo nào để cập nhật.")
+        fitting = dict(job.fitting or {})
+        if not fitting.get("targets"):
+            raise HTTPException(409, "Phiên này không lưu dữ liệu dựng lại. Hãy quét lại.")
+        measurements = dict(job.measurements or {})
+        overrides = dict(job.overrides or {})
+        height_cm = float(changes.pop("height_cm", measurements.get("height_cm") or job.height_cm))
+        measurements.update(changes)
+        measurements["height_cm"] = height_cm
+        overrides.update(changes)
+        if abs(height_cm - float(job.height_cm)) > 1e-6:
+            overrides["height_cm"] = height_cm
+        base_warnings = [warning for warning in (job.warnings or []) if "chỉnh tay" not in warning]
+
+    path = DATA / f"{key}.glb"
+    temp = DATA / f"{key}.refit.glb"
+    try:
+        profile = refit_avatar(fitting, measurements, overrides, height_cm, temp)
+    except InvalidPhoto as exc:
+        temp.unlink(missing_ok=True)
+        raise HTTPException(400, str(exc)) from exc
+    except Exception as exc:  # pragma: no cover - geometry failure path
+        temp.unlink(missing_ok=True)
+        logger.exception("Refit failed for job %s", key)
+        raise HTTPException(500, "Không dựng lại được mô hình với số đo mới.") from exc
+
+    os.replace(temp, path)
+    with lock:
+        job = jobs.get(key)
+        if job is None:
+            path.unlink(missing_ok=True)
+            raise HTTPException(404, "Phiên đã hết hạn trong lúc dựng lại.")
+        profile["quality_diagnostics"] = (job.body_profile or {}).get("quality_diagnostics", {})
+        job.measurements = measurements
+        job.body_profile = profile
+        job.fitting = {**fitting, "height_cm": height_cm}
+        job.overrides = overrides
+        job.height_cm = height_cm
+        job.revision = int(job.revision) + 1
+        job.warnings = base_warnings + ["Số đo đã được bạn chỉnh tay; mô hình 3D và gợi ý size đã được dựng lại."]
+        payload = asdict(job)
+        if job.user_id is not None:
+            payload["guest_token"] = None
+    return JSONResponse(payload, headers={"Cache-Control": "no-store"})
 
 
 @app.get("/api/scans/{key}/model")
@@ -363,6 +510,20 @@ def size_advice(key: str, chart: SizeChart, request: Request, guest_token: Optio
             capture_mode=effective_mode,
         )
     return JSONResponse(recommend_size(measurements, chart), headers={"Cache-Control": "no-store"})
+
+
+@app.post("/api/fit-map")
+def fit_map(req: FitMapRequest):
+    """Estimated tight/loose regions for a size, from the size chart + measurements."""
+    identifier = req.product_id or req.product_slug
+    if not identifier:
+        raise HTTPException(400, "Cần product_id hoặc product_slug.")
+    product = get_product_by_slug_or_id(identifier)
+    if not product:
+        raise HTTPException(404, "Không tìm thấy sản phẩm.")
+    if not product.get("chart"):
+        raise HTTPException(400, "Sản phẩm không có bảng size.")
+    return JSONResponse(compute_fit_map(product, req.size, req.measurements), headers={"Cache-Control": "no-store"})
 
 
 @app.post("/api/sizing/recommend")
