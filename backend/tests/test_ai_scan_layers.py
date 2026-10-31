@@ -1,4 +1,4 @@
-"""Tests for the deterministic layers of the AI scan: ensemble, geometry fusion,
+﻿"""Tests for the deterministic layers of the AI scan: ensemble, geometry fusion,
 prior guard and prompt contract.
 
 No network calls and no Gemini key: every test uses fake members or hand-built
@@ -8,7 +8,11 @@ that the vision model is accurate. Accuracy needs tape-measured subjects.
 
 from __future__ import annotations
 
+import asyncio
+
 import pytest
+
+from app.ai_scan import ensemble
 
 from app.ai_scan.ensemble import aggregate_members, fuse_geometric
 from app.ai_scan.geometry import run_geometric_estimate
@@ -278,3 +282,31 @@ def test_user_prompt_carries_sex_mode_and_role():
 
 def test_each_role_gets_a_different_addendum():
     assert len(set(ROLE_ADDENDA.values())) == len(ROLE_ADDENDA) == 3
+
+
+def test_structured_output_can_be_skipped_with_env(monkeypatch):
+    """MORPH_AI_STRUCTURED=0: đi thẳng JSON để khỏi chờ 45 s structured rồi mới fallback."""
+    monkeypatch.setenv("MORPH_AI_STRUCTURED", "0")
+
+    class _Response:
+        content = '{"chest_cm": 95.0, "confidence": 0.7}'
+
+    class _Model:
+        def with_structured_output(self, *_args, **_kwargs):
+            raise AssertionError("không được gọi structured khi đã tắt")
+
+        async def ainvoke(self, _messages):
+            return _Response()
+
+    state = {"height_cm": 170.0, "capture_mode": "upper_body", "sex": "auto",
+             "front_data_url": "data:image/png;base64,AA==", "side_data_url": "data:image/png;base64,AA=="}
+    out = asyncio.run(ensemble.analyze_member(_Model(), "anchor", state))
+    assert out["estimate"]["chest_cm"] == 95.0
+
+
+def test_structured_budget_fits_inside_the_route_timeout():
+    from app.ai_scan import config
+
+    worst = ensemble.STRUCTURED_TIMEOUT_SECONDS + ensemble.JSON_TIMEOUT_SECONDS
+    assert worst < config.REQUEST_TIMEOUT_SECONDS
+

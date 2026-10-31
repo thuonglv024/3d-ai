@@ -24,6 +24,16 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Structured output (tool calling) is what the free tier answers 503 to.
+STRUCTURED_TIMEOUT_SECONDS = 45
+JSON_TIMEOUT_SECONDS = 120
+
+
+def structured_enabled() -> bool:
+    import os
+
+    return os.getenv('MORPH_AI_STRUCTURED', '1').strip().lower() not in {'0', 'false', 'off'}
+
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from .metrics import (
@@ -48,7 +58,7 @@ async def analyze_member(model: Any, role: str, state: dict[str, Any]) -> dict[s
     while plain vision requests still work, so a failure falls back to a plain
     JSON answer parsed locally. Same schema, same prompt, different transport.
     """
-    structured = model.with_structured_output(VisionMeasurementEstimate)
+    structured = None if not structured_enabled() else model.with_structured_output(VisionMeasurementEstimate)
     messages = [
         SystemMessage(content=SYSTEM_PROMPT),
         HumanMessage(
@@ -70,7 +80,9 @@ async def analyze_member(model: Any, role: str, state: dict[str, Any]) -> dict[s
         ),
     ]
     try:
-        estimate = await asyncio.wait_for(structured.ainvoke(messages), timeout=45)
+        if structured is None:
+            raise RuntimeError('MORPH_AI_STRUCTURED=0: bỏ qua structured output')
+        estimate = await asyncio.wait_for(structured.ainvoke(messages), timeout=STRUCTURED_TIMEOUT_SECONDS)
     except Exception as exc:  # noqa: BLE001 - transport fallback, see docstring
         logger.info("Structured call failed (%s); retrying as plain JSON", str(exc)[:120])
         estimate = await _json_fallback(model, messages, role)
@@ -95,7 +107,7 @@ async def _json_fallback(model: Any, messages: list[Any], role: str) -> VisionMe
         f"{keys}. Use null for any value you cannot support. Numbers are centimetres."
     )
     plain_messages = [SystemMessage(content=instruction)] + list(messages)
-    response = await model.ainvoke(plain_messages)
+    response = await asyncio.wait_for(model.ainvoke(plain_messages), timeout=JSON_TIMEOUT_SECONDS)
     text = response.content if hasattr(response, "content") else str(response)
     if isinstance(text, list):  # Gemini returns content parts
         text = "".join(part.get("text", "") if isinstance(part, dict) else str(part) for part in text)
@@ -276,6 +288,9 @@ def member_summaries(validated_members: list[dict[str, Any]]) -> list[dict[str, 
             "error": None,
         })
     return summaries
+
+
+
 
 
 
