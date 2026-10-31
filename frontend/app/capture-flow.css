@@ -1494,7 +1494,6 @@
 }
 
 .capture-pose-guide .pose-guide-silhouette,
-.capture-pose-guide .pose-guide-band,
 .capture-pose-guide .pose-guide-axis {
   fill: none;
   stroke: rgba(255, 255, 255, 0.55);
@@ -1505,24 +1504,9 @@
   vector-effect: non-scaling-stroke;
 }
 
-.capture-pose-guide .pose-guide-band {
-  stroke-dasharray: 4 6;
-  opacity: 0.85;
-}
-
 .capture-pose-guide .pose-guide-axis {
   stroke-dasharray: 3 9;
   opacity: 0.35;
-}
-
-.capture-pose-guide .pose-guide-label {
-  fill: rgba(255, 255, 255, 0.78);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  paint-order: stroke;
-  stroke: rgba(20, 19, 18, 0.55);
-  stroke-width: 2px;
 }
 
 .capture-pose-guide.is-ready {
@@ -1530,14 +1514,91 @@
 }
 
 .capture-pose-guide.is-ready .pose-guide-silhouette,
-.capture-pose-guide.is-ready .pose-guide-band,
 .capture-pose-guide.is-ready .pose-guide-axis {
   stroke: var(--primary);
 }
 
-.capture-pose-guide.is-ready .pose-guide-label {
-  fill: var(--primary);
-  stroke: rgba(20, 19, 18, 0.7);
+/* Three-marker aiming frame: band = allowed area, dot = live landmark position */
+.capture-aim-frame {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.capture-aim-band {
+  position: absolute;
+  border: 1px dashed rgba(255, 255, 255, 0.28);
+  border-radius: 14px;
+  filter: drop-shadow(0 0 2px rgba(20, 19, 18, 0.55));
+  transition: border-color 0.25s ease, background 0.25s ease;
+}
+
+.capture-aim-band-label {
+  position: absolute;
+  top: 4px;
+  left: 9px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+  text-shadow: 0 1px 3px rgba(20, 19, 18, 0.9);
+  transition: color 0.25s ease;
+}
+
+.capture-aim-band.is-on {
+  border-color: rgba(198, 161, 91, 0.75);
+  background: rgba(198, 161, 91, 0.06);
+}
+
+.capture-aim-band.is-on .capture-aim-band-label {
+  color: var(--primary);
+}
+
+.capture-aim-band.is-off {
+  border-color: #e0a25a;
+  background: rgba(224, 162, 90, 0.08);
+}
+
+.capture-aim-band.is-off .capture-aim-band-label {
+  color: #f0b97a;
+}
+
+.capture-aim-anchor {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+}
+
+.capture-aim-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.55);
+  background: rgba(20, 19, 18, 0.35);
+  box-shadow: 0 0 0 4px rgba(20, 19, 18, 0.25);
+  transition: border-color 0.25s ease, background 0.25s ease, box-shadow 0.25s ease;
+}
+
+.capture-aim-anchor.is-on .capture-aim-dot {
+  border-color: var(--primary);
+  background: var(--primary);
+  box-shadow: 0 0 0 4px rgba(198, 161, 91, 0.22);
+}
+
+.capture-aim-anchor.is-off .capture-aim-dot {
+  border-color: #e0a25a;
+  background: #e0a25a;
+  animation: aimPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes aimPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
 }
 
 /* AI result panel */

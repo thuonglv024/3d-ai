@@ -56,11 +56,41 @@ Pilot P01b (1 người, 156 cm, tape ngực 80 / eo 60 / hông 92, mặc áo len
   bắp/cẳng tay/đùi/bắp chân **chưa đo**.
 - **Ca nam 170 cm (tape 99/88/46; 29/28; dài tay 90)**: chưa có lần chạy hợp lệ — ảnh chính diện là nửa thân
   (chạm mép), ảnh nghiêng tay duỗi ngang làm silhouette vượt ngưỡng 0,40 H nên bị từ chối đúng.
-- **Còn lại theo kế hoạch**: U1 khung ngắm 3 mốc, U2 chặn thiếu vùng đo bằng landmark 23/24, U5 ẩn hông khi
+- **Còn lại theo kế hoạch**: U2 chặn thiếu vùng đo bằng landmark 23/24, U5 ẩn hông khi
   `upper_body`, A2b/A2c bắp-cẳng tay-đùi-bắp chân (mặt cắt vuông góc), C2/C3 trừ hao áo theo silhouette
   (trần 3 cm, có nhãn), K1 chạy `tape_eval` cho 2 người. K2/K3 **bị chặn**: cần ≥8 người có tape.
 - **Định nghĩa xong (QC)**: P01b ngực ≤81,5 · hông ≤93,5 · vai ≥39; ca nam ngực ≤100,5 · vai 46±2 ·
   dài tay 90±3; `pytest` xanh, `tsc` sạch, `/scan` 200; mỗi bước push `fity/feature/3d-scan`.
+
+### 0.8. U1 — khung ngắm 3 mốc trên preview camera (2026-11-01)
+- **Mục tiêu**: người dùng thấy đúng 3 mốc mà pipeline cần (đỉnh đầu – vai – hông) và biết mốc nào đang
+  lệch, thay vì chỉ nhận một câu từ chối chung; mốc lệch thì **không cho đếm ngược/chụp**.
+- **Đã làm** (`upper_body` và `full_body`):
+  - `frontend/lib/captureQuality.ts`: `extractAimAnchors()` lấy đỉnh đầu bằng **ngoại suy** từ mũi + vai theo
+    đúng tỉ lệ backend dùng (`0,195 H` / `0,125 H`), fallback theo span vai–hông khi mũi bị che;
+    `evaluateAimFrame()` kiểm tra thứ tự 3 mốc, span vai–hông ≥ 0,20 khung, vai ngang ở góc chính diện và
+    từng dải; `evaluateClientFrameQuality()` thêm `issue: "aim_frame_off"` ở ưu tiên 5 (sau cross-view,
+    trước nhoè/motion) nên mất điều kiện là đếm ngược dừng như các cổng cũ.
+  - `frontend/components/shop/PoseGuide.tsx`: vẽ 3 dải ĐẦU/VAI/HÔNG + 3 điểm mốc lấy từ landmark thật;
+    bỏ 3 vạch Vai/Eo/Cạp quần và nhãn cũ (trùng nhãn với khung ngắm).
+  - `frontend/components/shop/CaptureSession.tsx` truyền `qualityEval?.aim`; `frontend/app/capture-flow.css`
+    thêm `.capture-aim-*`: vàng khi mốc nằm trong dải, cam nhấp nháy khi lệch.
+- **Ngưỡng dải** (chỉ là khung ngắm, **không phải số đo**): `upper_body` đầu 0,04–0,26 · vai 0,20–0,50 ·
+  hông 0,46–0,90; `full_body` 0,02–0,16 · 0,14–0,34 · 0,38–0,66; trục x 0,18–0,82 cho cả ba.
+- **Kiểm chứng thật**: `node verification/scripts/test_capture_quality.cjs` → **24/24** (thêm 8 check U1);
+  `npm run typecheck` sạch; `node verification/scripts/test_capture_session_e2e.cjs` → **8/8** kịch bản
+  Chromium, 0 page error; ảnh `output/runs/run-20261014-v2/capture-e2e/03-front-countdown-window.png` thấy
+  3 dải + 3 mốc vàng; `pytest backend/tests -q` → **236 passed**.
+- **Sửa kèm (không liên quan U1)**: 2 assertion `countdownDurationMs = 5000` trong `test_capture_quality.cjs`
+  đã cũ từ commit đổi 5 s → 2 s (bộ test đỏ sẵn trước U1) — cập nhật theo giá trị thật 2000 và mốc thời gian;
+  `fetchFitMap()` từ chối payload thiếu `regions/overall/warnings` (trước đó `FitMapPanel` ném lỗi render,
+  làm sập trang kết quả khi `/api/fit-map` trả body lạ — lộ ra ở một lần chạy E2E).
+- **Giới hạn**: khung ngắm không đo gì và không thay `/api/capture-check`; khi backend từ chối, response trả
+  `landmarks: []` nên 3 điểm mốc biến mất (chỉ còn 3 dải) — người dùng vẫn đọc thông báo lỗi của backend;
+  đỉnh đầu là **ước lượng** từ mũi/vai, không phải landmark MediaPipe; ngưỡng dải mới kiểm bằng landmark
+  tổng hợp + Chromium, **chưa thử trên người thật**.
+- **Còn lại**: U2, U5, A2b/A2c, C2/C3, K1 như mục 0.7.
+
 ### 0.6. Giảm AI xuống 1 lượt + sửa rộng vai thiếu 10 cm (2026-11-01)
 - **AI còn 1 lượt gọi/scan**: `ai_scan/config.py` → `DEFAULT_ENSEMBLE_SIZE = 1`, `DEFAULT_TEMPERATURE = 0.0`.
   Lý do: người dùng chỉ có hạn mức miễn phí (20 request/ngày) và muốn ít phụ thuộc AI; temperature 0 để 2 lần

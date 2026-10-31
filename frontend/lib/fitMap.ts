@@ -53,5 +53,11 @@ export async function fetchFitMap(
     }
     throw new Error(message);
   }
-  return (await response.json()) as FitMapResult;
+  const body = (await response.json()) as Partial<FitMapResult> | null;
+  // A response without regions/overall cannot be rendered; fail here instead of
+  // letting FitMapPanel throw during render and take the whole result page down.
+  if (!body || !Array.isArray(body.regions) || !body.overall || !Array.isArray(body.warnings)) {
+    throw new Error("Phản hồi bản đồ độ vừa không hợp lệ. Hãy thử lại.");
+  }
+  return body as FitMapResult;
 }

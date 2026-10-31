@@ -111,7 +111,7 @@ function testThresholdsAndQualityGates() {
   assert.strictEqual(t.maxLandmarkMotion, 0.018, "maxLandmarkMotion must be 0.018");
   assert.strictEqual(t.minLandmarkVisibility, 0.55, "minLandmarkVisibility must be 0.55");
   assert.strictEqual(t.minStableFramesBeforeCountdown, 3, "minStableFramesBeforeCountdown must be 3");
-  assert.strictEqual(t.countdownDurationMs, 5000, "countdownDurationMs must be 5000");
+  assert.strictEqual(t.countdownDurationMs, 2000, "countdownDurationMs must be 2000");
   assert.strictEqual(t.bestFrameWindowMs, 1600, "bestFrameWindowMs must be 1600");
   assert.strictEqual(t.maxCrossViewScaleDrift, 0.18, "maxCrossViewScaleDrift must be 0.18");
   pass("CAMERA_QUALITY_THRESHOLDS matches all required numerical specifications");
@@ -120,7 +120,7 @@ function testThresholdsAndQualityGates() {
   const custom = cq.resolveThresholds({ minBrightness: 60, maxCrossViewScaleDrift: 0.12 });
   assert.strictEqual(custom.minBrightness, 60);
   assert.strictEqual(custom.maxCrossViewScaleDrift, 0.12);
-  assert.strictEqual(custom.countdownDurationMs, 5000);
+  assert.strictEqual(custom.countdownDurationMs, 2000);
   pass("resolveThresholds supports overriding individual thresholds for testing & configuration");
 
   const baseLms = createLandmarks();
@@ -377,19 +377,19 @@ function testCountdownCancellation() {
   assert.strictEqual(state.stableFrames, 2);
   assert.strictEqual(state.deadlineMs, 0);
 
-  // Frame 3: reaches minStableFramesBeforeCountdown (3) -> countdown starts at t=1800, deadline=6800
+  // Frame 3: reaches minStableFramesBeforeCountdown (3) -> countdown starts at t=1800, deadline=3800
   state = cq.stepCountdownState(state, goodEval, 1800, { landmarks: lms, payload: "f3" });
   assert.strictEqual(state.stableFrames, 3);
-  assert.strictEqual(state.deadlineMs, 6800);
-  assert.strictEqual(state.countSeconds, 5);
+  assert.strictEqual(state.deadlineMs, 3800);
+  assert.strictEqual(state.countSeconds, 2);
   pass("Countdown starts only after 3 consecutive stable frames (minStableFramesBeforeCountdown = 3)");
 
-  // Advance to t=5600 (1200ms left, inside 1600ms best-frame window) -> buffers candidate
-  state = cq.stepCountdownState(state, goodEval, 5600, { landmarks: lms, payload: "f4_in_window" });
+  // Advance to t=2400 (1400ms left, inside the 1600ms best-frame window) -> buffers candidate
+  state = cq.stepCountdownState(state, goodEval, 2400, { landmarks: lms, payload: "f4_in_window" });
   assert.strictEqual(state.countSeconds, 2);
   assert.strictEqual(state.candidateBuffer.length, 1);
 
-  // At t=6000 (800ms left), user moves abruptly -> must cancel countdown IMMEDIATELY
+  // At t=3000 (800ms left), user moves abruptly -> must cancel countdown IMMEDIATELY
   const movedLms = createLandmarks({ offsetX: 0.04 });
   const badMotionEval = cq.evaluateClientFrameQuality({
     imageData: sharpImg,
@@ -397,7 +397,7 @@ function testCountdownCancellation() {
     previousLandmarks: lms,
   });
 
-  state = cq.stepCountdownState(state, badMotionEval, 6000, {
+  state = cq.stepCountdownState(state, badMotionEval, 3000, {
     landmarks: movedLms,
     payload: "f5_bad",
   });
@@ -540,12 +540,111 @@ function testHardwareErrorsAndComponentIntegration() {
   pass("CaptureSession.tsx and FitExperience.tsx verified for full integration and honest disclosures");
 }
 
+// ============================================================================
+// 6. Test the Three-Marker Aiming Frame (U1)
+// ============================================================================
+function testAimFrame() {
+  console.log("\n=== 6. Testing the Three-Marker Aiming Frame (U1) ===");
+
+  const zones = cq.aimFrameZones("upper_body");
+  assert.strictEqual(zones.length, 3, "The aiming frame must define exactly three markers");
+  assert.deepStrictEqual(
+    zones.map((z) => z.key),
+    ["head", "shoulder", "hip"],
+    "The three markers must be crown, shoulder and hip, in body order"
+  );
+  assert.deepStrictEqual(
+    cq.aimFrameZones("full_body").map((z) => z.key),
+    ["head", "shoulder", "hip"]
+  );
+
+  const pending = cq.pendingAimFrame("upper_body");
+  assert.strictEqual(pending.ok, true);
+  assert.strictEqual(pending.anchors.length, 0, "Bands alone must not invent a body position");
+  assert.strictEqual(pending.zones.length, 3);
+  pass("Aiming frame exposes crown/shoulder/hip bands per capture mode without inventing anchors");
+
+  const base = createLandmarks(); // nose .16, shoulders .28, hips .58
+  const anchors = cq.extractAimAnchors(base);
+  assert.strictEqual(anchors.length, 3, "Three anchors must be extracted from a full pose");
+  assert(anchors[0].y < anchors[1].y && anchors[1].y < anchors[2].y, "Anchors must stay head < shoulder < hip");
+  assert(anchors[0].y < base[0][1], "Crown anchor must sit above the nose landmark");
+  assert(Math.abs(anchors[1].x - 0.5) < 1e-6 && Math.abs(anchors[2].x - 0.5) < 1e-6);
+  pass("extractAimAnchors places crown above the nose and shoulder/hip at the torso centre");
+
+  const okFrame = cq.evaluateAimFrame(base, "upper_body", "front");
+  assert.strictEqual(okFrame.ok, true, `Default pose must fit the frame: ${okFrame.message}`);
+
+  const fullBody = cq.evaluateAimFrame(
+    createLandmarks({ shoulderY: 0.22, hipY: 0.52 }),
+    "full_body",
+    "front"
+  );
+  assert.strictEqual(fullBody.ok, true, `Full-body pose must fit its own bands: ${fullBody.message}`);
+  pass("Accepted frames pass for both upper_body and full_body bands");
+
+  // Hip too high in frame -> torso span below the minimum -> countdown must be blocked
+  const highHip = createLandmarks({ hipY: 0.44 });
+  const highHipEval = cq.evaluateAimFrame(highHip, "upper_body", "front");
+  assert.strictEqual(highHipEval.ok, false);
+  assert.strictEqual(highHipEval.failing, "hip");
+  assert(/Lùi camera/.test(highHipEval.message));
+
+  const sharpImg = createSyntheticImageData(80, 60, { baseLum: 130, edgeContrast: 20 });
+  const blockedEval = cq.evaluateClientFrameQuality({
+    imageData: sharpImg,
+    feedback: { ready: true, message: "OK", landmarks: highHip },
+    previousLandmarks: highHip,
+  });
+  assert.strictEqual(blockedEval.ok, false, "A frame outside the aiming bands must block the countdown");
+  assert.strictEqual(blockedEval.issue, "aim_frame_off");
+  assert.strictEqual(blockedEval.aim.failing, "hip");
+  pass("Too little torso in frame blocks the countdown with 'aim_frame_off' and names the hip marker");
+
+  // Head cropped at the top edge -> crown band fails
+  const croppedHead = createLandmarks({ shoulderY: 0.16 }); // nose .04 -> crown estimate < 0
+  const croppedEval = cq.evaluateAimFrame(croppedHead, "upper_body", "front");
+  assert.strictEqual(croppedEval.ok, false);
+  assert.strictEqual(croppedEval.failing, "head");
+  assert(/Đỉnh đầu/.test(croppedEval.message));
+  pass("Cropped crown is rejected on the head marker with specific Vietnamese guidance");
+
+  // Standing to one side of the frame -> x band fails
+  const offCentre = createLandmarks({ offsetX: 0.4 });
+  const offCentreEval = cq.evaluateAimFrame(offCentre, "upper_body", "front");
+  assert.strictEqual(offCentreEval.ok, false);
+  assert.strictEqual(offCentreEval.message, "Đứng vào giữa khung ngắm.");
+  pass("Anchors outside the horizontal band are rejected with a centring instruction");
+
+  // Tilted shoulders in the front view -> shoulder marker fails
+  const tilted = createLandmarks();
+  tilted[11] = [0.42, 0.4, 0.92]; // .12 vs torso .30 (> 0.2 * .30)
+  const tiltedEval = cq.evaluateAimFrame(tilted, "upper_body", "front");
+  assert.strictEqual(tiltedEval.ok, false);
+  assert.strictEqual(tiltedEval.failing, "shoulder");
+  assert(/hai vai ngang/.test(tiltedEval.message));
+  pass("Tilted front-view shoulders are rejected on the shoulder marker");
+
+  // The aiming frame must not pre-empt the cross-view drift diagnosis on the side photo
+  const sideTilted = createLandmarks({ shoulderY: 0.43, hipY: 0.73 });
+  const driftEval = cq.evaluateClientFrameQuality({
+    imageData: sharpImg,
+    feedback: { ready: true, message: "OK", landmarks: sideTilted },
+    frontLandmarks: base,
+    view: "side",
+    mode: "upper_body",
+  });
+  assert.strictEqual(driftEval.issue, "cross_view_drift");
+  pass("Aiming frame runs after the cross-view check, so distance drift keeps its own diagnosis");
+}
+
 function main() {
   testThresholdsAndQualityGates();
   testBestFrameSelection();
   testCountdownCancellation();
   testGeometryPreservation();
   testHardwareErrorsAndComponentIntegration();
+  testAimFrame();
   console.log(`\nALL ${passedCount} CAPTURE QUALITY VERIFICATION CHECKS PASSED.`);
 }
 

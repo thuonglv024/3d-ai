@@ -71,7 +71,36 @@ export type QualityIssueCode =
   | "excessive_motion"
   | "low_visibility"
   | "cross_view_drift"
+  | "aim_frame_off"
   | "geometry_mismatch";
+
+export type AimAnchorKey = "head" | "shoulder" | "hip";
+
+export interface AimAnchor {
+  key: AimAnchorKey;
+  label: string;
+  /** Normalized frame coordinates (0..1, origin top-left), the same space as MediaPipe landmarks. */
+  x: number;
+  y: number;
+  visible: boolean;
+}
+
+export interface AimZone {
+  key: AimAnchorKey;
+  label: string;
+  yMin: number;
+  yMax: number;
+  xMin: number;
+  xMax: number;
+}
+
+export interface AimFrameEvaluation {
+  ok: boolean;
+  anchors: AimAnchor[];
+  zones: AimZone[];
+  failing: AimAnchorKey | null;
+  message: string;
+}
 
 export interface ImageDataLike {
   data: Uint8ClampedArray | Uint8Array | number[];
@@ -149,6 +178,7 @@ export interface ClientFrameQualityEvaluation {
   crossViewCompatible: boolean;
   scaleDrift: number;
   shoulderYDrift: number;
+  aim: AimFrameEvaluation;
   frameQualityScore: number;
 }
 
@@ -600,6 +630,186 @@ export function evaluateCrossViewCompatibility(
 }
 
 /**
+ * Three-marker aiming frame for the two-photo capture (U1).
+ *
+ * The three markers are the body points the measurement pipeline needs — crown,
+ * shoulder centre and hip centre — so the frame gates on visibility and framing,
+ * not on measurement accuracy. The bands are framing guides: overlapping bands
+ * are intentional because people differ in stature and standing distance; the
+ * ordering plus minimum torso span checks keep the pose valid.
+ *
+ * Anatomical ratios are the same fractions used by the backend measurement core
+ * (`HEAD_SHOULDER_RATIO`, `TORSO_RATIO` and the nose anchor in
+ * `estimate_upper_body_height`). They place the head marker; they are not used
+ * to compute any circumference.
+ */
+const AIM_ANATOMY = Object.freeze({
+  headToShoulder: 0.195,
+  shoulderToHip: 0.29,
+  noseToShoulder: 0.125,
+});
+
+/** Minimum shoulder-to-hip distance in frame units before the torso counts as visible. */
+const AIM_MIN_TORSO_SPAN = 0.2;
+/** Front view: |left shoulder y - right shoulder y| must stay under this share of the torso span. */
+const AIM_MAX_SHOULDER_TILT_RATIO = 0.2;
+
+const AIM_ZONES: Readonly<Record<"upper_body" | "full_body", readonly AimZone[]>> = {
+  upper_body: Object.freeze<AimZone[]>([
+    { key: "head", label: "Đầu", yMin: 0.04, yMax: 0.26, xMin: 0.18, xMax: 0.82 },
+    { key: "shoulder", label: "Vai", yMin: 0.2, yMax: 0.5, xMin: 0.18, xMax: 0.82 },
+    { key: "hip", label: "Hông", yMin: 0.46, yMax: 0.9, xMin: 0.18, xMax: 0.82 },
+  ]),
+  full_body: Object.freeze<AimZone[]>([
+    { key: "head", label: "Đầu", yMin: 0.02, yMax: 0.16, xMin: 0.18, xMax: 0.82 },
+    { key: "shoulder", label: "Vai", yMin: 0.14, yMax: 0.34, xMin: 0.18, xMax: 0.82 },
+    { key: "hip", label: "Hông", yMin: 0.38, yMax: 0.66, xMin: 0.18, xMax: 0.82 },
+  ]),
+};
+
+export function aimFrameZones(mode: "upper_body" | "full_body" = "upper_body"): readonly AimZone[] {
+  return AIM_ZONES[mode];
+}
+
+/** Frame with bands only; used before the first landmark frame arrives. */
+export function pendingAimFrame(
+  mode: "upper_body" | "full_body" = "upper_body"
+): AimFrameEvaluation {
+  return { ok: true, anchors: [], zones: [...AIM_ZONES[mode]], failing: null, message: "" };
+}
+
+/**
+ * Crown, shoulder and hip positions from MediaPipe landmarks.
+ *
+ * The crown is not a MediaPipe landmark: it is extrapolated from the nose and
+ * shoulder with the same 0.195 H / 0.125 H ratio the backend uses, falling back
+ * to the shoulder-to-hip span when the nose is occluded. Returns an empty list
+ * when the torso landmarks are not usable, so the aiming frame never invents a
+ * body position.
+ */
+export function extractAimAnchors(
+  landmarks: number[][] | null | undefined,
+  minVisibility = CAMERA_QUALITY_THRESHOLDS.minLandmarkVisibility
+): AimAnchor[] {
+  if (!Array.isArray(landmarks) || landmarks.length < 25) return [];
+  const torso = extractTorsoGeometry(landmarks, minVisibility);
+  if (!torso.valid) return [];
+
+  const nose = landmarks[0];
+  const noseVisible =
+    (nose?.[2] ?? 0) >= minVisibility && Number.isFinite(nose?.[0]) && Number.isFinite(nose?.[1]);
+  const ratio = AIM_ANATOMY.headToShoulder / AIM_ANATOMY.noseToShoulder;
+  const fallbackRatio = AIM_ANATOMY.headToShoulder / AIM_ANATOMY.shoulderToHip;
+
+  const headFromNose = noseVisible ? torso.shoulderY - ratio * (torso.shoulderY - nose[1]) : NaN;
+  const headFromTorso = torso.shoulderY - fallbackRatio * torso.torsoLength;
+  // A nose far below/above the shoulder means a bent neck or a bad landmark; use the torso prior then.
+  const noseIsPlausible =
+    noseVisible && headFromNose < torso.shoulderY && torso.shoulderY - headFromNose <= torso.torsoLength;
+  const headY = noseIsPlausible ? headFromNose : headFromTorso;
+  const headX = noseIsPlausible ? nose[0] : torso.shoulderX;
+
+  return [
+    { key: "head", label: "Đầu", x: Number(headX.toFixed(4)), y: Number(headY.toFixed(4)), visible: true },
+    {
+      key: "shoulder",
+      label: "Vai",
+      x: torso.shoulderX,
+      y: torso.shoulderY,
+      visible: true,
+    },
+    { key: "hip", label: "Hông", x: torso.hipX, y: torso.hipY, visible: true },
+  ];
+}
+
+function aimFailure(
+  zones: readonly AimZone[],
+  anchors: AimAnchor[],
+  failing: AimAnchorKey,
+  message: string
+): AimFrameEvaluation {
+  return { ok: false, anchors, zones: [...zones], failing, message };
+}
+
+/**
+ * Checks the three aiming markers against the mode's zones.
+ *
+ * This blocks the countdown when the crown, shoulder or hip leaves its band, when
+ * the torso is too small in frame, or when the shoulders are tilted in the front
+ * view. It duplicates the framing intent of `/api/capture-check` so the user sees
+ * which marker is wrong immediately; the backend stays authoritative for `ready`.
+ */
+export function evaluateAimFrame(
+  landmarks: number[][] | null | undefined,
+  mode: "upper_body" | "full_body" = "upper_body",
+  view: "front" | "side" = "front",
+  overrides?: Partial<CameraQualityThresholds>
+): AimFrameEvaluation {
+  const thresholds = resolveThresholds(overrides);
+  const zones = AIM_ZONES[mode];
+  const anchors = extractAimAnchors(landmarks, thresholds.minLandmarkVisibility);
+  if (anchors.length < 3) {
+    return { ok: true, anchors, zones: [...zones], failing: null, message: "" };
+  }
+
+  const head = anchors[0];
+  const shoulder = anchors[1];
+  const hip = anchors[2];
+  const torsoSpan = hip.y - shoulder.y;
+
+  if (!(head.y < shoulder.y && shoulder.y < hip.y)) {
+    return aimFailure(zones, anchors, "shoulder", "Giữ thân thẳng, không cúi hoặc ngửa, rồi căn lại ba mốc.");
+  }
+
+  if (torsoSpan < AIM_MIN_TORSO_SPAN) {
+    return aimFailure(
+      zones,
+      anchors,
+      "hip",
+      mode === "upper_body"
+        ? "Lùi camera để thấy trọn từ vai đến cạp quần trong khung ngắm."
+        : "Lùi camera để thấy trọn thân trên và hông trong khung ngắm."
+    );
+  }
+
+  if (view === "front") {
+    const tilt = Math.abs((landmarks?.[11]?.[1] ?? 0) - (landmarks?.[12]?.[1] ?? 0));
+    if (tilt > AIM_MAX_SHOULDER_TILT_RATIO * torsoSpan) {
+      return aimFailure(zones, anchors, "shoulder", "Giữ hai vai ngang nhau và điện thoại/camera thẳng.");
+    }
+  }
+
+  for (const anchor of anchors) {
+    const zone = zones.find((item) => item.key === anchor.key);
+    if (!zone) continue;
+    if (anchor.x < zone.xMin || anchor.x > zone.xMax) {
+      return aimFailure(zones, anchors, anchor.key, "Đứng vào giữa khung ngắm.");
+    }
+    if (anchor.y < zone.yMin) {
+      if (anchor.key === "head") {
+        return aimFailure(zones, anchors, "head", "Đỉnh đầu đang ra ngoài khung — lùi lại hoặc hạ camera.");
+      }
+      return aimFailure(zones, anchors, anchor.key, "Hạ camera hoặc lùi lại để mốc này vào khung ngắm.");
+    }
+    if (anchor.y > zone.yMax) {
+      if (anchor.key === "head") {
+        return aimFailure(zones, anchors, "head", "Đầu đang quá thấp trong khung — tiến lại gần camera.");
+      }
+      return aimFailure(
+        zones,
+        anchors,
+        anchor.key,
+        anchor.key === "hip"
+          ? "Tiến lại gần để cạp quần vào khung ngắm."
+          : "Tiến lại gần để vai vào khung ngắm."
+      );
+    }
+  }
+
+  return { ok: true, anchors, zones: [...zones], failing: null, message: "" };
+}
+
+/**
  * Computes a composite quality score in [0..1] combining stillness (`1 - motion`),
  * Laplacian sharpness, and landmark visibility.
  */
@@ -709,6 +919,11 @@ export function evaluateClientFrameQuality(
     crossView = evaluateCrossViewCompatibility(input.frontLandmarks, landmarks, thresholds);
   }
 
+  const aimFrame: AimFrameEvaluation =
+    landmarks.length > 0 && input.feedback?.ready
+      ? evaluateAimFrame(landmarks, mode, view, thresholds)
+      : pendingAimFrame(mode);
+
   const frameQualityScore = computeFrameQualityScore(
     {
       motion: stability.motion,
@@ -734,6 +949,7 @@ export function evaluateClientFrameQuality(
       crossViewCompatible: crossView.compatible,
       scaleDrift: crossView.scaleDrift,
       shoulderYDrift: crossView.shoulderYDrift,
+      aim: aimFrame,
       frameQualityScore: 0,
     };
   }
@@ -752,6 +968,7 @@ export function evaluateClientFrameQuality(
       crossViewCompatible: crossView.compatible,
       scaleDrift: crossView.scaleDrift,
       shoulderYDrift: crossView.shoulderYDrift,
+      aim: aimFrame,
       frameQualityScore: 0,
     };
   }
@@ -771,6 +988,7 @@ export function evaluateClientFrameQuality(
       crossViewCompatible: crossView.compatible,
       scaleDrift: crossView.scaleDrift,
       shoulderYDrift: crossView.shoulderYDrift,
+      aim: aimFrame,
       frameQualityScore: 0,
     };
   }
@@ -790,6 +1008,7 @@ export function evaluateClientFrameQuality(
       crossViewCompatible: false,
       scaleDrift: crossView.scaleDrift,
       shoulderYDrift: crossView.shoulderYDrift,
+      aim: aimFrame,
       frameQualityScore: 0,
     };
   }
@@ -809,11 +1028,32 @@ export function evaluateClientFrameQuality(
       crossViewCompatible: crossView.compatible,
       scaleDrift: crossView.scaleDrift,
       shoulderYDrift: crossView.shoulderYDrift,
+      aim: aimFrame,
       frameQualityScore: 0,
     };
   }
 
-  // Priority 5: Laplacian sharpness (motion blur / out-of-focus)
+  // Priority 5: Three-marker aiming frame (crown / shoulder / hip out of band)
+  if (!aimFrame.ok) {
+    return {
+      ok: false,
+      issue: "aim_frame_off",
+      message: aimFrame.message,
+      brightness: effectiveBrightness,
+      sharpness: effectiveSharpness,
+      darkPixelRatio: pixel.darkPixelRatio,
+      overexposedPixelRatio: pixel.overexposedPixelRatio,
+      motion: stability.motion,
+      meanVisibility: stability.meanVisibility,
+      crossViewCompatible: crossView.compatible,
+      scaleDrift: crossView.scaleDrift,
+      shoulderYDrift: crossView.shoulderYDrift,
+      aim: aimFrame,
+      frameQualityScore: 0,
+    };
+  }
+
+  // Priority 6: Laplacian sharpness (motion blur / out-of-focus)
   if (effectiveSharpness < thresholds.minSharpnessLaplacian) {
     return {
       ok: false,
@@ -828,11 +1068,12 @@ export function evaluateClientFrameQuality(
       crossViewCompatible: crossView.compatible,
       scaleDrift: crossView.scaleDrift,
       shoulderYDrift: crossView.shoulderYDrift,
+      aim: aimFrame,
       frameQualityScore: 0,
     };
   }
 
-  // Priority 6: Excessive inter-frame landmark motion
+  // Priority 7: Excessive inter-frame landmark motion
   if (!stability.isStable) {
     return {
       ok: false,
@@ -847,6 +1088,7 @@ export function evaluateClientFrameQuality(
       crossViewCompatible: crossView.compatible,
       scaleDrift: crossView.scaleDrift,
       shoulderYDrift: crossView.shoulderYDrift,
+      aim: aimFrame,
       frameQualityScore: 0,
     };
   }
@@ -864,6 +1106,7 @@ export function evaluateClientFrameQuality(
     crossViewCompatible: crossView.compatible,
     scaleDrift: crossView.scaleDrift,
     shoulderYDrift: crossView.shoulderYDrift,
+    aim: aimFrame,
     frameQualityScore,
   };
 }

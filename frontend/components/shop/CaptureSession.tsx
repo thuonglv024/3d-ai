@@ -570,7 +570,7 @@ export default function CaptureSession({
                 }
               }}
             />
-            <PoseGuide upper={upper} ready={isPoseAndQualityReady} />
+            <PoseGuide upper={upper} ready={isPoseAndQualityReady} aim={qualityEval?.aim ?? null} />
             <div className="capture-frame-mark" aria-hidden="true" />
             <div className="capture-view-pill" aria-hidden="true">
               <span className="capture-view-pill-dot" />
