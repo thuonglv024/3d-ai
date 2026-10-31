@@ -1,9 +1,10 @@
-export const VIEWER_CONFIG = {
+﻿export const VIEWER_CONFIG = {
   fov: 24,
   frameFill: 0.74,
   shoulderLevel: 0.805,
   hipLevel: 0.534,
-  waistLevel: 0.60,
+  // Cắt ngang đùi trên (khoảng 1/5 dưới mông) để mô hình không bị hụt ở hông.
+  waistLevel: 0.42,
   targetHeight: 1.75,
   offsetY: 0.025,
   rotateSpeed: 0.55,
@@ -40,3 +41,4 @@ export function defaultFrame(): ViewerFrame {
     VIEWER_CONFIG.offsetY + VIEWER_CONFIG.targetHeight,
   );
 }
+
