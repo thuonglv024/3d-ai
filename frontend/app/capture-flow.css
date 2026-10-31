@@ -1,4 +1,4 @@
-/* ==========================================================================
+﻿/* ==========================================================================
    MORPH STUDIO — CAMERA & SCAN FLOW
    Unified warm ivory surfaces paired with refined gold accents (#C6A15B).
    ========================================================================== */
@@ -1911,4 +1911,10 @@
 
 .scan-setup-wide {
   grid-column: 1 / -1;
+}
+
+/* Hình mẫu cũ chồng lên pictogram của ScanSilhouette => nhìn thành hai silhouette
+   lệch nhau. Ẩn hình cũ, pictogram là khung duy nhất. */
+.capture-pose-guide .pose-guide-silhouette {
+  display: none !important;
 }
