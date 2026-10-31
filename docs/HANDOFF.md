@@ -1,4 +1,4 @@
-# Trạng Thái Bàn Giao Hiện Tại (Project Handoff)
+﻿# Trạng Thái Bàn Giao Hiện Tại (Project Handoff)
 
 Tài liệu này tổng hợp trạng thái hiện tại của dự án **MORPH AI**, các thay đổi vừa hoàn thành, các giới hạn kỹ thuật cần lưu ý và danh sách công việc tiếp theo dành cho kỹ sư hoặc AI Agent kế nhiệm.
 
@@ -45,6 +45,22 @@ Pilot P01b (1 người, 156 cm, tape ngực 80 / eo 60 / hông 92, mặc áo len
 - 4/7 ảnh `output/eval_pilot/viewer_*.png` trùng byte ⇒ tương tác pan/zoom/resize của viewer **chưa được chứng minh**.
 - Ảnh người thật nằm ở `backend/data/pilot_selfie/` (đã gitignore) và `output/` (đã gitignore) — **không commit**.
 
+### 0.7. Trạng thái kế hoạch fix (2026-11-01) — chưa hiệu chuẩn
+- **Chủ trương**: 3D là nguồn số đo; AI chỉ nhận xét. Mọi số mang nhãn nguồn, không dùng hằng số bịa.
+- **Đã xong**: bỏ hệ số lõm cứng (0.5), fallback AI không đội lốt hình học (0.5), vai theo silhouette (0.6),
+  AI 1 lượt/temp 0 (0.6), eo bị từ chối khi depth phẳng (A), cổng khung 65% + tay dính thân (A),
+  chụp 2 s đếm ngược + 3 s xoay, cắt mô hình ở 1/5 mông (`waistLevel 0.49`), `arm_length_cm` từ mốc 11-13-15,
+  `scripts/eval/tape_eval.py`, `backend/app/arm_metrics.py`.
+- **Số đo trên P01b (tape 80/60/92/40; tay 23/20; đùi 40,5; bắp chân 33)**: ngực **83,1 (+3,1)**,
+  hông **94,6 (+2,6)**, vai **38,4 (−1,6)**, dài tay **45,3**, eo **từ chối** (ảnh nghiêng tay che thân),
+  bắp/cẳng tay/đùi/bắp chân **chưa đo**.
+- **Ca nam 170 cm (tape 99/88/46; 29/28; dài tay 90)**: chưa có lần chạy hợp lệ — ảnh chính diện là nửa thân
+  (chạm mép), ảnh nghiêng tay duỗi ngang làm silhouette vượt ngưỡng 0,40 H nên bị từ chối đúng.
+- **Còn lại theo kế hoạch**: U1 khung ngắm 3 mốc, U2 chặn thiếu vùng đo bằng landmark 23/24, U5 ẩn hông khi
+  `upper_body`, A2b/A2c bắp-cẳng tay-đùi-bắp chân (mặt cắt vuông góc), C2/C3 trừ hao áo theo silhouette
+  (trần 3 cm, có nhãn), K1 chạy `tape_eval` cho 2 người. K2/K3 **bị chặn**: cần ≥8 người có tape.
+- **Định nghĩa xong (QC)**: P01b ngực ≤81,5 · hông ≤93,5 · vai ≥39; ca nam ngực ≤100,5 · vai 46±2 ·
+  dài tay 90±3; `pytest` xanh, `tsc` sạch, `/scan` 200; mỗi bước push `fity/feature/3d-scan`.
 ### 0.6. Giảm AI xuống 1 lượt + sửa rộng vai thiếu 10 cm (2026-11-01)
 - **AI còn 1 lượt gọi/scan**: `ai_scan/config.py` → `DEFAULT_ENSEMBLE_SIZE = 1`, `DEFAULT_TEMPERATURE = 0.0`.
   Lý do: người dùng chỉ có hạn mức miễn phí (20 request/ngày) và muốn ít phụ thuộc AI; temperature 0 để 2 lần
@@ -368,3 +384,4 @@ Thay lưới MakeHuman trung tính bằng **basis Anny** đã nướng sẵn, gi
 - **Không hứa độ chính xác**: số đo vẫn là ước lượng từ ảnh, chưa validate thước dây; 3 case K3
   không đại diện toàn bộ không gian; các ca nữ neck/eo cao cho thấy gờ nền vẫn còn.
 - Chi tiết đầy đủ: [`docs/fix/S8.md`](fix/S8.md).
+
