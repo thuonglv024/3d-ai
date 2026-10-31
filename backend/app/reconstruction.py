@@ -19,6 +19,7 @@ from . import anny_body
 from . import proportions
 from . import report as _report
 from .anatomy import depth_weights, resolve_sex, shape_sex, template_landmarks
+from .arm_metrics import arm_length_cm
 from .camera_fusion import aligned_torso_landmarks, assess_cross_view_quality, fuse_camera_scale, synchronized_torso_profile as torso_profile
 from .config import MODELS
 from .images import InvalidPhoto
@@ -757,6 +758,12 @@ def reconstruct(front: np.ndarray, side: np.ndarray, height_cm: float, destinati
     # Where the reported shoulder width came from: the outer silhouette at the
     # acromion row, or the landmark span when that row was unusable.
     profile["shoulder_width_source"] = shoulder_source
+    # Dài tay: chuỗi vai-khuỷu-cổ tay trên ảnh chính diện. Đây là số duy nhất
+    # trong nhóm tay tính trực tiếp từ mốc; bắp/cẳng tay cần mặt cắt vuông góc
+    # với trục xương nên chưa đưa vào (capsule chỉ cho một bán kính cho cả tay).
+    measurements["arm_length_cm"] = arm_length_cm(
+        frontal.points, float(height_cm) / max(float(frontal.height), 1.0)
+    )
     profile["waist_unavailable_reason"] = waist_unavailable_reason
     profile["section_factors_calibrated"] = SECTION_FACTORS_CALIBRATED
     profile["scale_method"] = "height_per_image_upper_body" if capture_mode == "upper_body" else "height_and_per_image_silhouette"
@@ -807,6 +814,7 @@ def reconstruct(front: np.ndarray, side: np.ndarray, height_cm: float, destinati
         "Không phải số đo trực tiếp từ ảnh."
     )
     return warnings, measurements, profile
+
 
 
 
