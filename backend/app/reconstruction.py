@@ -1,4 +1,4 @@
-﻿"""CPU body-shape approximation, NOT SAM/photogrammetry/validated anthropometry.
+"""CPU body-shape approximation, NOT SAM/photogrammetry/validated anthropometry.
 
 MediaPipe segments two photos and locates pose landmarks. The central torso
 silhouettes control a smooth width/depth deformation of a CC0 MakeHuman mesh.
@@ -115,23 +115,34 @@ def segmentation_mask(array: np.ndarray) -> np.ndarray:
 HEAD_SHOULDER_RATIO = 0.195
 TORSO_RATIO = 0.290
 UPPER_SPAN_RATIO = 0.485
+# Hai mỏ neo chỉ được coi là cùng một thang đo khi lệch nhau ≤ 20%. Ngưỡng này
+# lấy từ biên dữ liệu thật/QA hiện có (P01b 15,8%; ảnh QA upper-front 17,8% —
+# cùng nằm trong sai lệch hệ thống của mốc đầu/hông), không phải từ một ca riêng.
+# Lệch hơn thì không có cơ sở chọn bên nào: trả InvalidPhoto thay vì lấy trung bình.
+SCALE_AGREEMENT_TOLERANCE = 0.20
 
 
 def estimate_upper_body_height(points: np.ndarray, visibility: np.ndarray, top: int, h: int) -> float:
     """Multi-anchor upper-body stature estimation in pixels (Tier 1).
 
-    Combines the anatomical crown-to-shoulder anchor (0.195 H) with the
-    shoulder-to-hip torso span (0.290 H) via bounded tanh fusion so that
-    natural torso-ratio variations (r_torso in [0.26, 0.32]) or hip landmark
-    drift do not cause large height-scaling errors.
+    Two independent estimates must agree before either is used:
+
+    * torso anchor — shoulder to hip, 0.290 H of stature;
+    * head anchor — crown (mask top) to shoulder, 0.195 H of stature.
+
+    A disagreement above ``SCALE_AGREEMENT_TOLERANCE`` (20%) means the hồ sơ
+    doesn't fit the height model (cropped crown, hip landmarks on the waistband,
+    leaning, wrong camera height), so the scan is refused with guidance instead
+    of silently averaging the two. When they agree, the bounded tanh fusion keeps
+    the head anchor and follows the torso anchor by at most ±1.4%.
     """
     shoulder = points[[11, 12]].mean(axis=0)
     hip = points[[23, 24]].mean(axis=0)
     torso = float(hip[1] - shoulder[1])
     h_torso = float(torso / TORSO_RATIO)
     head_shoulder = float(shoulder[1] - top)
-    head_to_torso = head_shoulder / max(torso, 1.0)
-    if top < 3 or shoulder[1] - HEAD_SHOULDER_RATIO * h_torso < 3 or not (0.52 <= head_to_torso <= 0.88):
+    if top < 3 or torso <= 0 or not np.isfinite([h_torso, head_shoulder]).all():
+        # Không có mỏ neo đầu (mask cắt mất đỉnh đầu) thì chỉ còn mỏ neo thân.
         return h_torso
     h_head = head_shoulder / HEAD_SHOULDER_RATIO
     if len(points) > 0 and len(visibility) > 0 and visibility[0] >= 0.6:
@@ -140,6 +151,13 @@ def estimate_upper_body_height(points: np.ndarray, visibility: np.ndarray, top: 
             h_nose = nose_to_shoulder / 0.125
             if abs(h_nose - h_head) <= 0.04 * h_head:
                 h_head = 0.85 * h_head + 0.15 * h_nose
+    mismatch = abs(h_head - h_torso) / max(h_torso, 1.0)
+    if mismatch > SCALE_AGREEMENT_TOLERANCE:
+        raise InvalidPhoto(
+            "Không xác định được tỉ lệ cơ thể: ước lượng từ đầu–vai và vai–hông lệch nhau "
+            f"{mismatch * 100:.0f}% (ngưỡng {SCALE_AGREEMENT_TOLERANCE * 100:.0f}%). Hãy đứng thẳng, "
+            "đưa camera ngang tầm ngực, thấy rõ đỉnh đầu và để lộ cạp quần ngang hông rồi quét lại."
+        )
     rel_diff = (h_torso - h_head) / max(h_head, 1.0)
     # Giới hạn ảnh hưởng của biến thiên chiều dài lưng / trôi mốc hông trong biên độ ±1.4%
     fused_height = h_head * (1.0 + 0.014 * float(np.tanh(rel_diff / 0.08)))

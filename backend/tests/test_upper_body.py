@@ -7,8 +7,13 @@ from app.report import measurement_report
 
 
 class TorsoDetector:
-    """Cropped frame whose lower legs are outside the image and invisible."""
-    def __init__(self, hip_y=.85):
+    """Cropped frame whose lower legs are outside the image and invisible.
+
+    The landmark geometry keeps the crown→shoulder and shoulder→hip anchors
+    consistent (0,195 H and 0,290 H) so it passes the scale-agreement gate:
+    crown 30px, shoulder 144px → torso 169,5px → hip 313,5px (.653 of 480).
+    """
+    def __init__(self, hip_y=.653):
         points=[SimpleNamespace(x=.5,y=.18,visibility=.9) for _ in range(33)]
         for i,x,y in [(11,.35,.3),(12,.65,.3),(23,.4,hip_y),(24,.6,hip_y)]:
             points[i]=SimpleNamespace(x=x,y=y,visibility=.95)
@@ -25,7 +30,7 @@ def test_upper_capture_accepts_missing_feet_but_full_body_rejects():
     image=np.full((480,640,3),150,dtype=np.uint8)
     obs=observe(image,TorsoDetector(),"chính diện","upper_body")
     assert obs.capture_mode=="upper_body"
-    assert obs.height==pytest.approx((.85-.3)*480/.29)
+    assert obs.height==pytest.approx((.653-.3)*480/.29, abs=1.0)  # fusion ±1,4%
     with pytest.raises(InvalidPhoto):
         observe(image,TorsoDetector(),"chính diện","full_body")
 
@@ -132,37 +137,54 @@ def test_model_dimensions_have_provenance_and_unknown_lengths_stay_null():
         assert by_key_full[k]["valid_for_tracking"] is True
 
 
-def test_upper_body_multi_anchor_height_stability_across_torso_ratios():
+def _observe_upper_with_torso_ratio(r_torso: float):
+    """Crown→shoulder đúng 0,195 H; mỏ neo thân đổi theo ``r_torso``."""
     h, w = 600, 640
     h_true = 800.0
     top = 40
     shoulder_y = top + 0.195 * h_true
     nose_y = top + 0.070 * h_true
+    hip_y = shoulder_y + r_torso * h_true
     image = np.full((h, w, 3), 150, dtype=np.uint8)
 
-    for r_torso in (0.26, 0.275, 0.29, 0.305, 0.32):
-        hip_y = shoulder_y + r_torso * h_true
-        points = [SimpleNamespace(x=0.5, y=nose_y / h, visibility=0.95) for _ in range(33)]
-        for i, x, y in [
-            (11, 0.35, shoulder_y / h),
-            (12, 0.65, shoulder_y / h),
-            (23, 0.40, hip_y / h),
-            (24, 0.60, hip_y / h),
-        ]:
-            points[i] = SimpleNamespace(x=x, y=y, visibility=0.95)
-        for i in range(25, 33):
-            points[i] = SimpleNamespace(x=0.5, y=1.35, visibility=0.1)
-        mask = np.zeros((h, w), dtype=np.float32)
-        mask[top : h - 1, 200:440] = 0.95
-        detector = SimpleNamespace(
-            detect=lambda _, pts=points, m=mask: SimpleNamespace(
-                pose_landmarks=[pts],
-                segmentation_masks=[SimpleNamespace(numpy_view=lambda: m)],
-            )
+    points = [SimpleNamespace(x=0.5, y=nose_y / h, visibility=0.95) for _ in range(33)]
+    for i, x, y in [
+        (11, 0.35, shoulder_y / h),
+        (12, 0.65, shoulder_y / h),
+        (23, 0.40, hip_y / h),
+        (24, 0.60, hip_y / h),
+    ]:
+        points[i] = SimpleNamespace(x=x, y=y, visibility=0.95)
+    for i in range(25, 33):
+        points[i] = SimpleNamespace(x=0.5, y=1.35, visibility=0.1)
+    mask = np.zeros((h, w), dtype=np.float32)
+    mask[top : h - 1, 200:440] = 0.95
+    detector = SimpleNamespace(
+        detect=lambda _, pts=points, m=mask: SimpleNamespace(
+            pose_landmarks=[pts],
+            segmentation_masks=[SimpleNamespace(numpy_view=lambda: m)],
         )
-        obs = observe(image, detector, "chính diện", "upper_body")
-        rel_error = abs(obs.height - h_true) / h_true
-        assert rel_error < 0.015, f"r_torso={r_torso}: obs.height={obs.height:.2f} vs {h_true} ({rel_error*100:.2f}%)"
-        if r_torso == 0.29:
-            assert obs.height == pytest.approx(h_true, rel=1e-4)
+    )
+    return observe(image, detector, "chính diện", "upper_body")
+
+
+@pytest.mark.parametrize("r_torso", (0.26, 0.275, 0.29, 0.305, 0.32))
+def test_upper_body_scale_agreement_accepts_natural_torso_ratios(r_torso):
+    """Biến thiên tỉ lệ thân tự nhiên (0,26–0,32) nằm trong ngưỡng 20%.
+
+    Synthetic đặt đúng mỏ neo đầu (0,195 H) nên chiều cao ước lượng phải sai ≤1,5%.
+    """
+    obs = _observe_upper_with_torso_ratio(r_torso)
+    rel_error = abs(obs.height - 800.0) / 800.0
+    assert rel_error < 0.015, f"r_torso={r_torso}: obs.height={obs.height:.2f} vs 800 ({rel_error*100:.2f}%)"
+    if r_torso == 0.29:
+        assert obs.height == pytest.approx(800.0, rel=1e-4)
+
+
+@pytest.mark.parametrize("r_torso", (0.20, 0.38))
+def test_upper_body_scale_agreement_rejects_beyond_tolerance(r_torso):
+    """Lệch >20% thì từ chối, không lấy trung bình hai mỏ neo."""
+    with pytest.raises(InvalidPhoto, match="lệch"):
+        _observe_upper_with_torso_ratio(r_torso)
+
 

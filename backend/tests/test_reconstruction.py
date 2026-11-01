@@ -72,12 +72,14 @@ def test_reconstruct_end_to_end_upper_body_provenance_and_glb_validation(monkeyp
     from app.reconstruction import reconstruct
 
     def make_detector_result(shoulder_half_x: float, mask_half_w: int):
+        # Mốc giữ đúng tỉ lệ mô hình: crown 35px, vai 196,4px, hông 436,4px
+        # (đầu–vai 0,195 H, vai–hông 0,290 H với H=827,6px) để qua cổng thang đo.
         pts = [SimpleNamespace(x=0.5, y=0.14, visibility=0.95) for _ in range(33)]
         for idx, x, y in [
-            (11, 0.5 - shoulder_half_x, 0.28),
-            (12, 0.5 + shoulder_half_x, 0.28),
-            (23, 0.43, 0.78),
-            (24, 0.57, 0.78),
+            (11, 0.5 - shoulder_half_x, 0.409),
+            (12, 0.5 + shoulder_half_x, 0.409),
+            (23, 0.43, 0.909),
+            (24, 0.57, 0.909),
         ]:
             pts[idx] = SimpleNamespace(x=x, y=y, visibility=0.95)
         for idx in range(25, 33):
