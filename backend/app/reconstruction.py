@@ -1,4 +1,4 @@
-"""CPU body-shape approximation, NOT SAM/photogrammetry/validated anthropometry.
+﻿"""CPU body-shape approximation, NOT SAM/photogrammetry/validated anthropometry.
 
 MediaPipe segments two photos and locates pose landmarks. The central torso
 silhouettes control a smooth width/depth deformation of a CC0 MakeHuman mesh.

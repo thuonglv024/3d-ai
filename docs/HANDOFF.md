@@ -1,4 +1,4 @@
-# Trạng Thái Bàn Giao Hiện Tại (Project Handoff)
+﻿# Trạng Thái Bàn Giao Hiện Tại (Project Handoff)
 
 Tài liệu này tổng hợp trạng thái hiện tại của dự án **MORPH AI**, các thay đổi vừa hoàn thành, các giới hạn kỹ thuật cần lưu ý và danh sách công việc tiếp theo dành cho kỹ sư hoặc AI Agent kế nhiệm.
 
