@@ -1,4 +1,4 @@
-"""Số đo tay từ mốc MediaPipe: dài tay, bắp tay, cẳng tay.
+﻿"""Số đo tay từ mốc MediaPipe: dài tay, bắp tay, cẳng tay.
 
 MediaPipe cho tâm khớp (vai 11, khuỷu 13, cổ tay 15) nên **dài tay** tính được
 trực tiếp và đáng tin: đây là tổng hai đoạn thẳng trên ảnh nhân cm/px.
