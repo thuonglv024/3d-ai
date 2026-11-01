@@ -17,7 +17,14 @@ const SECTION_COLORS: Record<string,string> = {chest_cm:"#194e3d",waist_cm:"#a05
 const VIEWS = [{label:"Chính diện",angle:0},{label:"Nghiêng",angle:Math.PI/2},{label:"Sau",angle:Math.PI}];
 
 export type FitColorStop = { ease_cm: number; label: string; color: string };
-export type FitHeatmap = {
+export type FitRegionBand = {
+  from: number;
+  to: number;
+  color: string;
+  label?: string;
+  ease_cm?: number | null;
+};
+export type ContinuousFitHeatmap = {
   mode: "continuous_vertex";
   ease_cm: number;
   taper_cm: number;
@@ -32,6 +39,18 @@ export type FitHeatmap = {
   sleeve_ease_cm?: number | null;
   sleeve_length_cm?: number | null;
 };
+/** UI-only bucket map: colour whole body bands (chest/waist) instead of a field. */
+export type RegionFitHeatmap = {
+  mode: "region_buckets";
+  regions: FitRegionBand[];
+  unknown_color: string;
+  arm_x_fraction: number;
+  garment_length_cm?: number | null;
+  shoulder_level?: number;
+  hip_level?: number;
+  unverified: boolean;
+};
+export type FitHeatmap = ContinuousFitHeatmap | RegionFitHeatmap;
 
 function applyEaseColor(ease: number, stops: { ease: number; color: THREE.Color }[], target: THREE.Color) {
   if (!stops.length) return target;
@@ -72,14 +91,43 @@ function Surface({ object, wireframe, targetHeight, preserveOrigin = false, stud
           geometry.computeVertexNormals();
         }
         child.geometry=geometry;
-        if ((fitHeatmap && fitHeatmap.garment_length_cm != null) || fitBands?.length) {
-          // Per-vertex fit colours. The continuous field is used when the API
-          // returns a flat-spec heatmap; older products keep the Y-band path.
+        const regionHeatmap = fitHeatmap?.mode === "region_buckets";
+        const continuousHeatmap =
+          fitHeatmap?.mode === "continuous_vertex" && fitHeatmap.garment_length_cm != null;
+        if (regionHeatmap || continuousHeatmap || fitBands?.length) {
+          // Per-vertex fit colours. The bucket map paints whole chest/waist
+          // bands (UI only); the continuous field is kept for older payloads,
+          // and products without garment data keep the Y-band path.
           const position = geometry.getAttribute("position");
           const colors = new Float32Array(position.count * 3);
           const color = new THREE.Color();
           const realHeightCm = bodyHeightCm ?? 175;
-          if (fitHeatmap && fitHeatmap.garment_length_cm != null) {
+          if (fitHeatmap?.mode === "region_buckets") {
+            const armFraction = fitHeatmap.arm_x_fraction ?? 0.18;
+            const centerX = (bounds.min.x + bounds.max.x) / 2;
+            const gray = new THREE.Color(fitHeatmap.unknown_color || "#c9d1c8");
+            const bands = fitHeatmap.regions.map((band) => ({
+              ...band,
+              three: new THREE.Color(band.color),
+            }));
+            const shoulder = fitHeatmap.shoulder_level ?? 0.805;
+            const hemNorm =
+              fitHeatmap.garment_length_cm != null
+                ? shoulder - fitHeatmap.garment_length_cm / Math.max(realHeightCm, 1e-6)
+                : null;
+            for (let i = 0; i < position.count; i++) {
+              const normalizedY = (position.getY(i) - bounds.min.y) / Math.max(height, 1e-6);
+              const isArm = Math.abs(position.getX(i) - centerX) > armFraction * height;
+              const belowHem = hemNorm != null && normalizedY < hemNorm;
+              const band = isArm || belowHem
+                ? undefined
+                : bands.find((item) => normalizedY >= item.from && normalizedY < item.to);
+              color.copy(band ? band.three : gray);
+              colors[i * 3] = color.r;
+              colors[i * 3 + 1] = color.g;
+              colors[i * 3 + 2] = color.b;
+            }
+          } else if (fitHeatmap?.mode === "continuous_vertex" && fitHeatmap.garment_length_cm != null) {
             const shoulder = fitHeatmap.shoulder_level ?? 0.805;
             const hip = fitHeatmap.hip_level ?? 0.534;
             const span = Math.max(shoulder - hip, 1e-6);
@@ -130,7 +178,11 @@ function Surface({ object, wireframe, targetHeight, preserveOrigin = false, stud
           }
           geometry.setAttribute("morphCoord",new THREE.BufferAttribute(coordinates,2));
         }
-        const vertexColored = Boolean((fitHeatmap && fitHeatmap.garment_length_cm != null) || fitBands?.length);
+        const vertexColored = Boolean(
+          fitHeatmap?.mode === "region_buckets" ||
+          (fitHeatmap?.mode === "continuous_vertex" && fitHeatmap.garment_length_cm != null) ||
+          fitBands?.length
+        );
         const material = new THREE.MeshStandardMaterial({
           color: vertexColored ? "#ffffff" : technical?"#3d5c4e":studio?"#ffffff":"#4a6858",
           vertexColors: vertexColored,

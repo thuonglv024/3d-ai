@@ -29,12 +29,14 @@ export default function FitExperience({
   onSelectSize,
   onOpenSizeChart,
   onClose,
+  onSelectProduct,
 }: {
   product: Product;
   active: boolean;
   onSelectSize: (size: string) => void;
   onOpenSizeChart?: () => void;
   onClose?: () => void;
+  onSelectProduct?: (product: Product) => void;
 }) {
   const requiresHipMeasurement = Boolean(
     product.chart?.rows?.some((row) => Boolean(row.hip_cm))
@@ -319,6 +321,7 @@ export default function FitExperience({
           onRetry={() => setRetry((n) => n + 1)}
           error={s.error || scanContext.jobError}
           product={product}
+          onSelectProduct={onSelectProduct}
         />
       </div>
     );

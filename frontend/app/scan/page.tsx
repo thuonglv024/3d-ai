@@ -51,6 +51,7 @@ export default function Page() {
         product={selectedProduct}
         active
         onSelectSize={setSize}
+        onSelectProduct={handleSelectProduct}
       />
     </main>
   );

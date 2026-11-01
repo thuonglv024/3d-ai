@@ -40,7 +40,12 @@ export interface SizeRow {
 export interface SizeChart {
   name: string;
   garment: "top" | "bottom";
-  source: "illustrative" | "user_provided";
+  /**
+   * illustrative: số minh hoạ của studio.
+   * user_provided: hãng công bố.
+   * derived_from_flat_spec: suy ra từ số đo áo trải phẳng (không phải bảng cơ thể của hãng).
+   */
+  source: "illustrative" | "user_provided" | "derived_from_flat_spec";
   measurement_basis: "body_cm";
   rows: SizeRow[];
 }
@@ -63,6 +68,8 @@ export interface ProductVariant {
 
 export interface GarmentSpec {
   size: string;
+  /** Chiều rộng ngực trải phẳng (½ ngực). Vòng ngực áo = 2 × giá trị này. */
+  chest_flat_cm?: number;
   chest_cm?: number;
   waist_cm?: number;
   hip_cm?: number;
@@ -229,6 +236,64 @@ export const PRODUCTS: Product[] = [
         { size: "XL", chest_cm: { min: 104, max: 112 }, waist_cm: { min: 90, max: 102 } },
       ],
     },
+  },
+  {
+    id: "ao-thun-oricano-nam",
+    slug: "ao-thun-oricano-nam",
+    name: "Áo thun nam Oricano Basic",
+    subtitle:
+      "Cotton co giãn 4 chiều, khử mùi, phom gọn vừa người — số đo áo lấy từ bảng size của hãng.",
+    category: "ao-thun",
+    categoryName: "Áo thun",
+    // Giá minh hoạ cho môi trường thử nghiệm, không phải giá bán thật.
+    price: 390000,
+    originalPrice: 450000,
+    color: "Đen",
+    colors: [
+      { name: "Đen", hex: "#1c1d1c" },
+      { name: "Trắng", hex: "#efece5" },
+    ],
+    sizes: ["S", "M", "L", "XL", "XXL"],
+    image: "/products/v2/ao-thun-oricano-nam.jpg",
+    gallery: [
+      "/products/v2/ao-thun-oricano-nam.jpg",
+      "/products/v2/ao-thun-oricano-nam-detail.jpg",
+    ],
+    description:
+      "Áo thun nam cổ tròn phom gọn, vải cotton co giãn 4 chiều, xử lý khử mùi và không xù. Số đo may (dài áo, ½ ngực, dài tay, rộng vai) lấy từ bảng size của hãng; ảnh sản phẩm trong studio là ảnh minh hoạ do MORPH tạo, không phải ảnh của hãng.",
+    material: "Cotton co giãn 4 chiều, xử lý khử mùi, bề mặt mịn không xù.",
+    fit: "Regular fit gọn: ôm vừa vai và ngực, không buông rộng.",
+    details: [
+      "Dài áo 61–69 cm, ½ ngực 41–49 cm theo size S–XXL (số đo hãng công bố)",
+      "Vải co giãn 4 chiều, không xù không nhăn",
+      "Xử lý khử mùi trên bề mặt vải",
+      "Đường may gấu áo và tay áo may đôi",
+    ],
+    isNew: true,
+    chart: {
+      // Hãng chỉ công bố bảng cao × cân; khoảng vòng cơ thể dưới đây SUY RA từ
+      // chu vi áo phẳng trừ ease 2–10 cm, không phải bảng cơ thể của hãng.
+      name: "Bảng size Oricano (suy ra từ số đo áo phẳng)",
+      garment: "top",
+      source: "derived_from_flat_spec",
+      measurement_basis: "body_cm",
+      rows: [
+        { size: "S", chest_cm: { min: 72, max: 80 }, waist_cm: { min: 62, max: 74 } },
+        { size: "M", chest_cm: { min: 76, max: 84 }, waist_cm: { min: 66, max: 78 } },
+        { size: "L", chest_cm: { min: 80, max: 88 }, waist_cm: { min: 70, max: 82 } },
+        { size: "XL", chest_cm: { min: 84, max: 92 }, waist_cm: { min: 74, max: 86 } },
+        { size: "XXL", chest_cm: { min: 88, max: 96 }, waist_cm: { min: 78, max: 90 } },
+      ],
+    },
+    garment_specs: [
+      { size: "S", chest_flat_cm: 41, chest_cm: 82, length_cm: 61, sleeve_cm: 17, shoulder_cm: 38 },
+      { size: "M", chest_flat_cm: 43, chest_cm: 86, length_cm: 63, sleeve_cm: 18, shoulder_cm: 39 },
+      { size: "L", chest_flat_cm: 45, chest_cm: 90, length_cm: 65, sleeve_cm: 19, shoulder_cm: 40 },
+      { size: "XL", chest_flat_cm: 47, chest_cm: 94, length_cm: 67, sleeve_cm: 20, shoulder_cm: 41 },
+      { size: "XXL", chest_flat_cm: 49, chest_cm: 98, length_cm: 69, sleeve_cm: 21, shoulder_cm: 42 },
+    ],
+    garment_source:
+      "Bảng size Oricano (ảnh hãng): dài áo / ½ ngực / dài tay / rộng vai cho S–2XL; hãng gợi ý size theo cao × cân",
   },
   {
     id: "ao-thun-waffle-long-sleeve",

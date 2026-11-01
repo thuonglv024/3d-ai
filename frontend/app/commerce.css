@@ -2556,6 +2556,17 @@ button.shop-secondary:active:not(:disabled) {
   line-height: 1.7;
 }
 
+.shop-chart-derived-note {
+  padding: 12px 14px;
+  margin: 12px 0 0;
+  background: var(--primary-soft);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--primary);
+  border-radius: var(--radius-control);
+  color: var(--accent-text);
+  line-height: 1.65;
+}
+
 .shop-size-table {
   width: 100%;
   border-collapse: collapse;

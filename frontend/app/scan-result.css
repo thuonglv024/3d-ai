@@ -342,13 +342,14 @@
 
 .scan-workspace {
   display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
-  gap: 16px;
+  grid-template-columns: minmax(0, 22%) minmax(0, 48%) minmax(0, 30%);
+  gap: 0;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-panel);
   overflow: hidden;
-  min-height: 600px;
+  height: clamp(560px, calc(100dvh - 220px), 900px);
+  min-height: 560px;
 }
 
 /* Measurement List (Left) */
@@ -507,16 +508,350 @@
   background: var(--surface-muted);
 }
 
-/* 3D Stage (Right) */
+/* ==========================================================================
+   TRY-ON — wardrobe (22%) | 3D stage (48%) | product + fit (30%)
+   ========================================================================== */
+
+.tryon-wardrobe,
+.tryon-panel {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--surface);
+}
+
+.tryon-wardrobe {
+  border-right: 1px solid var(--border);
+}
+
+.tryon-panel {
+  border-left: 1px solid var(--border);
+}
+
+.tryon-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  min-height: 44px;
+}
+
+.tryon-panel-head small {
+  color: var(--text-secondary);
+  font-weight: 400;
+  margin-left: 4px;
+}
+
+.tryon-wardrobe-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.tryon-wardrobe-list button {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 0;
+  border-bottom: 1px solid var(--surface-muted);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tryon-wardrobe-list button:hover:not(:disabled) {
+  background: var(--surface-muted);
+}
+
+.tryon-wardrobe-list button.selected {
+  background: var(--primary-soft);
+  box-shadow: inset 3px 0 0 var(--primary);
+}
+
+.tryon-wardrobe-list button:disabled {
+  cursor: default;
+}
+
+.tryon-wardrobe-list img {
+  width: 44px;
+  height: 44px;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
+}
+
+.tryon-wardrobe-list span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.tryon-wardrobe-list b {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tryon-wardrobe-list small {
+  font-size: 10.5px;
+  color: var(--text-secondary);
+}
+
+.tryon-product {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.tryon-product img {
+  width: 56px;
+  height: 56px;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
+}
+
+.tryon-product div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.tryon-product strong {
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--text-primary);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.tryon-product small {
+  font-size: 10.5px;
+  color: var(--text-secondary);
+}
+
+.tryon-fit {
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid var(--border);
+}
+
+.tryon-size-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px 14px;
+}
+
+.tryon-size-chips button {
+  min-width: 34px;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: var(--radius-pill);
+  font-size: 11.5px;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.tryon-size-chips button.selected {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--on-primary);
+  font-weight: 600;
+}
+
+.tryon-bucket {
+  font-style: normal;
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+
+.tryon-fit-rows {
+  display: flex;
+  flex-direction: column;
+  padding: 0 14px;
+}
+
+.tryon-fit-row {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--surface-muted);
+  display: grid;
+  gap: 4px;
+}
+
+.tryon-fit-row-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.tryon-fit-row p {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--text-primary);
+}
+
+.tryon-fit-row small {
+  font-size: 10.5px;
+  color: var(--text-secondary);
+}
+
+.tryon-bucket-legend {
+  list-style: none;
+  margin: 0;
+  padding: 10px 14px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.tryon-bucket-legend li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10.5px;
+  color: var(--text-secondary);
+  min-width: 0;
+}
+
+.tryon-bucket-legend i {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.tryon-bucket-legend span {
+  color: var(--text-primary);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tryon-bucket-legend small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tryon-fit-note,
+.tryon-fit-loading,
+.tryon-fit-error {
+  margin: 10px 14px;
+  font-size: 10.5px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+.tryon-fit-error {
+  color: #a5453a;
+}
+
+.tryon-measures {
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid var(--border);
+}
+
+.tryon-measures .scan-provenance-warning {
+  margin: 10px 14px 0;
+}
+
+.tryon-rows {
+  max-height: none;
+}
+
+.tryon-rows button {
+  padding: 8px 14px;
+}
+
+.tryon-explain-text {
+  margin: 10px 14px 14px;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.tryon-explain-source {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-muted);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+
+.tryon-explain-source.is-ai {
+  background: var(--primary-soft);
+  color: var(--accent-text);
+  border-color: var(--primary);
+}
+
+.tryon-explain-basis {
+  list-style: none;
+  margin: 0 14px 8px;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tryon-explain-basis li {
+  font-size: 10.5px;
+  color: var(--text-secondary);
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  padding: 2px 8px;
+}
+
+.tryon-explain-note {
+  margin: 0 14px 14px;
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+/* 3D Stage (middle) */
 .scan-stage {
   position: relative;
   min-width: 0;
-  min-height: 600px;
-  background: var(--surface-subtle);
+  min-height: 0;
+  height: 100%;
+  background: #141312;
+  overflow: hidden;
 }
 
 .scan-stage .body-viewer {
-  height: 600px;
+  height: auto;
 }
 
 .scan-stage-label {
@@ -532,16 +867,16 @@
 .scan-stage-label b {
   font-size: 16px;
   letter-spacing: 0.04em;
-  color: var(--text-primary);
+  color: #f3ede2;
 }
 
 .scan-stage-label b span {
-  color: var(--accent-text);
+  color: #c6a15b;
 }
 
 .scan-stage-label small {
   font-size: 11px;
-  color: var(--text-secondary);
+  color: rgba(243, 237, 226, 0.66);
 }
 
 /* Toolbar Controls */
@@ -626,7 +961,7 @@
   width: 100%;
   text-align: center;
   font-size: 10.5px;
-  color: var(--text-secondary);
+  color: rgba(243, 237, 226, 0.6);
   pointer-events: none;
 }
 
@@ -820,9 +1155,25 @@
 }
 
 /* Responsive adjustments */
-@media (max-width: 900px) {
+@media (max-width: 1023px) {
   .scan-workspace {
-    grid-template-columns: 240px minmax(0, 1fr);
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    min-height: 0;
+  }
+  .tryon-wardrobe {
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+    max-height: 240px;
+  }
+  .tryon-panel {
+    border-left: 0;
+    border-top: 1px solid var(--border);
+  }
+  .scan-stage {
+    height: 520px;
+    min-height: 520px;
   }
   .scan-data-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));

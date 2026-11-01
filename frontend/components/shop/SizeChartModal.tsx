@@ -21,10 +21,17 @@ export default function SizeChartModal({
     <Modal open={open} onClose={onClose} title={`Bảng size · ${product.name}`}>
       <div className="shop-modal-body">
         <h2>Thông số số đo cơ thể chuẩn</h2>
-        <p>
+        <p className="shop-chart-source-note">
           Bảng size tính theo khoảng <strong>số đo cơ thể (cm)</strong>, không phải kích thước trang phục trải phẳng.
           Đo sát cơ thể khi mặc đồ ôm nhẹ để đối chiếu kích cỡ phù hợp.
         </p>
+        {product.chart.source === "derived_from_flat_spec" && (
+          <p className="shop-chart-derived-note">
+            <strong>Lưu ý:</strong> hãng chỉ công bố bảng cao × cân và số đo áo trải phẳng. Khoảng vòng cơ thể ở
+            đây được <strong>suy ra</strong> từ chu vi áo trừ ease 2–10 cm, không phải bảng cơ thể do hãng công bố.
+            Số đo áo thật nằm ở bảng “Số đo may (trải phẳng)” bên dưới.
+          </p>
+        )}
 
         <table className="shop-size-table">
           <thead>

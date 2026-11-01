@@ -25,7 +25,11 @@ import {
 import type { Job, MeasurementDetail } from "../../lib/useBodyScan";
 import type { Product } from "../../lib/catalog";
 import { fetchFitMap, type FitBand, type FitMapResult } from "../../lib/fitMap";
-import FitMapPanel from "./FitMapPanel";
+import { FIT_BUCKETS, bucketRegions } from "../../lib/fitBuckets";
+import { fetchAllProducts } from "../../lib/catalogApi";
+import { EXPLAIN_METRIC_LABEL, fetchFitExplain, type FitExplainResult } from "../../lib/fitExplain";
+import FitBucketPanel from "./FitBucketPanel";
+import TryOnWardrobe from "./TryOnWardrobe";
 import type { FitHeatmap } from "../BodyViewer";
 import { useScan, type SizeAdviceResult } from "../../lib/ScanContext";
 import { useAuth } from "../../lib/AuthContext";
@@ -89,6 +93,7 @@ export default function ScanResult({
   product,
   onOpenSizeChart,
   onResetFullBody,
+  onSelectProduct,
 }: {
   job: Job;
   active: boolean;
@@ -102,6 +107,7 @@ export default function ScanResult({
   product?: Product;
   onOpenSizeChart?: () => void;
   onResetFullBody?: () => void;
+  onSelectProduct?: (product: Product) => void;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const [rotate, setRotate] = useState(false);
@@ -117,6 +123,10 @@ export default function ScanResult({
   const [fitLoading, setFitLoading] = useState(false);
   const [fitError, setFitError] = useState("");
   const [fitView, setFitView] = useState(true);
+  const [wardrobe, setWardrobe] = useState<Product[]>([]);
+  const [explain, setExplain] = useState<FitExplainResult | null>(null);
+  const [explainLoading, setExplainLoading] = useState(false);
+  const explainCache = useRef<Record<string, FitExplainResult>>({});
   const [editing, setEditing] = useState(false);
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState("");
@@ -162,6 +172,7 @@ export default function ScanResult({
     };
   }, [product?.slug, activeFitSize, job.id, job.status, job.revision]);
 
+  const isBottom = product?.chart?.garment === "bottom";
   const fitBands: FitBand[] = useMemo(
     () =>
       (fitMap?.regions || [])
@@ -170,12 +181,101 @@ export default function ScanResult({
     [fitMap]
   );
 
-  // Flat-spec products return a continuous per-vertex field. It replaces the
-  // old waist/hip Y bands for those products; other products keep fitBands.
+  // Try-on heatmap: UI-only three-bucket map built from the API's ease values.
+  // Only the garment torso (chest/waist bands) is painted; arms and bottoms stay
+  // neutral, and a region without garment data is grey instead of guessed.
+  const bucketFit = useMemo(() => bucketRegions(fitMap), [fitMap]);
   const fitHeatmap = useMemo<FitHeatmap | undefined>(() => {
-    const heatmap = (fitMap as (FitMapResult & { heatmap?: FitHeatmap }) | null)?.heatmap;
-    return heatmap?.mode === "continuous_vertex" ? heatmap : undefined;
-  }, [fitMap]);
+    if (!fitMap || !bucketFit.length || isBottom) return undefined;
+    const source = (fitMap as FitMapResult & {
+      heatmap?: { garment_length_cm?: number | null; shoulder_level?: number };
+    }).heatmap;
+    return {
+      mode: "region_buckets",
+      regions: bucketFit.map((region) => ({
+        from: region.from,
+        to: region.to,
+        color: FIT_BUCKETS[region.bucket].color,
+        label: region.label,
+        ease_cm: region.ease_cm,
+      })),
+      unknown_color: FIT_BUCKETS.unknown.color,
+      arm_x_fraction: 0.18,
+      garment_length_cm: source?.garment_length_cm ?? null,
+      shoulder_level: source?.shoulder_level ?? 0.805,
+      unverified: true,
+    };
+  }, [fitMap, bucketFit, isBottom]);
+
+  // Tủ đồ: danh sách sản phẩm thân trên cho cột 22%. Sản phẩm đang xem đứng
+  // đầu danh sách và chỉ đổi được khi trang cha sở hữu state sản phẩm (/scan).
+  useEffect(() => {
+    let cancelled = false;
+    fetchAllProducts()
+      .then((items) => {
+        if (!cancelled) setWardrobe(items.filter((item) => item.chart?.garment !== "bottom"));
+      })
+      .catch(() => {
+        /* fall back to the current product only */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const wardrobeProducts = useMemo<Product[]>(() => {
+    // Ưu tiên món có số đo áo thật (garment_specs) để heatmap có dữ liệu; các
+    // món còn lại vẫn hiện nhưng vùng thiếu số đo sẽ xám.
+    const rest = wardrobe
+      .filter((item) => item.id !== product?.id)
+      .sort((a, b) => Number(Boolean(b.garment_specs?.length)) - Number(Boolean(a.garment_specs?.length)));
+    return product ? [product, ...rest].slice(0, 24) : rest.slice(0, 24);
+  }, [wardrobe, product]);
+
+  // A size chosen for one garment may not exist on the next one.
+  useEffect(() => {
+    setFitSize("");
+  }, [product?.slug]);
+
+  const chestEase = bucketFit.find((region) => region.key === "chest_cm")?.ease_cm ?? null;
+  const waistEase = bucketFit.find((region) => region.key === "waist_cm")?.ease_cm ?? null;
+
+  // One explanation per (product, size, ease): cached in this ref and again on
+  // the backend. The endpoint answers with the deterministic fallback when the
+  // AI is unconfigured, rate-limited or produces a foreign number, so a failure
+  // never blocks the result screen.
+  useEffect(() => {
+    if (!product || isBottom || !activeFitSize || job.status !== "completed") {
+      setExplain(null);
+      return;
+    }
+    if (chestEase == null && waistEase == null) {
+      setExplain(null);
+      return;
+    }
+    const key = `${product.slug}|${activeFitSize}|${chestEase ?? ""}|${waistEase ?? ""}`;
+    const cached = explainCache.current[key];
+    if (cached) {
+      setExplain(cached);
+      return;
+    }
+    const controller = new AbortController();
+    setExplainLoading(true);
+    fetchFitExplain(
+      activeFitSize,
+      { chest_cm: chestEase, waist_cm: waistEase },
+      { name: product.name, fit: product.fit, material: product.material },
+      controller.signal
+    )
+      .then((result) => {
+        explainCache.current[key] = result;
+        setExplain(result);
+      })
+      .catch((err) => {
+        if (err?.name !== "AbortError") setExplain(null);
+      })
+      .finally(() => setExplainLoading(false));
+    return () => controller.abort();
+  }, [product?.slug, activeFitSize, chestEase, waistEase, isBottom, job.status]);
 
   const router = useRouter();
   const { user } = useAuth();
@@ -350,7 +450,6 @@ export default function ScanResult({
     );
   }
 
-  const isBottom = product?.chart?.garment === "bottom";
   const editFields = [
     { key: "height_cm", label: "Chiều cao", min: 100, max: 230 },
     { key: "chest_cm", label: "Vòng ngực", min: 40, max: 200 },
@@ -649,73 +748,14 @@ export default function ScanResult({
         </div>
       </section>
 
-      {product && (
-        <FitMapPanel
-          fit={fitMap}
-          size={activeFitSize}
-          sizes={product.sizes}
-          onSelectSize={(size) => {
-            setFitSize(size);
-            onSelectSize(size);
-          }}
-          loading={fitLoading}
-          error={fitError}
-        />
-      )}
-
-      {/* 3D Workspace */}
+      {/* Try-on: wardrobe | 3D stage | product + size + measurements + heatmap */}
       <div className="scan-workspace">
-        <aside className="scan-measure-list" aria-label="Danh sách số đo">
-          <div className="scan-list-title">
-            <strong>
-              Số đo <small>{rows.length}</small>
-            </strong>
-            <div className="scan-units" aria-label="Đơn vị">
-              {["cm", "in"].map((u) => (
-                <button key={u} type="button" onClick={() => setUnit(u)} aria-pressed={unit === u}>
-                  {u}
-                </button>
-              ))}
-            </div>
-          </div>
-          <p>Chọn một dòng để làm nổi đường đo tương ứng trên hình thể.</p>
-          {notFromPhoto.length > 0 && (
-            <p className="scan-provenance-warning" role="status">
-              <AlertCircle size={14} aria-hidden="true" />
-              <span>
-                Kết quả chưa dùng được ảnh cho: <b>{notFromPhoto.map((m) => m.label).join(", ")}</b>.
-                Hãy chụp lại theo hướng dẫn.
-              </span>
-            </p>
-          )}
-          <div className="scan-rows">
-            {rows.map((m) => (
-              <button
-                key={m.key}
-                type="button"
-                className={selected === m.key ? "selected" : ""}
-                onClick={() => {
-                  setSelected(selected === m.key ? "" : m.key);
-                  setRings(true);
-                }}
-                disabled={!m.points_m.length}
-                aria-pressed={selected === m.key}
-                title={reason(m) || undefined}
-              >
-                <i style={{ background: m.color }} />
-                <span>
-                  {m.label}
-                  <small>{SOURCE[m.source]}</small>
-                </span>
-                <b>
-                  {value(m)}
-                  <small>{m.value_cm != null ? unit : ""}</small>
-                </b>
-              </button>
-            ))}
-          </div>
-          <p className="scan-list-foot">“Mô hình mẫu” không phải số đo cơ thể được camera quan sát.</p>
-        </aside>
+        <TryOnWardrobe
+          products={wardrobeProducts}
+          selectedId={product?.id || ""}
+          size={activeFitSize}
+          onSelect={onSelectProduct}
+        />
 
         <div className="scan-stage">
           <div className="scan-stage-label">
@@ -775,7 +815,7 @@ export default function ScanResult({
                 technical
                 annotations={rows}
                 selectedMeasurement={selected}
-                fitBands={fitView && !fitHeatmap ? fitBands : undefined}
+                fitBands={fitView && !fitHeatmap && !isBottom ? fitBands : undefined}
                 fitHeatmap={fitView ? fitHeatmap : undefined}
                 onSelectView={() => setRotate(false)}
               />
@@ -786,8 +826,120 @@ export default function ScanResult({
               Số đo và gợi ý size vẫn dùng được; hãy quét lại nếu cần xem hình thể.
             </p>
           ))}
-          <p className="scan-stage-help">Kéo để xoay · Cuộn hoặc chụm để phóng to</p>
+          <p className="scan-stage-help">Kéo để xoay · Cuộn hoặc chạm để phóng to</p>
         </div>
+
+        <aside className="tryon-panel" aria-label="Sản phẩm, size và số đo">
+          {product && (
+            <section className="tryon-product">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={product.image} alt="" width={56} height={56} />
+              <div>
+                <strong>{product.name}</strong>
+                <small>{product.categoryName} · {product.sizes.join(" / ")}</small>
+              </div>
+            </section>
+          )}
+
+          {product ? (
+            <FitBucketPanel
+              fit={fitMap}
+              size={activeFitSize}
+              sizes={product.sizes}
+              onSelectSize={(size) => {
+                setFitSize(size);
+                onSelectSize(size);
+              }}
+              loading={fitLoading}
+              error={fitError}
+            />
+          ) : null}
+
+          <section className="tryon-measures" aria-label="Số đo cơ thể">
+            <div className="tryon-panel-head">
+              <strong>
+                Số đo <small>{rows.length}</small>
+              </strong>
+              <div className="scan-units" aria-label="Đơn vị">
+                {["cm", "in"].map((u) => (
+                  <button key={u} type="button" onClick={() => setUnit(u)} aria-pressed={unit === u}>
+                    {u}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {notFromPhoto.length > 0 && (
+              <p className="scan-provenance-warning" role="status">
+                <AlertCircle size={14} aria-hidden="true" />
+                <span>
+                  Kết quả chưa dùng được ảnh cho: <b>{notFromPhoto.map((m) => m.label).join(", ")}</b>.
+                  Hãy chụp lại theo hướng dẫn.
+                </span>
+              </p>
+            )}
+            <div className="scan-rows tryon-rows">
+              {rows.map((m) => (
+                <button
+                  key={m.key}
+                  type="button"
+                  className={selected === m.key ? "selected" : ""}
+                  onClick={() => {
+                    setSelected(selected === m.key ? "" : m.key);
+                    setRings(true);
+                  }}
+                  disabled={!m.points_m.length}
+                  aria-pressed={selected === m.key}
+                  title={reason(m) || undefined}
+                >
+                  <i style={{ background: m.color }} />
+                  <span>
+                    {m.label}
+                    <small>{SOURCE[m.source]}</small>
+                  </span>
+                  <b>
+                    {value(m)}
+                    <small>{m.value_cm != null ? unit : ""}</small>
+                  </b>
+                </button>
+              ))}
+            </div>
+            <p className="scan-list-foot">“Mô hình mẫu” không phải số đo cơ thể được camera quan sát.</p>
+          </section>
+
+          <section className="tryon-explain" aria-label="Giải thích size">
+            <div className="tryon-panel-head">
+              <strong>Vì sao size này?</strong>
+              {explain && (
+                <span className={`tryon-explain-source is-${explain.source}`}>
+                  {explain.source === "ai" ? "AI giải thích" : "Giải thích tự động"}
+                </span>
+              )}
+            </div>
+            {explainLoading && !explain ? (
+              <p className="tryon-explain-text">Đang soạn giải thích…</p>
+            ) : explain ? (
+              <>
+                <p className="tryon-explain-text">{explain.explanation}</p>
+                {explain.basis.length > 0 && (
+                  <ul className="tryon-explain-basis">
+                    {explain.basis.map((item) => (
+                      <li key={item.metric}>
+                        {EXPLAIN_METRIC_LABEL[item.metric] || item.metric}: ease {item.ease_cm} cm
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <p className="tryon-explain-note">
+                  Chỉ giải thích dựa trên chênh lệch chu vi đã đo; không đề xuất size khác.
+                </p>
+              </>
+            ) : (
+              <p className="tryon-explain-text">
+                Chọn áo và size để xem giải thích dựa trên chênh lệch chu vi (ease) từng mốc.
+              </p>
+            )}
+          </section>
+        </aside>
       </div>
 
       {/* Collapsible Technical Details & Data Export */}
