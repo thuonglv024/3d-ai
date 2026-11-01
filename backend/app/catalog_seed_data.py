@@ -156,6 +156,8 @@ EXPANSION_TEMPLATES = {
         ("Áo thun Cổ Thuyền Bateaux Dáng Rộng", "ao-thun-co-thuyen-bateaux-dang-rong", 460000, 520000, "Thiết kế cổ thuyền thanh thoát bay bổng", "Cotton lụa mềm mát", "Oversized fit"),
         ("Áo thun Heavy Cotton Regular", "ao-thun-heavy-cotton-regular", 390000, 450000, "Cotton dày 180gsm phom chuẩn unisex", "100% Cotton Heavy 180gsm", "Regular fit"),
         ("Áo thun Oversized Supima", "ao-thun-oversized-supima", 520000, 590000, "Supima cotton phom oversize buông rộng", "100% Supima Cotton 220gsm", "Oversized fit"),
+        # Giá là giá minh hoạ cho môi trường thử nghiệm, không phải giá bán thật.
+        ("Áo thun nam Oricano Basic", "ao-thun-oricano-nam", 390000, 450000, "Cotton co giãn 4 chiều, khử mùi, phom gọn vừa người", "Cotton co giãn 4 chiều, xử lý khử mùi", "Regular fit gọn"),
     ],
     "so-mi": [
         ("Sơ mi Lụa Pha Cotton Mịn Mượt", "so-mi-lua-pha-cotton-min-muot", 690000, 790000, "Ánh bóng nhẹ từ sợi tơ tằm thượng hạng", "80% Cotton 20% Silk", "Relaxed fit thanh lịch"),
@@ -366,6 +368,35 @@ GARMENT_SPEC_PRODUCTS = {
         "source": "Uniqlo Unisex Supima Cotton Oversized T-Shirt: body width x2, length, shoulder, sleeve",
         "image": "/products/v2/ao-thun-oversized-heavyweight.jpg",
         "detail": "/products/v2/ao-thun-oversized-heavyweight-detail.jpg",
+    },
+    # Số đo áo lấy nguyên từ bảng size của hãng (S–2XL, dạng trải phẳng). Hãng chỉ
+    # công bố bảng cao × cân, KHÔNG công bố vòng cơ thể, nên `rows` dưới đây là
+    # khoảng suy ra từ chu vi áo trừ ease 2–10 cm (giả định, không phải số của hãng).
+    "ao-thun-oricano-nam": {
+        "chart_name": "Bảng size Oricano (suy ra từ số đo áo phẳng)",
+        "chart_source": "derived_from_flat_spec",
+        "sizes": ["S", "M", "L", "XL", "XXL"],
+        "rows": [
+            {"size": "S", "chest_cm": {"min": 72, "max": 80}, "waist_cm": {"min": 62, "max": 74}},
+            {"size": "M", "chest_cm": {"min": 76, "max": 84}, "waist_cm": {"min": 66, "max": 78}},
+            {"size": "L", "chest_cm": {"min": 80, "max": 88}, "waist_cm": {"min": 70, "max": 82}},
+            {"size": "XL", "chest_cm": {"min": 84, "max": 92}, "waist_cm": {"min": 74, "max": 86}},
+            {"size": "XXL", "chest_cm": {"min": 88, "max": 96}, "waist_cm": {"min": 78, "max": 90}},
+        ],
+        "specs": [
+            {"size": "S", "chest_flat_cm": 41.0, "chest_cm": 82.0, "length_cm": 61.0, "sleeve_cm": 17.0, "shoulder_cm": 38.0},
+            {"size": "M", "chest_flat_cm": 43.0, "chest_cm": 86.0, "length_cm": 63.0, "sleeve_cm": 18.0, "shoulder_cm": 39.0},
+            {"size": "L", "chest_flat_cm": 45.0, "chest_cm": 90.0, "length_cm": 65.0, "sleeve_cm": 19.0, "shoulder_cm": 40.0},
+            {"size": "XL", "chest_flat_cm": 47.0, "chest_cm": 94.0, "length_cm": 67.0, "sleeve_cm": 20.0, "shoulder_cm": 41.0},
+            {"size": "XXL", "chest_flat_cm": 49.0, "chest_cm": 98.0, "length_cm": 69.0, "sleeve_cm": 21.0, "shoulder_cm": 42.0},
+        ],
+        "source": (
+            "Bảng size Oricano (ảnh hãng): Dài áo 61/63/65/67/69, ½ Ngực 41/43/45/47/49, "
+            "Dài tay 17/18/19/20/21, Rộng vai 38/39/40/41/42 cm cho S–2XL; hãng gợi ý size theo "
+            "cao × cân (1m60–1m85, 45–90 kg); chu vi ngực áo = 2 × ½ ngực"
+        ),
+        "image": "/products/v2/ao-thun-oricano-nam.jpg",
+        "detail": "/products/v2/ao-thun-oricano-nam-detail.jpg",
     },
 }
 
@@ -581,7 +612,7 @@ def _build_seed_products() -> tuple[list[dict], list[dict]]:
                         "id": chart_id,
                         "name": spec["chart_name"],
                         "garment": "top",
-                        "source": "user_provided",
+                        "source": spec.get("chart_source", "user_provided"),
                         "measurement_basis": "body_cm",
                         "table_json": json.dumps(
                             {"rows": spec["rows"], "garment_specs": spec["specs"], "garment_source": spec["source"]},

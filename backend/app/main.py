@@ -526,6 +526,26 @@ def fit_map(req: FitMapRequest):
     return JSONResponse(compute_fit_map(product, req.size, req.measurements), headers={"Cache-Control": "no-store"})
 
 
+class FitExplainRequest(BaseModel):
+    size: str = Field(min_length=1, max_length=20)
+    eases: dict[str, Optional[float]] = Field(default_factory=dict)
+    garment: Optional[dict] = None
+
+
+@app.post("/api/fit/explain")
+async def fit_explain(req: FitExplainRequest):
+    """Explain a chosen size from its measured ease.
+
+    Never changes the size and never 500s for an AI failure: quota/503/timeout or
+    an output with a number that was not in the input returns the deterministic
+    fallback with ``source = "fallback"``.
+    """
+    from .ai_scan.fit_explain import explain_fit
+
+    payload = await explain_fit(req.size, req.eases, req.garment)
+    return JSONResponse(payload, headers={"Cache-Control": "no-store"})
+
+
 @app.post("/api/sizing/recommend")
 def recommend_sizing(req: SizingRecommendRequest, request: Request):
     """
