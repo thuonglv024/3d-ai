@@ -200,7 +200,10 @@ def test_sensitivity_to_height_error_and_clothing_dilation():
     """Verify linear sensitivity to height_cm (+/-5 cm) and clothing thickness (+4 px per side)."""
     fractions = np.linspace(0.12, 1.12, 35)
     h_px = 500.0
-    base_w_px = np.full(35, 95.0)
+    # A visible waist dip so the waist row is accepted; the chest row (~.41) sees
+    # essentially the undipped width.
+    waist_dip = 0.06 * np.exp(-((fractions - 0.65) / 0.10) ** 2)
+    base_w_px = 95.0 * (1.0 - waist_dip)
     base_d_px = np.full(35, 68.0)
     widths = base_w_px / h_px
     depths = base_d_px / h_px
@@ -220,6 +223,51 @@ def test_sensitivity_to_height_error_and_clothing_dilation():
     # +8 px on ~81.5 px average diameter (~+9.8%) increases chest circumference by ~8-10 cm
     assert 6.0 < delta_chest < 12.0
     assert m_padded["waist_cm"] > m_170["waist_cm"]
+
+
+def test_waist_requires_a_visible_taper_between_chest_and_hip():
+    """Eo chỉ được nhận khi hàng hẹp nhất giữa ngực và hông hẹp hơn cả hai bên ≥1,5 cm."""
+    fractions = np.linspace(0.12, 1.12, 35)
+    straight, straight_targets = estimate_from_profiles(
+        fractions, np.full(35, 0.19), np.full(35, 0.135), 172.0, 0.22
+    )
+    # A straight torso has no natural waist: no number, but the avatar still keeps
+    # a waist section so the section count and mesh remain stable.
+    assert straight["waist_cm"] is None
+    assert [t["key"] for t in straight_targets] == ["chest_cm", "waist_cm", "hip_cm"]
+
+    diagnostics = {}
+    dip = 0.08 * np.exp(-((fractions - 0.65) / 0.09) ** 2)
+    tapered, _ = estimate_from_profiles(
+        fractions,
+        0.19 * (1.0 - dip),
+        np.full(35, 0.135),
+        172.0,
+        0.22,
+        diagnostics=diagnostics,
+    )
+    selection = diagnostics["waist_selection"]
+    assert selection["accepted"] is True
+    assert selection["margin_chest_cm"] >= 1.5
+    assert selection["margin_hip_cm"] >= 1.5
+    assert tapered["waist_cm"] is not None
+    assert tapered["waist_cm"] < tapered["chest_cm"] - 1.5
+
+
+def test_waist_selection_reports_a_reason_when_there_is_no_taper():
+    fractions = np.linspace(0.12, 1.12, 35)
+    diagnostics = {}
+    estimate_from_profiles(
+        fractions,
+        np.full(35, 0.19),
+        np.full(35, 0.135),
+        172.0,
+        0.22,
+        diagnostics=diagnostics,
+    )
+    selection = diagnostics["waist_selection"]
+    assert selection["accepted"] is False
+    assert "Không đọc được vòng eo" in selection["reason"]
 
 
 def test_validate_glb_mesh_verifies_metre_scale_and_rejects_corrupted_geometry():

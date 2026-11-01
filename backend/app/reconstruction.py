@@ -652,15 +652,18 @@ def reconstruct(front: np.ndarray, side: np.ndarray, height_cm: float, destinati
             widths[i] = widths[i]*(1-blend)+np.ptp(curve[:,0])*blend
             depths[i] = depths[i]*(1-blend)+np.ptp(curve[:,2])*blend
     report("Đang trích xuất thông số kích thước cơ thể…")
-    measurements, targets = estimate_from_profiles(fractions, widths, depths, height_cm, front_shoulders_ratio, True, shoulder_level, hip_level)
+    waist_diagnostics: dict = {}
+    measurements, targets = estimate_from_profiles(fractions, widths, depths, height_cm, front_shoulders_ratio, True, shoulder_level, hip_level, diagnostics=waist_diagnostics)
+    waist_selection = waist_diagnostics.get("waist_selection") or {}
+    waist_gate_rejected = waist_selection.get("accepted") is False
     # The side view is only useful when it shows the waist narrowing. With an arm
     # hanging in front of the torso (or a 3/4 turn instead of 90°) the depth
     # profile is flat and the waist circumference becomes fabric plus arm: on
     # P01b that read 86.6 cm against a 60 cm tape waist. Report it as
     # unavailable instead of wrong.
     depth_by_key = {t["key"]: float(t["depth_cm"]) for t in targets if t.get("depth_cm")}
-    waist_unavailable_reason: str | None = None
-    if "waist_cm" in depth_by_key:
+    waist_unavailable_reason: str | None = waist_selection.get("reason") if waist_gate_rejected else None
+    if "waist_cm" in depth_by_key and not waist_gate_rejected:
         waist_depth = depth_by_key["waist_cm"]
         neighbours = [d for k, d in depth_by_key.items() if k in ("chest_cm", "hip_cm")]
         spread = max(depth_by_key.values()) - min(depth_by_key.values())
@@ -806,6 +809,7 @@ def reconstruct(front: np.ndarray, side: np.ndarray, height_cm: float, destinati
         frontal.points, float(height_cm) / max(float(frontal.height), 1.0)
     )
     profile["waist_unavailable_reason"] = waist_unavailable_reason
+    profile["waist_selection"] = waist_selection
     profile["section_factors_calibrated"] = SECTION_FACTORS_CALIBRATED
     profile["scale_method"] = "height_per_image_upper_body" if capture_mode == "upper_body" else "height_and_per_image_silhouette"
     if capture_mode == "upper_body":

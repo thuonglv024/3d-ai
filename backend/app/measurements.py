@@ -46,6 +46,62 @@ ANATOMICAL_SECTION_FACTORS = {
 }
 SECTION_FACTORS_CALIBRATED = False
 
+# Natural-waist rule: the narrowest row between the chest and the hip rows is the
+# waist only when it is visibly narrower than *both* neighbours. A straight torso
+# (no real taper) used to yield a "waist" from the window minimum anyway; on
+# P01b that produced 83.9 cm against a 60 cm tape waist. 1.5 cm per side is the
+# visibility floor, not a calibration constant.
+WAIST_MIN_TAPER_CM = 1.5
+
+
+def _row_index(fractions, circumferences, low, high, choice):
+    """Row of the max/min circumference inside a fraction window."""
+    candidates = np.flatnonzero((fractions >= low) & (fractions <= high))
+    if not len(candidates):
+        raise InvalidPhoto("Không có đủ vùng thân để ước lượng các vòng.")
+    local = circumferences[candidates]
+    return int(candidates[np.argmax(local) if choice == "max" else np.argmin(local)])
+
+
+def select_waist_row(fractions, circumferences, chest_index, hip_index):
+    """Narrowest row between the chest and hip rows, accepted only with a real taper.
+
+    Returns ``(index, info)``. ``info["accepted"]`` is False when the narrowest
+    row is not at least ``WAIST_MIN_TAPER_CM`` below both the chest and the hip:
+    that profile has no visible waist, so the row still positions the avatar but
+    must not be reported as a body measurement.
+    """
+    low, high = sorted((float(fractions[chest_index]), float(fractions[hip_index])))
+    candidates = np.flatnonzero((fractions > low) & (fractions < high))
+    if not len(candidates):
+        return None, {
+            "accepted": False,
+            "reason": "Không đọc được vòng eo: không có hàng nào giữa mốc ngực và mốc hông để chọn.",
+        }
+    index = int(candidates[int(np.argmin(circumferences[candidates]))])
+    waist = float(circumferences[index])
+    chest = float(circumferences[chest_index])
+    hip = float(circumferences[hip_index])
+    margin_chest = chest - waist
+    margin_hip = hip - waist
+    accepted = margin_chest >= WAIST_MIN_TAPER_CM and margin_hip >= WAIST_MIN_TAPER_CM
+    info = {
+        "accepted": bool(accepted),
+        "level_fraction": round(float(fractions[index]), 4),
+        "waist_ellipse_cm": round(waist, 2),
+        "chest_ellipse_cm": round(chest, 2),
+        "hip_ellipse_cm": round(hip, 2),
+        "margin_chest_cm": round(margin_chest, 2),
+        "margin_hip_cm": round(margin_hip, 2),
+    }
+    if not accepted:
+        info["reason"] = (
+            f"Không đọc được vòng eo: hàng hẹp nhất giữa ngực và hông ({waist:.1f} cm) chỉ nhỏ hơn "
+            f"ngực {chest:.1f} cm và hông {hip:.1f} cm; cần hẹp hơn mỗi bên ≥{WAIST_MIN_TAPER_CM:.1f} cm. "
+            "Ảnh chính diện chưa lộ phần thon eo — mặc đồ ôm hơn, đứng thẳng và để tay rời thân rồi quét lại."
+        )
+    return index, info
+
 
 def ellipse_perimeter(width: float, depth: float) -> float:
     """Full diameters and perimeter in the same unit (SciPy elliptic integral)."""
@@ -63,11 +119,13 @@ def anatomical_perimeter(width: float, depth: float, key: str | None = None) -> 
     return base
 
 
-def estimate_from_profiles(fractions, widths, depths, height_cm, shoulder_ratio, apply_anatomical_calibration: bool = True, shoulder_level: float = .805, hip_level: float = .515):
+def estimate_from_profiles(fractions, widths, depths, height_cm, shoulder_ratio, apply_anatomical_calibration: bool = True, shoulder_level: float = .805, hip_level: float = .515, diagnostics: dict | None = None):
     """Corresponding shoulder-to-hip rows; circumference uses calibrated anatomical sections.
 
     ``shoulder_level``/``hip_level`` are the mesh's own skeletal landmarks in
     normalised height, so sections sit on real joints instead of fixed constants.
+    ``diagnostics`` optionally receives ``waist_selection`` so the caller can
+    report why a waist was not accepted.
     """
     base_circumferences = np.array([ellipse_perimeter(w, d) * height_cm for w, d in zip(widths, depths)])
     # Hip: search 0.95–1.02 of the shoulder-hip span, not 1.12. With the
@@ -75,16 +133,20 @@ def estimate_from_profiles(fractions, widths, depths, height_cm, shoulder_ratio,
     # band around hip_level ±0.03 H; 1.12 slid down onto the upper thigh.
     definitions = [("chest_cm", "Ngực", .30, .44, "max"), ("waist_cm", "Eo", .52, .78, "min"), ("hip_cm", "Mông", .95, 1.02, "max")]
     values = {"height_cm": round(height_cm, 1), "shoulder_width_cm": round(shoulder_ratio * height_cm, 1), "inseam_cm": None}
+    chest_index = _row_index(fractions, base_circumferences, .30, .44, "max")
+    hip_index = _row_index(fractions, base_circumferences, .95, 1.02, "max")
+    waist_index, waist_info = select_waist_row(fractions, base_circumferences, chest_index, hip_index)
+    if waist_index is None:
+        # Degenerate profile: keep three sections for the avatar, report no waist.
+        waist_index = _row_index(fractions, base_circumferences, .52, .78, "min")
+    selected = {"chest_cm": chest_index, "waist_cm": waist_index, "hip_cm": hip_index}
     targets = []
     for key, title, low, high, choice in definitions:
-        candidates = np.flatnonzero((fractions >= low) & (fractions <= high))
-        if not len(candidates):
-            raise InvalidPhoto("Không có đủ vùng thân để ước lượng các vòng.")
-        local = base_circumferences[candidates]
-        i = int(candidates[np.argmax(local) if choice == "max" else np.argmin(local)])
+        i = selected[key]
         k_factor = ANATOMICAL_SECTION_FACTORS.get(key, 1.0) if apply_anatomical_calibration else 1.0
         value = float(base_circumferences[i] * k_factor)
-        values[key] = round(value, 1)
+        accepted = key != "waist_cm" or waist_info.get("accepted", True)
+        values[key] = round(value, 1) if accepted else None
         targets.append({
             "key": key,
             "label": title,
@@ -95,6 +157,8 @@ def estimate_from_profiles(fractions, widths, depths, height_cm, shoulder_ratio,
             "width_cm": float(widths[i] * height_cm),
             "depth_cm": float(depths[i] * height_cm),
         })
+    if diagnostics is not None:
+        diagnostics["waist_selection"] = waist_info
     return values, targets
 
 
