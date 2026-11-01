@@ -21,6 +21,8 @@ type BodyProfile = {
   sex?: "female" | "male";
   sex_source?: "user" | "auto";
   measurement_details?: MeasurementDetail[];
+  sources?: Record<string, string>;
+  unavailable?: Record<string, string>;
   fit_status?: string;
   max_fit_error_cm?: number;
   note?: string;

@@ -39,11 +39,28 @@ const Viewer = dynamic(() => import("../BodyViewer"), {
 
 const SOURCE: Record<MeasurementDetail["source"], string> = {
   user_input: "Bạn nhập",
-  photo_estimate: "Ước lượng từ ảnh",
-  photo_with_prior: "Ảnh + tỷ lệ mẫu",
-  template_model: "Theo mẫu 3D",
-  unavailable: "Chưa đủ dữ liệu",
+  photo_estimate: "Đo từ ảnh",
+  photo_with_prior: "Đo từ ảnh + tỷ lệ mẫu",
+  template_model: "Mô hình mẫu",
+  unavailable: "Chưa đo được",
 };
+
+// Chỉ các mốc dùng để chọn size mới được kiểm nguồn: đầu/cổ/đùi/bắp chân luôn
+// thuộc mô hình nền nên sẽ làm cảnh báo thành tiếng ồn nếu tính cả.
+const SIZING_KEYS = new Set([
+  "chest_cm",
+  "waist_cm",
+  "hip_cm",
+  "shoulder_width_cm",
+  "bicep_cm",
+  "forearm_cm",
+  "arm_length_cm",
+]);
+const PHOTO_SOURCES = new Set<MeasurementDetail["source"]>([
+  "photo_estimate",
+  "photo_with_prior",
+  "user_input",
+]);
 
 class Boundary extends Component<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false };
@@ -190,6 +207,13 @@ export default function ScanResult({
   );
   const value = (m: MeasurementDetail) =>
     m.value_cm == null ? "—" : (m.value_cm / (unit === "in" ? 2.54 : 1)).toFixed(1);
+  const reason = (m: MeasurementDetail) =>
+    job.body_profile?.unavailable?.[m.key] || m.quality_warnings?.[0] || "";
+  // Chỉ báo khi một mốc dùng để chọn size không đến từ ảnh (mô hình nền hoặc
+  // chưa đo được). photo_with_prior vẫn là số suy từ ảnh nên không tính.
+  const notFromPhoto = rows.filter(
+    (m) => SIZING_KEYS.has(m.key) && !PHOTO_SOURCES.has(m.source),
+  );
 
   const guestToken = job.user_id
     ? ""
@@ -655,6 +679,15 @@ export default function ScanResult({
             </div>
           </div>
           <p>Chọn một dòng để làm nổi đường đo tương ứng trên hình thể.</p>
+          {notFromPhoto.length > 0 && (
+            <p className="scan-provenance-warning" role="status">
+              <AlertCircle size={14} aria-hidden="true" />
+              <span>
+                Kết quả chưa dùng được ảnh cho: <b>{notFromPhoto.map((m) => m.label).join(", ")}</b>.
+                Hãy chụp lại theo hướng dẫn.
+              </span>
+            </p>
+          )}
           <div className="scan-rows">
             {rows.map((m) => (
               <button
@@ -667,6 +700,7 @@ export default function ScanResult({
                 }}
                 disabled={!m.points_m.length}
                 aria-pressed={selected === m.key}
+                title={reason(m) || undefined}
               >
                 <i style={{ background: m.color }} />
                 <span>
@@ -680,7 +714,7 @@ export default function ScanResult({
               </button>
             ))}
           </div>
-          <p className="scan-list-foot">“Theo mẫu 3D” không phải số đo cơ thể được camera quan sát.</p>
+          <p className="scan-list-foot">“Mô hình mẫu” không phải số đo cơ thể được camera quan sát.</p>
         </aside>
 
         <div className="scan-stage">
@@ -770,7 +804,7 @@ export default function ScanResult({
                   {value(m)}
                   <small>{m.value_cm != null ? unit : ""}</small>
                 </strong>
-                <small>{SOURCE[m.source]}</small>
+                <small title={reason(m) || undefined}>{SOURCE[m.source]}</small>
               </div>
             ))}
           </div>
