@@ -6,6 +6,42 @@ Tài liệu này tổng hợp trạng thái hiện tại của dự án **MORPH 
 
 ## 0. Cập nhật 2026-10-31 — Pilot thật P01b, spec áo A03, lớp AI
 
+### 0.10. PHẦN 1 — nguồn từng số đo + tắt chu vi tay (2026-11-01)
+- **Tắt chu vi bắp/cẳng tay**: `arm_metrics.ARM_GIRTHS_ENABLED = False`. Biên dạng gồm cả tay áo và chưa có
+  bước trừ hao trang phục (C2), nên hai số này không phải số đo cơ thể. P01b trước đây báo cẳng tay **29,3 cm**
+  (tape 20, +9,3) với `source=photo_estimate`, `valid_for_sizing=True`; nay `bicep_cm`/`forearm_cm` = **None**,
+  nguồn `unavailable`, lý do ở `profile["arm_unavailable_reason"]`. Chỉ `arm_length_cm` được báo.
+  Bật lại bằng `measure_arm_girths(..., enabled=True)` sau khi C2 có dữ liệu.
+- **Cổng hợp lệ cho tương lai** (`enabled=True`): `radii_px` có dữ liệu; mặt cắt vuông góc **không chạm thân**
+  (`torso_mask.point_in_torso_run`); bề rộng mặt cắt **4–16 cm** (bán kính 2–8 cm). Dữ liệu P01b: bắp tay
+  41,5 cm, một phía ăn 36 cm vào thân → None; cẳng tay 9,32 cm, hai phía 5,29/4,03 cm (không chạm thân) →
+  nếu bật cổng vẫn ra 29,3 cm. Vì vậy việc tắt là do **thiếu C2**, không phải cổng hình học.
+- **Nguồn từng mốc**: `profile["sources"]` (key → source) và `profile["unavailable"]` (key → lý do) dựng từ
+  `measurement_details` (`_attach_provenance` trong `reconstruction.py`, dùng cho cả `reconstruct` và `refit_avatar`).
+  Mốc `template_model`/`unavailable` bị đặt `measurements[key] = None` — mesh vẫn dựng nội bộ bằng template nhưng
+  số không được xuất như số đo cơ thể. `report.py`: giá trị None không còn mang nhãn `photo_*`; lý do cụ thể
+  (eo/vai/tay) nằm trong `quality_warnings`.
+- **Sửa kèm**: `arm_length_cm` trước bị hard-code `None`/`unavailable` dù pipeline tính được (P01b **45,3 cm**);
+  nay báo `photo_estimate` (observed_region `frontal_arm_landmarks`) khi có số.
+- **Frontend** (`ScanResult.tsx`): nhãn "Đo từ ảnh / Đo từ ảnh + tỷ lệ mẫu / Mô hình mẫu / Chưa đo được",
+  tooltip lý do, banner "Kết quả chưa dùng được ảnh cho: …". Banner chỉ xét mốc dùng để chọn size
+  (ngực/eo/hông/vai/bắp-cẳng tay/dài tay); đầu/cổ/đùi/bắp chân luôn thuộc mẫu nên không tính.
+
+| Mốc P01b | Trước | Sau | Tape | Nguồn sau |
+| :--- | ---: | ---: | ---: | :--- |
+| Ngực | 83,1 | 83,1 | 80 | photo_estimate |
+| Eo | — | — | 60 | unavailable + lý do |
+| Hông | 94,6 | 94,6 | 92 | photo_estimate |
+| Vai | 38,4 | 38,4 | 40 | photo_estimate (`silhouette`) |
+| Dài tay | — (hàng báo None) | **45,3** | — | photo_estimate |
+| Bắp tay | — | — | 23 | unavailable (C2) |
+| Cẳng tay | **29,3** | **—** | 20 | unavailable (C2) |
+
+- **QC**: `pytest backend/tests -q` → **256 passed** (thêm 4 test: tắt C2, mặt cắt chạm thân, bề rộng ngoài
+  4–16 cm, nguồn/lý do khi thiếu số); `npx tsc --noEmit` sạch; `GET /scan` → 200, `GET /` → 200.
+- **Chưa kiểm được**: chưa xem banner/nhãn trên một phiên quét thật trong trình duyệt (cần job có kết quả);
+  `tape_eval` chỉ chạy trên P01b, không phải tuyên bố độ chính xác. Chu vi tay vẫn **không có** cho tới C2.
+
 ### 0.1. Việc đã làm (đều nằm trong commit ngày 2026-10-31 trên `feature/3d-scan`)
 - **AI scan 4 estimator**: 3 lượt `gemini-2.5-flash` (role `anchor`/`shape`/`audit`, temperature 0.35) chạy song song
   với 1 estimator hình học MediaPipe (`backend/app/ai_scan/geometry.py`) trên chính hai ảnh đó; gộp bằng median,
