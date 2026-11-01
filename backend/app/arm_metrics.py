@@ -1,4 +1,4 @@
-﻿"""Số đo tay từ mốc MediaPipe: dài tay, bắp tay, cẳng tay.
+"""Số đo tay từ mốc MediaPipe: dài tay, bắp tay, cẳng tay.
 
 MediaPipe cho tâm khớp (vai 11, khuỷu 13, cổ tay 15) nên **dài tay** tính được
 trực tiếp và đáng tin: đây là tổng hai đoạn thẳng trên ảnh nhân cm/px.
@@ -127,3 +127,42 @@ def limb_girth_from_mask(mask, start, end, cm_per_px: float) -> float | None:
     if not (MIN_LIMB_RADIUS_CM <= radius_cm <= MAX_LIMB_RADIUS_CM):
         return None
     return round(2 * math.pi * radius_cm, 1)
+
+
+def measure_arm_girths(
+    mask,
+    points: Sequence[Sequence[float]],
+    visibility: Sequence[float],
+    radii_px: dict[str, float] | None,
+    cm_per_px: float,
+) -> tuple[dict[str, float | None], dict]:
+    """Bắp tay và cẳng tay từ biên dạng tay, chỉ khi tay đã tách khỏi thân.
+
+    Điều kiện bật: ``radii_px`` không rỗng, tức ``remove_arm_capsules`` đã tách
+    được ít nhất một bên tay khỏi thân. Chọn bên có tổng visibility ba mốc
+    vai–khuỷu–cổ tay cao hơn, rồi cắt vuông góc trên **mask gốc** (mask đã tách
+    tay không còn tay để cắt). Bán kính ngoài 2–8 cm trả None trong
+    ``limb_girth_from_mask`` — đó là cổng hợp lệ, không phải hệ số hiệu chỉnh.
+
+    Lưu ý: biên dạng gồm cả tay áo. Trên P01b (áo dài tay) cẳng tay ra 29,3 cm
+    so tape 20 cm; số này chỉ nên đọc như "chu vi ngoài lớp áo".
+    """
+    empty = {"bicep_cm": None, "forearm_cm": None}
+    if not radii_px:
+        return empty, {"available": False, "reason": "không tách được tay khỏi thân"}
+    left_visibility = float(sum(visibility[i] for i in (11, 13, 15)) / 3.0)
+    right_visibility = float(sum(visibility[i] for i in (12, 14, 16)) / 3.0)
+    order = ("left", "right") if left_visibility >= right_visibility else ("right", "left")
+    side = next((name for name in order if name in radii_px), order[0])
+    shoulder, elbow, wrist = (11, 13, 15) if side == "left" else (12, 14, 16)
+    girths = {
+        "bicep_cm": limb_girth_from_mask(mask, points[shoulder], points[elbow], cm_per_px),
+        "forearm_cm": limb_girth_from_mask(mask, points[elbow], points[wrist], cm_per_px),
+    }
+    info = {
+        "available": any(value is not None for value in girths.values()),
+        "side": side,
+        "mask": "frontal_raw_silhouette",
+        "radii_px": {name: float(radii_px[name]) for name in radii_px},
+    }
+    return girths, info

@@ -24,6 +24,8 @@ def _observed_region(key: str, upper: bool) -> str:
         return "template_prior_unobserved"
     if key in {"arm_length_cm", "inseam_cm"}:
         return "unobserved"
+    if key in {"bicep_cm", "forearm_cm"}:
+        return "frontal_arm_silhouette"
     return "template_prior_unobserved"
 
 
@@ -31,6 +33,15 @@ def _quality_warnings(key: str, source: str, upper: bool) -> list[str]:
     if key == "height_cm":
         return [
             "Chiều cao do người dùng tự nhập; các số đo quy đổi sang cm phụ thuộc tuyến tính vào giá trị này."
+        ]
+    if key in {"bicep_cm", "forearm_cm"}:
+        if source == "unavailable":
+            return [
+                "Không đo được vòng tay: chưa tách được tay khỏi thân, hoặc mặt cắt ngoài khoảng bán kính 2–8 cm."
+            ]
+        return [
+            "Đo trên biên dạng tay ở ảnh chính diện (mặt cắt vuông góc với xương), gồm cả độ dày tay áo; "
+            "chưa hiệu chuẩn trên người thật."
         ]
     if source == "photo_with_prior":
         return [
@@ -125,6 +136,10 @@ def measurement_report(mesh, measurements, profile, height_cm, overrides=None):
         except InvalidPhoto:
             add(key, title, None, "unavailable", color=color)
     add("arm_length_cm", "Dài tay", None, "unavailable")
+    arm_source = "photo_with_prior" if upper else "photo_estimate"
+    for key, title in (("bicep_cm", "Bắp tay"), ("forearm_cm", "Cẳng tay")):
+        value = measurements.get(key)
+        add(key, title, value, arm_source if value is not None else "unavailable")
     add("inseam_cm", "Dài trong chân", None, "unavailable")
     return rows
 

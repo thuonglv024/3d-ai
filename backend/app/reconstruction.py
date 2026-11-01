@@ -19,7 +19,7 @@ from . import anny_body
 from . import proportions
 from . import report as _report
 from .anatomy import depth_weights, resolve_sex, shape_sex, template_landmarks
-from .arm_metrics import arm_length_cm, limb_girth_from_mask
+from .arm_metrics import arm_length_cm, measure_arm_girths
 from .camera_fusion import aligned_torso_landmarks, assess_cross_view_quality, fuse_camera_scale, synchronized_torso_profile as torso_profile
 from .config import MODELS
 from .images import InvalidPhoto
@@ -797,17 +797,25 @@ def reconstruct(front: np.ndarray, side: np.ndarray, height_cm: float, destinati
     # Where the reported shoulder width came from: the outer silhouette at the
     # acromion row, or the landmark span when that row was unusable.
     profile["shoulder_width_source"] = shoulder_source
-    # Bắp/cẳng tay chưa bật: mặt nạ P01b (tay sát thân, áo dài tay) cho cẳng tay
-    # 29,3 cm so tape 20 cm, tức phép cắt đã lấn sang thân. Thuật toán có trong
-    # arm_metrics (đã test), chỉ bật khi ảnh có tay rời thân rõ ràng.
-    measurements["bicep_cm"] = None
-    measurements["forearm_cm"] = None
+    # Bắp/cẳng tay: mặt cắt vuông góc trên mask gốc, chỉ khi remove_arm_capsules
+    # đã tách được tay khỏi thân (arm_radius_px) và bán kính nằm trong 2–8 cm.
+    # Biên dạng gồm cả tay áo, nên đây là "chu vi ngoài lớp áo" (P01b: 29,3 cm
+    # so tape 20 cm vì áo dài tay) — profile["arm_measurements"] ghi rõ nguồn.
+    arm_girths, arm_info = measure_arm_girths(
+        getattr(frontal, "raw_mask", frontal.mask),
+        frontal.points,
+        frontal.visibility,
+        getattr(frontal, "arm_radius_px", None),
+        float(height_cm) / max(float(frontal.height), 1.0),
+    )
+    measurements["bicep_cm"] = arm_girths["bicep_cm"]
+    measurements["forearm_cm"] = arm_girths["forearm_cm"]
     # Dài tay: chuỗi vai-khuỷu-cổ tay trên ảnh chính diện. Đây là số duy nhất
-    # trong nhóm tay tính trực tiếp từ mốc; bắp/cẳng tay cần mặt cắt vuông góc
-    # với trục xương nên chưa đưa vào (capsule chỉ cho một bán kính cho cả tay).
+    # trong nhóm tay tính trực tiếp từ mốc.
     measurements["arm_length_cm"] = arm_length_cm(
         frontal.points, float(height_cm) / max(float(frontal.height), 1.0)
     )
+    profile["arm_measurements"] = arm_info
     profile["waist_unavailable_reason"] = waist_unavailable_reason
     profile["waist_selection"] = waist_selection
     profile["section_factors_calibrated"] = SECTION_FACTORS_CALIBRATED

@@ -1,4 +1,4 @@
-﻿# Trạng Thái Bàn Giao Hiện Tại (Project Handoff)
+# Trạng Thái Bàn Giao Hiện Tại (Project Handoff)
 
 Tài liệu này tổng hợp trạng thái hiện tại của dự án **MORPH AI**, các thay đổi vừa hoàn thành, các giới hạn kỹ thuật cần lưu ý và danh sách công việc tiếp theo dành cho kỹ sư hoặc AI Agent kế nhiệm.
 
@@ -67,6 +67,46 @@ Pilot P01b (1 người, 156 cm, tape ngực 80 / eo 60 / hông 92, mặc áo len
   (trần 3 cm, có nhãn), K1 chạy `tape_eval` cho 2 người. K2/K3 **bị chặn**: cần ≥8 người có tape.
 - **Định nghĩa xong (QC)**: P01b ngực ≤81,5 · hông ≤93,5 · vai ≥39; ca nam ngực ≤100,5 · vai 46±2 ·
   dài tay 90±3; `pytest` xanh, `tsc` sạch, `/scan` 200; mỗi bước push `fity/feature/3d-scan`.
+
+### 0.9. Cổng thang đo, eo theo hình dáng, bật vòng tay (2026-11-01)
+- **Cổng đồng thuận thang đo (`upper_body`)** — `estimate_upper_body_height`:
+  tính hai mỏ neo độc lập (đầu–vai / 0,195 H và vai–hông / 0,290 H); lệch > **20%** thì
+  `InvalidPhoto` kèm hướng dẫn, **không lấy trung bình**. Ngưỡng 20% lấy từ biên dữ liệu hiện có:
+  P01b lệch **15,8%** (744,0 vs 642,6 px), ảnh QA `verification/scripts/qa/upper-front.png` lệch
+  **17,8%** (462,7 vs 392,9 px); ca synthetic lệch 31% bị chặn (có test).
+  - Hệ quả P01b: `upper_body` **qua cổng thang đo** nhưng vẫn dừng ở cổng tay dính thân như trước,
+    nên vẫn chưa có bộ số `upper_body`. `full_body` không đổi.
+- **Eo theo hình dáng** — `measurements.select_waist_row`:
+  chọn hàng hẹp nhất **giữa hàng ngực và hàng hông** (bỏ cửa sổ cứng .52–.78); chỉ nhận khi hẹp hơn
+  **cả hai bên ≥ 1,5 cm**, nếu không `waist_cm = None` kèm lý do. Hàng vẫn dùng để đặt vòng eo của
+  avatar nên vẫn đủ 3 mặt cắt và mesh hợp lệ.
+  - P01b: hàng hẹp nhất **82,7 cm** (fraction 0,473), chỉ kém ngực **0,45 cm** (cần ≥1,5) → **None**;
+    lý do mới nêu đúng số liệu thay vì câu chung về "bề dày phẳng".
+- **Bắp/cẳng tay** — `arm_metrics.measure_arm_girths`:
+  chỉ chạy khi `remove_arm_capsules` tách được tay (`frontal.arm_radius_px`), cắt **vuông góc** trên
+  mask gốc, bán kính ngoài **2–8 cm** → None. Hàng `bicep_cm`/`forearm_cm` đã vào `measurement_report`
+  (`observed_region = frontal_arm_silhouette`), `profile["arm_measurements"]` ghi bên tay và nguồn.
+  - P01b: **bắp tay None** (mặt cắt 180,5 px → bán kính 20,8 cm > 8: phép cắt lấn sang thân);
+    **cẳng tay 29,3 cm (+9,3 so tape 20)** — biên dạng gồm **tay áo dài**, nên đây là "chu vi ngoài
+    lớp áo", không phải da. Cảnh báo được gắn ở từng hàng.
+- **Bảng trước/sau (P01b, `tape_eval.py`, full_body)**:
+
+  | Mốc | Trước | Sau | Tape | Lệch sau |
+  | :--- | ---: | ---: | ---: | ---: |
+  | Ngực | 83,1 | 83,1 | 80 | +3,1 |
+  | Eo | — (depth phẳng) | — (không thon) | 60 | — |
+  | Hông | 94,6 | 94,6 | 92 | +2,6 |
+  | Rộng vai | 38,4 | 38,4 | 40 | −1,6 |
+  | Dài tay | 45,3 | 45,3 | — | — |
+  | Bắp tay | — | — | 23 | — |
+  | Cẳng tay | — | 29,3 | 20 | **+9,3 (tay áo)** |
+
+- **QC**: ba số đang tốt **không đổi**; các ngưỡng **≤81,5 / ≤93,5 / ≥39 vẫn chưa đạt** vì ba bước này
+  không chạm vào ước lượng vòng/shoulder `full_body` — cần C2/C3 (trừ hao áo) và hiệu chuẩn vai.
+  Cẳng tay 29,3 **không đạt** chuẩn "số đo được" (là chu vi ngoài tay áo), chỉ nên đọc như upper bound
+  cho tới khi có bước trừ hao trang phục cho tay.
+- **Kiểm chứng**: `pytest backend/tests -q` → **252 passed** (thêm test cổng 20%, eo theo hình dáng,
+  mặt cắt tay); `npm run typecheck` sạch; `/scan` 200; log `tape_eval` ở trên.
 
 ### 0.8. U1 — khung ngắm 3 mốc trên preview camera (2026-11-01)
 - **Mục tiêu**: người dùng thấy đúng 3 mốc mà pipeline cần (đỉnh đầu – vai – hông) và biết mốc nào đang

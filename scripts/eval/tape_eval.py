@@ -88,10 +88,15 @@ def main() -> int:
         shown = "—" if value is None else f"{float(value):.1f}"
         truth_shown = "—" if truth is None else f"{truth:.1f}"
         err_shown = "—" if error is None else f"{error:+.1f}"
-        if key not in ("chest_cm", "waist_cm", "hip_cm", "shoulder_width_cm", "arm_length_cm"):
+        if key not in ("chest_cm", "waist_cm", "hip_cm", "shoulder_width_cm", "arm_length_cm", "bicep_cm", "forearm_cm"):
             note = "chưa đo trong pipeline"
         elif value is None:
-            note = profile.get("waist_unavailable_reason") if key == "waist_cm" else "không đủ dữ kiện"
+            if key == "waist_cm":
+                note = profile.get("waist_unavailable_reason")
+            elif key in ("bicep_cm", "forearm_cm"):
+                note = (profile.get("arm_measurements") or {}).get("reason") or "không tách được tay, hoặc bán kính ngoài 2–8 cm"
+            else:
+                note = "không đủ dữ kiện"
         elif truth is None:
             note = "không có tape"
         elif abs(error) > 2.0:
