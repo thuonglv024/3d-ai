@@ -1953,3 +1953,19 @@
 .capture-frame-mark {
   display: none !important;
 }
+
+/* Bỏ hẳn hình người. Thay vào đó, viền khung đổi màu theo tư thế: hổ phách khi
+   chưa đúng, xanh khi đủ điều kiện chụp. `is-ready` do PoseGuide gắn từ prop
+   ready (logic cũ), nên đây thuần CSS. */
+.scan-silhouette {
+  display: none !important;
+}
+.capture-pose-guide {
+  display: block !important;
+  border-radius: 16px;
+  box-shadow: inset 0 0 0 3px #d59a3a;
+  transition: box-shadow 220ms ease;
+}
+.capture-pose-guide.is-ready {
+  box-shadow: inset 0 0 0 3px #4f9d6b;
+}
