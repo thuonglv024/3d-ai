@@ -1969,3 +1969,11 @@
 .capture-pose-guide.is-ready {
   box-shadow: inset 0 0 0 3px #4f9d6b;
 }
+
+/* Quy tắc cũ `.capture-pose-guide .scan-silhouette { display: block !important }`
+   có độ đặc hiệu cao hơn `.scan-silhouette`, nên hình người vẫn hiện. Ghi đè
+   bằng selector cùng độ đặc hiệu, đặt sau. */
+.capture-pose-guide .scan-silhouette,
+svg .scan-silhouette {
+  display: none !important;
+}
