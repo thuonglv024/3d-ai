@@ -623,6 +623,14 @@ def reconstruct(front: np.ndarray, side: np.ndarray, height_cm: float, destinati
     # not the landmark centres (28.0 vs a 40 cm tape shoulder on P01b). The
     # landmark span above stays as the pose check for the two views.
     front_shoulders_ratio, shoulder_source = shoulder_span(frontal)
+    shoulder_unavailable_reason = None
+    if front_shoulders_ratio is None:
+        shoulder_unavailable_reason = (
+            "Không đo được rộng vai: hàng vai trong ảnh chính diện bị tay/áo che nên không có "
+            "đường viền rõ. Hãy đưa hai tay ra khỏi thân và chụp lại."
+        )
+        # Mesh vẫn cần một tỉ lệ nội bộ; chỉ số BÁO CÁO bị bỏ, không phải số đo.
+        front_shoulders_ratio = abs(frontal.points[11, 0] - frontal.points[12, 0]) / frontal.height
     report("Đang khớp đường viền và dựng bề mặt 3D…")
     # Each image is converted with its own cm/px scale: widths use the frontal
     # body height, depths use the lateral body height.
@@ -817,6 +825,9 @@ def reconstruct(front: np.ndarray, side: np.ndarray, height_cm: float, destinati
     )
     profile["arm_measurements"] = arm_info
     profile["waist_unavailable_reason"] = waist_unavailable_reason
+    profile["shoulder_unavailable_reason"] = shoulder_unavailable_reason
+    if shoulder_unavailable_reason:
+        measurements["shoulder_width_cm"] = None
     profile["waist_selection"] = waist_selection
     profile["section_factors_calibrated"] = SECTION_FACTORS_CALIBRATED
     profile["scale_method"] = "height_per_image_upper_body" if capture_mode == "upper_body" else "height_and_per_image_silhouette"
@@ -867,6 +878,8 @@ def reconstruct(front: np.ndarray, side: np.ndarray, height_cm: float, destinati
         "Không phải số đo trực tiếp từ ảnh."
     )
     return warnings, measurements, profile
+
+
 
 
 

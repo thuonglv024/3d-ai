@@ -154,20 +154,20 @@ def test_shoulder_span_prefers_the_silhouette_over_the_joint_centres():
     assert landmark_ratio < ratio
 
 
-def test_shoulder_span_falls_back_to_landmarks_when_the_row_is_unusable():
+def test_shoulder_span_is_unavailable_when_the_row_is_unusable():
     obs = _observation(height=800.0, mask_width_px=120)
     obs.mask[:] = False  # hàng vai không còn run nào chứa tâm
     ratio, source = shoulder_span(obs)
-    assert source == "landmark"
-    assert ratio == pytest.approx(100.0 / 800.0, rel=1e-3)
+    assert source == "unavailable"
+    assert ratio is None
 
 
-def test_shoulder_span_rejects_an_implausibly_wide_row():
+def test_shoulder_span_is_unavailable_for_an_implausibly_wide_row():
     # Run rộng 360/800 = 0.45 H: nghi tay giơ/che nền, phải quay về landmark.
     obs = _observation(height=800.0, mask_width_px=360)
     ratio, source = shoulder_span(obs)
-    assert source == "landmark"
-    assert ratio == pytest.approx(100.0 / 800.0, rel=1e-3)
+    assert source == "unavailable"
+    assert ratio is None
 
 def test_frame_coverage_rejects_a_person_who_is_too_far():
     # mask cao 400 px, người cao 200 px -> 50% khung: phải bị từ chối
@@ -177,3 +177,4 @@ def test_frame_coverage_rejects_a_person_who_is_too_far():
     assert coverage < MIN_FRAME_COVERAGE
     # người chiếm 80% khung thì qua cổng
     assert frame_coverage(_observation(height=320.0, mask_width_px=120)) >= MIN_FRAME_COVERAGE
+

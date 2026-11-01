@@ -271,7 +271,9 @@ def shoulder_span(obs: Any) -> tuple[float, str]:
         ratio = float(run[1] - run[0]) / height
         if SHOULDER_RATIO_MIN <= ratio <= SHOULDER_RATIO_MAX:
             return ratio, "silhouette"
-    return landmark / height, "landmark"
+    # Không fallback về mốc 11/12: đó là tâm khớp, sai lệch hệ thống (P01b 28 cm so tape 40).
+    # Thà trả None để nơi gọi nói "không đo được" còn hơn ra một số gần như cố định cho mọi người.
+    return None, "unavailable"
 
 
 def clothing_looseness(
@@ -315,3 +317,5 @@ def frame_coverage(obs: Any) -> float:
     if image_height <= 0:
         return 0.0
     return float(obs.height) / image_height
+
+
