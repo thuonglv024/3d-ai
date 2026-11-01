@@ -41,6 +41,20 @@ def _run_containing(runs: list[tuple[int, int]], x: float) -> tuple[int, int] | 
     return None
 
 
+def point_in_torso_run(mask: np.ndarray, points: np.ndarray, x: float, y: float) -> bool:
+    """True when the run at ``(x, y)`` is the one carrying the torso centre.
+
+    A limb sample that shares a foreground run with the anatomical centre is
+    not a separated arm: the mask goes arm → torso without a gap. Used to refuse
+    a limb cross-section instead of measuring the arm plus the body.
+    """
+    run = _run_containing(row_runs(mask, y), x)
+    if run is None:
+        return False
+    points = np.asarray(points, dtype=float)
+    return bool(run[0] <= _torso_center_x(points, y) < run[1])
+
+
 def _torso_center_x(points: np.ndarray, y: float) -> float:
     shoulder = np.asarray(points[[11, 12]], dtype=float).mean(axis=0)
     hip = np.asarray(points[[23, 24]], dtype=float).mean(axis=0)

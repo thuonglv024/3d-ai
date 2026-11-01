@@ -1,4 +1,11 @@
-﻿from app.arm_metrics import arm_length_cm, arm_measurements, limb_girth_cm, measure_arm_girths
+﻿from app.arm_metrics import (
+    ARM_GIRTHS_ENABLED,
+    arm_length_cm,
+    arm_measurements,
+    cross_section_touches_torso,
+    limb_girth_cm,
+    measure_arm_girths,
+)
 
 
 def _arm_mask(width_px: int = 10, height_px: int = 200, x0: int = 95):
@@ -22,15 +29,26 @@ def _arm_mask(width_px: int = 10, height_px: int = 200, x0: int = 95):
 
 def test_measure_arm_girths_needs_a_separated_arm():
     mask, points, visibility = _arm_mask()
-    girths, info = measure_arm_girths(mask, points, visibility, None, 0.5)
+    girths, info = measure_arm_girths(mask, points, visibility, None, 0.5, enabled=True)
     assert girths == {"bicep_cm": None, "forearm_cm": None}
     assert info["available"] is False
     assert "tách" in info["reason"]
 
 
-def test_measure_arm_girths_cuts_perpendicular_to_the_bone():
+def test_arm_girths_are_off_until_clothing_deduction_exists():
+    """Mặc định tắt: biên dạng gồm tay áo nên không báo chu vi cơ thể."""
+    assert ARM_GIRTHS_ENABLED is False
     mask, points, visibility = _arm_mask(width_px=10)
     girths, info = measure_arm_girths(mask, points, visibility, {"left": 5.0}, 0.5)
+    assert girths == {"bicep_cm": None, "forearm_cm": None}
+    assert info["available"] is False
+    assert info["enabled"] is False
+    assert "C2" in info["reason"]
+
+
+def test_measure_arm_girths_cuts_perpendicular_to_the_bone():
+    mask, points, visibility = _arm_mask(width_px=10)
+    girths, info = measure_arm_girths(mask, points, visibility, {"left": 5.0}, 0.5, enabled=True)
     # 10 px rộng (phép quét lấy mẫu 0,5 px nên đọc 9,5 px) -> C ≈ 14,9 cm
     assert girths["bicep_cm"] == 14.9
     assert girths["forearm_cm"] == 14.9
@@ -41,7 +59,7 @@ def test_measure_arm_girths_cuts_perpendicular_to_the_bone():
 
 def test_measure_arm_girths_rejects_an_impossible_radius():
     mask, points, visibility = _arm_mask(width_px=40, x0=90)
-    girths, info = measure_arm_girths(mask, points, visibility, {"left": 20.0}, 0.5)
+    girths, info = measure_arm_girths(mask, points, visibility, {"left": 20.0}, 0.5, enabled=True)
     assert girths["bicep_cm"] is None  # 10 cm bán kính > 8 cm
     assert info["available"] is False
 
@@ -50,9 +68,60 @@ def test_measure_arm_girths_uses_the_more_visible_arm_side():
     mask, points, visibility = _arm_mask(width_px=10)
     for i in (11, 13, 15):
         visibility[i] = 0.2
-    girths, info = measure_arm_girths(mask, points, visibility, {"left": 5.0, "right": 5.0}, 0.5)
+    girths, info = measure_arm_girths(mask, points, visibility, {"left": 5.0, "right": 5.0}, 0.5, enabled=True)
     assert info["side"] == "right"
     assert girths["forearm_cm"] == 14.9
+
+
+def _merged_arm_mask():
+    """One foreground block: the arm run is the same run as the torso."""
+    import numpy as np
+
+    mask = np.zeros((200, 300), dtype=bool)
+    mask[:, 60:160] = True
+    points = [[0.0, 0.0] for _ in range(33)]
+    for idx in (11, 12):
+        points[idx] = [100.0, 20.0]
+    for idx in (13, 14):
+        points[idx] = [100.0, 90.0]
+    for idx in (15, 16):
+        points[idx] = [100.0, 160.0]
+    for idx in (23, 24):
+        points[idx] = [100.0, 180.0]
+    visibility = [0.0] * 33
+    for idx in (11, 12, 13, 14, 15, 16):
+        visibility[idx] = 0.9
+    return mask, points, visibility
+
+
+def test_measure_arm_girths_refuses_a_cut_that_touches_the_torso():
+    mask, points, visibility = _merged_arm_mask()
+    assert cross_section_touches_torso(mask, points, points[11], points[13]) is True
+    girths, info = measure_arm_girths(mask, points, visibility, {"left": 5.0}, 0.5, enabled=True)
+    assert girths == {"bicep_cm": None, "forearm_cm": None}
+    assert info["available"] is False
+    assert "chạm thân" in info["reasons"]["bicep_cm"]
+
+
+def test_measure_arm_girths_refuses_a_width_outside_four_to_sixteen_cm():
+    import numpy as np
+
+    # 6 px * 0,5 cm/px = 3 cm bề rộng -> bán kính 1,5 cm, dưới ngưỡng 2 cm.
+    mask = np.zeros((200, 300), dtype=bool)
+    mask[:, 147:153] = True
+    points = [[0.0, 0.0] for _ in range(33)]
+    for idx in (11, 12):
+        points[idx] = [150.0, 20.0]
+    for idx in (13, 14):
+        points[idx] = [150.0, 90.0]
+    for idx in (15, 16):
+        points[idx] = [150.0, 160.0]
+    visibility = [0.0] * 33
+    for idx in (11, 12, 13, 14, 15, 16):
+        visibility[idx] = 0.9
+    girths, info = measure_arm_girths(mask, points, visibility, {"left": 5.0}, 0.5, enabled=True)
+    assert girths == {"bicep_cm": None, "forearm_cm": None}
+    assert "4–16 cm" in info["reasons"]["bicep_cm"]
 
 
 def test_limb_girth_matches_the_tape_on_p01b():

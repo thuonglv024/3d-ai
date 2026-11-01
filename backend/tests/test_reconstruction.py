@@ -137,6 +137,23 @@ def test_reconstruct_end_to_end_upper_body_provenance_and_glb_validation(monkeyp
     assert details["chest_cm"]["source"] == "photo_with_prior"
     assert details["chest_cm"]["valid_for_sizing"] is True
 
+    # Provenance map: every row has a source; template/unavailable numbers are
+    # not exported as body measurements.
+    assert profile["sources"]["hip_cm"] == "template_model"
+    assert profile["sources"]["chest_cm"] == "photo_with_prior"
+    assert profile["sources"]["waist_cm"] == "unavailable"
+    assert profile["sources"]["inseam_cm"] == "unavailable"
+    assert profile["sources"]["head_cm"] == "template_model"
+    assert profile["unavailable"]["waist_cm"] == profile["waist_unavailable_reason"]
+    assert profile["unavailable"]["hip_cm"]
+    assert measurements["hip_cm"] is None
+    assert measurements["inseam_cm"] is None
+    # Arm girths stay off until the clothing deduction (C2) exists.
+    assert measurements["bicep_cm"] is None
+    assert measurements["forearm_cm"] is None
+    assert profile["arm_unavailable_reason"]
+    assert profile["arm_measurements"]["enabled"] is False
+
 
 def test_sensitivity_to_imperfect_side_standing_angle():
     """Evaluate circumference sensitivity when user stands at 75 deg instead of 90 deg."""

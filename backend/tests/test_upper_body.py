@@ -188,3 +188,47 @@ def test_upper_body_scale_agreement_rejects_beyond_tolerance(r_torso):
         _observe_upper_with_torso_ratio(r_torso)
 
 
+def test_missing_numbers_are_unavailable_with_their_reason():
+    mesh = read_template()
+    mesh.vertices *= 1.75
+    sections = [
+        {"key": "chest_cm", "label": "Ngực", "target_cm": 96.0, "model_cm": 96.0, "fit_error_cm": 0.0, "points_m": [[0, 1.25, 0], [0, 1.25, 0]]},
+        {"key": "waist_cm", "label": "Eo", "target_cm": 78.0, "model_cm": 78.0, "fit_error_cm": 0.0, "points_m": [[0, 1.05, 0], [0, 1.05, 0]]},
+        {"key": "hip_cm", "label": "Mông", "target_cm": 98.0, "model_cm": 98.0, "fit_error_cm": 0.0, "points_m": [[0, 0.90, 0], [0, 0.90, 0]]},
+    ]
+    rows = measurement_report(
+        mesh,
+        {
+            "chest_cm": 96.0,
+            "waist_cm": None,
+            "hip_cm": 98.0,
+            "shoulder_width_cm": None,
+            "arm_length_cm": 55.0,
+        },
+        {
+            "capture_mode": "full_body",
+            "sections": sections,
+            "waist_unavailable_reason": "hàng hẹp nhất không thon hơn ngực và hông ≥1,5 cm",
+            "shoulder_unavailable_reason": "hàng vai bị tay che, không có đường viền rõ",
+        },
+        175,
+    )
+    by_key = {row["key"]: row for row in rows}
+
+    assert by_key["waist_cm"]["value_cm"] is None
+    assert by_key["waist_cm"]["source"] == "unavailable"
+    assert by_key["waist_cm"]["valid_for_sizing"] is False
+    assert "hẹp nhất" in by_key["waist_cm"]["quality_warnings"][0]
+
+    assert by_key["shoulder_width_cm"]["source"] == "unavailable"
+    assert by_key["shoulder_width_cm"]["valid_for_sizing"] is False
+    assert "tay che" in by_key["shoulder_width_cm"]["quality_warnings"][0]
+
+    # A number measured from the landmarks keeps its photo source.
+    assert by_key["arm_length_cm"]["value_cm"] == 55.0
+    assert by_key["arm_length_cm"]["source"] == "photo_estimate"
+    assert by_key["arm_length_cm"]["observed_region"] == "frontal_arm_landmarks"
+    assert by_key["arm_length_cm"]["valid_for_sizing"] is True
+
+
+

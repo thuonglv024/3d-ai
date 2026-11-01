@@ -71,6 +71,17 @@ def _quality_warnings(key: str, source: str, upper: bool) -> list[str]:
     ]
 
 
+def _unavailable_reason(key: str, profile: dict) -> str | None:
+    """Specific reason recorded by the pipeline, when there is one."""
+    specific = {
+        "waist_cm": profile.get("waist_unavailable_reason"),
+        "shoulder_width_cm": profile.get("shoulder_unavailable_reason"),
+        "bicep_cm": profile.get("arm_unavailable_reason"),
+        "forearm_cm": profile.get("arm_unavailable_reason"),
+    }.get(key)
+    return str(specific) if specific else None
+
+
 def measurement_report(mesh, measurements, profile, height_cm, overrides=None):
     """Build per-metric provenance and quality report.
 
@@ -92,23 +103,32 @@ def measurement_report(mesh, measurements, profile, height_cm, overrides=None):
             source = "user_input"
         if upper and key == "hip_cm" and key not in overrides:
             source = "template_model"
+        # A missing number is not a photo estimate: say so instead of attaching
+        # a source to a value that does not exist.
+        if value is None and source != "user_input":
+            source = "unavailable"
         val_cm = round(float(value), 1) if value is not None else None
         is_valid = bool(source in VALID_SIZING_SOURCES and val_cm is not None)
+        observed_region = "user_reported" if key in overrides else _observed_region(key, upper)
+        if key == "arm_length_cm" and source != "unavailable":
+            observed_region = "frontal_arm_landmarks"
+        if key in overrides:
+            warnings = ["Số đo bạn nhập lại sau khi quét; mô hình 3D và gợi ý size được dựng lại theo giá trị này."]
+        elif source == "unavailable":
+            warnings = [_unavailable_reason(key, profile) or _quality_warnings(key, source, upper)[0]]
+        else:
+            warnings = _quality_warnings(key, source, upper)
         rows.append({
             "key": key,
             "label": label,
             "value_cm": val_cm,
             "source": source,
-            "observed_region": "user_reported" if key in overrides else _observed_region(key, upper),
+            "observed_region": observed_region,
             "valid_for_sizing": is_valid,
             "valid_for_tracking": is_valid,
             "engine_version": ENGINE,
             "uncertainty_cm": None,
-            "quality_warnings": (
-                ["Số đo bạn nhập lại sau khi quét; mô hình 3D và gợi ý size được dựng lại theo giá trị này."]
-                if key in overrides
-                else _quality_warnings(key, source, upper)
-            ),
+            "quality_warnings": warnings,
             "color": color,
             "points_m": np.round(points, 5).tolist() if points is not None else [],
         })
@@ -135,7 +155,12 @@ def measurement_report(mesh, measurements, profile, height_cm, overrides=None):
             add(key, title, circumference, "template_model", curve, color)
         except InvalidPhoto:
             add(key, title, None, "unavailable", color=color)
-    add("arm_length_cm", "Dài tay", None, "unavailable")
+    add(
+        "arm_length_cm",
+        "Dài tay",
+        measurements.get("arm_length_cm"),
+        "photo_with_prior" if upper else "photo_estimate",
+    )
     arm_source = "photo_with_prior" if upper else "photo_estimate"
     for key, title in (("bicep_cm", "Bắp tay"), ("forearm_cm", "Cẳng tay")):
         value = measurements.get(key)

@@ -46,6 +46,45 @@ def _tag_measurement_details(rows):
         row["definition_note"] = HIP_DEFINITION_NOTE
     return rows
 
+
+def _provenance_reason(profile: dict, row: dict) -> str:
+    """Human reason for a metric the photos did not produce."""
+    key = row.get("key")
+    specific = {
+        "waist_cm": profile.get("waist_unavailable_reason"),
+        "shoulder_width_cm": profile.get("shoulder_unavailable_reason"),
+        "bicep_cm": profile.get("arm_unavailable_reason"),
+        "forearm_cm": profile.get("arm_unavailable_reason"),
+    }.get(key)
+    if specific:
+        return str(specific)
+    warnings = row.get("quality_warnings") or []
+    return str(warnings[0]) if warnings else "Không đủ dữ kiện từ ảnh."
+
+
+def _attach_provenance(profile: dict, measurements: dict) -> None:
+    """Publish ``profile["sources"]`` / ``profile["unavailable"]``.
+
+    ``measurement_details`` is the single source of truth: every row carries a
+    source. A metric sourced from the template or unavailable is not a body
+    measurement, so the exported ``measurements`` value becomes ``None`` — the
+    mesh is still built internally from the template, but the number is not
+    reported as the person's body.
+    """
+    sources: dict[str, str] = {}
+    unavailable: dict[str, str] = {}
+    for row in profile.get("measurement_details") or []:
+        key, source = row.get("key"), row.get("source")
+        if not key or not source:
+            continue
+        sources[key] = source
+        if source in {"template_model", "unavailable"}:
+            unavailable[key] = _provenance_reason(profile, row)
+            if key in measurements:
+                measurements[key] = None
+    profile["sources"] = sources
+    profile["unavailable"] = unavailable
+
 _detector = None
 _detector_lock = threading.Lock()
 
@@ -551,6 +590,7 @@ def refit_avatar(fitting: dict, measurements: dict, overrides: dict, height_cm: 
     profile["measurement_method"] = "user_corrected_refit"
     from .report import measurement_report
     profile["measurement_details"] = _tag_measurement_details(measurement_report(mesh, measurements, profile, height_cm, overrides=overrides))
+    _attach_provenance(profile, measurements)
     profile["mesh_validation"] = validate_glb_mesh(mesh, height_cm, profile["sections"])
     mesh.export(destination, file_type="glb", include_normals=True)
     return profile
@@ -806,9 +846,9 @@ def reconstruct(front: np.ndarray, side: np.ndarray, height_cm: float, destinati
     # acromion row, or the landmark span when that row was unusable.
     profile["shoulder_width_source"] = shoulder_source
     # Bắp/cẳng tay: mặt cắt vuông góc trên mask gốc, chỉ khi remove_arm_capsules
-    # đã tách được tay khỏi thân (arm_radius_px) và bán kính nằm trong 2–8 cm.
-    # Biên dạng gồm cả tay áo, nên đây là "chu vi ngoài lớp áo" (P01b: 29,3 cm
-    # so tape 20 cm vì áo dài tay) — profile["arm_measurements"] ghi rõ nguồn.
+    # đã tách được tay khỏi thân (arm_radius_px), mặt cắt không chạm thân và bề
+    # rộng 4–16 cm. Mặc định vẫn TẮT vì biên dạng gồm cả tay áo và chưa có bước
+    # trừ hao trang phục (C2): P01b đọc 29,3 cm so tape 20 cm.
     arm_girths, arm_info = measure_arm_girths(
         getattr(frontal, "raw_mask", frontal.mask),
         frontal.points,
@@ -824,6 +864,7 @@ def reconstruct(front: np.ndarray, side: np.ndarray, height_cm: float, destinati
         frontal.points, float(height_cm) / max(float(frontal.height), 1.0)
     )
     profile["arm_measurements"] = arm_info
+    profile["arm_unavailable_reason"] = None if arm_info.get("available") else arm_info.get("reason")
     profile["waist_unavailable_reason"] = waist_unavailable_reason
     profile["shoulder_unavailable_reason"] = shoulder_unavailable_reason
     if shoulder_unavailable_reason:
@@ -837,6 +878,7 @@ def reconstruct(front: np.ndarray, side: np.ndarray, height_cm: float, destinati
         profile["measurement_method"] = "upper_body_anatomical_calibrated_v2"
     from .report import measurement_report
     profile["measurement_details"] = _tag_measurement_details(measurement_report(mesh, measurements, profile, height_cm))
+    _attach_provenance(profile, measurements)
     profile["mesh_validation"] = validate_glb_mesh(mesh, height_cm, profile["sections"])
     report("Đang hoàn thiện file 3D…")
     mesh.export(destination, file_type="glb", include_normals=True)
