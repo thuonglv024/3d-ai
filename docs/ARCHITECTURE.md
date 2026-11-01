@@ -70,7 +70,7 @@ graph TD
 
 ### 3.3. Cửa Hàng Thời Trang Đa Sản Phẩm (`Catalog` & `Storefront`)
 - **Cơ sở dữ liệu Catalog SQLite** ([`backend/app/catalog.py`](file:///d:/MORPH-AI/backend/app/catalog.py), [`backend/app/seed.py`](file:///d:/MORPH-AI/backend/app/seed.py), [`backend/app/catalog_seed_data.py`](file:///d:/MORPH-AI/backend/app/catalog_seed_data.py)):
-  - **162 sản phẩm** trên 5 danh mục: Áo thun (`ao-thun`, 34 sản phẩm — gồm 2 mẫu có số đo may công bố), Sơ mi (`so-mi`), Áo khoác (`ao-khoac`), Quần (`quan`), Váy & Đầm (`vay`) — mỗi danh mục còn lại 32 sản phẩm.
+  - **163 sản phẩm** trên 5 danh mục: Áo thun (`ao-thun`, 35 sản phẩm — gồm 3 mẫu có số đo may công bố), Sơ mi (`so-mi`), Áo khoác (`ao-khoac`), Quần (`quan`), Váy & Đầm (`vay`) — mỗi danh mục còn lại 32 sản phẩm.
   - **1.691 biến thể SKU** (`product_variants`) theo màu sắc × kích cỡ × tồn kho thực tế (`stock`).
   - **29 bảng size** (`size_charts`) tính theo số đo cơ thể (`body_cm`), 2 bảng kèm `garment_specs` (số đo may trải phẳng).
   - **320 ảnh sản phẩm studio v2** tại `frontend/public/products/v2/` (tỷ lệ 3:4 `1200×1600px`, gồm ảnh chính và ảnh phóng to chi tiết chất liệu, quản lý tại `backend/scripts/catalog_asset_manifest_v2.json`).

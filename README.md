@@ -6,8 +6,8 @@
 
 ## 1. Tính năng nổi bật
 
-- **Cửa hàng Thời trang 162 Sản phẩm**:
-  - Danh mục 162 sản phẩm (160 sản phẩm gốc + 2 mẫu áo thun có **số đo may trải phẳng** công bố từ Gildan 5000 và Uniqlo Supima Oversized) với đầy đủ biến thể màu sắc, tồn kho theo size và bảng thông số `size_chart` riêng cho từng sản phẩm.
+- **Cửa hàng Thời trang 163 Sản phẩm**:
+  - Danh mục 163 sản phẩm (160 sản phẩm gốc + 3 mẫu áo thun có **số đo may trải phẳng** công bố từ Gildan 5000, Uniqlo Supima Oversized và Oricano Basic) với đầy đủ biến thể màu sắc, tồn kho theo size và bảng thông số `size_chart` riêng cho từng sản phẩm.
   - Bộ lọc đa chiều theo giới tính, danh mục, khoảng giá, từ khóa tìm kiếm và danh sách yêu thích (**Wishlist**) đồng bộ mượt mà với giỏ hàng.
 - **Quét Hình Thể 3D Tự Động Qua Webcam (Camera-Only)**:
   - Hỗ trợ chế độ mặc định **Quét Thân Trên (`upper_body`)** phù hợp góc webcam laptop/PC và chế độ **Quét Toàn Thân (`full_body`)**.
@@ -51,7 +51,7 @@ MORPH-AI/
 │   ├── app/
 │   │   ├── main.py                  # Điểm vào FastAPI, định tuyến REST API & quản lý phiên quét
 │   │   ├── auth.py                  # Xác thực người dùng, PBKDF2-HMAC-SHA256 & session cookie
-│   │   ├── catalog.py               # Quản lý 162 sản phẩm, biến thể, size chart & gợi ý size
+│   │   ├── catalog.py               # Quản lý 163 sản phẩm, biến thể, size chart & gợi ý size
 │   │   ├── seed_160_catalog.py      # Dữ liệu khởi tạo catalog (160 gốc + 2 mẫu số đo may)
 │   │   ├── orders.py                # Xử lý đơn hàng nguyên tử, trừ tồn kho & Idempotency-Key
 │   │   ├── history.py               # Lưu trữ lịch sử quét 3D và hồ sơ số đo cá nhân
@@ -133,7 +133,7 @@ npm --prefix frontend run typecheck
 2. **Xung đột cổng `8000` hoặc `3000`**:
    - Kiểm tra tiến trình đang chiếm cổng bằng `Get-NetTCPConnection -LocalPort 8000,3000` và dừng tiến trình cũ trước khi khởi chạy lại.
 3. **Làm mới cơ sở dữ liệu SQLite (`catalog.db`)**:
-   - File SQLite được tạo tự động tại `backend/runtime/catalog.db`. Nếu muốn reset toàn bộ đơn hàng và tài khoản thử nghiệm về mặc định 160 sản phẩm, dừng Backend và xóa `backend/runtime/catalog.db` — hệ thống sẽ tự động khởi tạo và seed lại khi bật server.
+   - File SQLite được tạo tự động tại `backend/runtime/catalog.db`. Nếu muốn reset toàn bộ đơn hàng và tài khoản thử nghiệm về mặc định 163 sản phẩm, dừng Backend và xóa `backend/runtime/catalog.db` — hệ thống sẽ tự động khởi tạo và seed lại khi bật server.
 
 ---
 

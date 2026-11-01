@@ -6,6 +6,36 @@ Tài liệu này tổng hợp trạng thái hiện tại của dự án **MORPH 
 
 ## 0. Cập nhật 2026-10-31 — Pilot thật P01b, spec áo A03, lớp AI
 
+### 0.11. PHẦN 2–3 — try-on 3 cột, heatmap 3 mức, giải thích size (2026-11-01)
+- **Sản phẩm ORICANO**: thêm lại `ao-thun-oricano-nam` từ fixture thật (`verification/fixtures/garments/oricano-shirt.json`)
+  vào seed backend và catalog frontend → **163 sản phẩm / 1.701 biến thể / 30 bảng size**. ½ ngực 41–49 (chu vi áo
+  82–98), vai áo 38–42, dài áo 61–69, tay áo 17–21 cho S–2XL. Bảng vòng cơ thể trong catalog là **suy ra**
+  (chu vi áo trừ ease 2–10 cm), gắn `source=derived_from_flat_spec` + cảnh báo trong modal bảng size; fit-map dùng
+  `chest_flat_cm` (basis `garment_flat_spec`) và trả `no_garment_data` cho eo (bảng hãng không có số đo eo).
+- **Bố cục try-on 3 cột** (`ScanResult`): `22% | 48% | 30%`, cao `clamp(560px, 100dvh - 220px, 900px)`, mỗi cột tự cuộn.
+  Trái: tủ đồ (API, ưu tiên món có `garment_specs`, tối đa 24 món thân trên). Giữa: stage 3D nền `#141312`. Phải:
+  sản phẩm + size + bảng số (kèm nguồn) + heatmap + giải thích. Đo thực tế: 1024 → 207/452/283 px; 1280 → 264/575/359;
+  1440/1920 → 271/590/369. `scrollWidth == clientWidth` ở cả 4 mức (không cuộn ngang); dưới 1024 xếp dọc.
+- **Heatmap 3 mức (chỉ UI)**: ease lấy từ `/api/fit-map`, **không đổi công thức backend**. Chật <0; Vừa 0–+2;
+  Rộng >+2; thiếu số đo áo → xám. Màu khác cả độ sáng (`#7a2a1e` / `#3f7d55` / `#a9cbe0` / `#8b9188`) nên phân biệt
+  được khi nhìn mù màu. Chỉ tô dải ngực/eo trên thân áo; tay áo và dưới gấu để xám; quần/váy không tô.
+  P01b + Oricano M: ngực **+2,9 cm → Rộng**; eo **Thiếu dữ liệu**.
+- **Giải thích size** (`POST /api/fit/explain`): một node LangGraph riêng trong `ai_scan/fit_explain.py`, temperature 0,
+  timeout 15 s, cache theo `(size, ease_chest, ease_waist)`. Prompt cấm đề xuất/đổi size và cấm tạo số; hậu kiểm từ chối
+  mọi số không khớp ease đầu vào, câu >300 ký tự hoặc JSON sai → fallback tất định. 429/503/timeout/không có key →
+  fallback, **không retry vòng**, luôn HTTP 200 với `source = "ai" | "fallback"`. UI hiện nhãn "AI giải thích" hoặc
+  "Giải thích tự động", basis ease từng mốc và câu "không đề xuất size khác".
+- **Số thực tế**: gọi endpoint với `{size: M, chest 2,9, waist null}` → `source=fallback`, `fallback_reason=ai_error`
+  sau ~2,9 s (model hiện lỗi với key này, xem 0.6); câu: “Size M: Ngực áo rộng hơn cơ thể 2,9 cm nên rộng. Eo chưa có
+  số đo áo nên chưa kết luận.”
+- **QC**: `pytest backend/tests -q` → **270 passed** (thêm 5 test Oricano + 9 test explain); `npx tsc --noEmit` sạch;
+  `GET /scan` → 200; ảnh `output/qa/tryon-1280.png`, `tryon-1280-full.png`, `tryon-1920.png`, `tryon-1920-full.png`,
+  `tryon-panel-1280.png`, `tryon-panel-1920.png`.
+- **Chưa kiểm được / giới hạn**: (a) nhánh AI chưa từng trả kết quả trên key hiện tại — mọi ảnh chụp là fallback;
+  (b) ảnh chụp lấy qua một trang tạm chỉ để nạp job đã quét vào `ScanProvider` (app không có khôi phục scan theo URL)
+  rồi chuyển sang `/scan`; trang tạm đã xóa, ảnh vẫn là `ScanResult` thật; (c) tủ đồ giới hạn 24 món thân trên;
+  (d) ví dụ 3.3 (“4 cm nên vừa”) mâu thuẫn ngưỡng 2.2 (0–+2 = vừa) — đã theo ngưỡng 2.2 nên 4 cm → “rộng”.
+
 ### 0.10. PHẦN 1 — nguồn từng số đo + tắt chu vi tay (2026-11-01)
 - **Tắt chu vi bắp/cẳng tay**: `arm_metrics.ARM_GIRTHS_ENABLED = False`. Biên dạng gồm cả tay áo và chưa có
   bước trừ hao trang phục (C2), nên hai số này không phải số đo cơ thể. P01b trước đây báo cẳng tay **29,3 cm**
