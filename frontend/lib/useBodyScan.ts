@@ -23,6 +23,11 @@ type BodyProfile = {
   measurement_details?: MeasurementDetail[];
   sources?: Record<string, string>;
   unavailable?: Record<string, string>;
+  waist_refusal_code?: string | null;
+  waist_refusal_codes?: string[];
+  waist_source?: "photo_estimate" | "photo_with_prior" | null;
+  waist_uncertainty_cm?: number | null;
+  waist_depth_interpolated?: boolean;
   fit_status?: string;
   max_fit_error_cm?: number;
   note?: string;

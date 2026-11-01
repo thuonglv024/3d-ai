@@ -309,6 +309,12 @@ export default function ScanResult({
     m.value_cm == null ? "—" : (m.value_cm / (unit === "in" ? 2.54 : 1)).toFixed(1);
   const reason = (m: MeasurementDetail) =>
     job.body_profile?.unavailable?.[m.key] || m.quality_warnings?.[0] || "";
+  const waistRefusalCodes = job.body_profile?.waist_refusal_codes?.length
+    ? job.body_profile.waist_refusal_codes
+    : job.body_profile?.waist_refusal_code
+      ? [job.body_profile.waist_refusal_code]
+      : [];
+  const waistRefusalReason = job.body_profile?.unavailable?.waist_cm || "";
   // Chỉ báo khi một mốc dùng để chọn size không đến từ ảnh (mô hình nền hoặc
   // chưa đo được). photo_with_prior vẫn là số suy từ ảnh nên không tính.
   const notFromPhoto = rows.filter(
@@ -877,6 +883,15 @@ export default function ScanResult({
                 </span>
               </p>
             )}
+            {waistRefusalCodes.length > 0 && (
+              <p className="scan-provenance-warning" role="status">
+                <AlertCircle size={14} aria-hidden="true" />
+                <span>
+                  Vòng eo chưa đo được · mã <b>{waistRefusalCodes.join(" + ")}</b>
+                  {waistRefusalReason ? ` — ${waistRefusalReason}` : ""}
+                </span>
+              </p>
+            )}
             <div className="scan-rows tryon-rows">
               {rows.map((m) => (
                 <button
@@ -956,7 +971,12 @@ export default function ScanResult({
                   {value(m)}
                   <small>{m.value_cm != null ? unit : ""}</small>
                 </strong>
-                <small title={reason(m) || undefined}>{SOURCE[m.source]}</small>
+                <small title={reason(m) || undefined}>
+                  {SOURCE[m.source]}
+                  {m.uncertainty_cm != null
+                    ? ` ± ${(m.uncertainty_cm / (unit === "in" ? 2.54 : 1)).toFixed(1)} ${unit}`
+                    : ""}
+                </small>
               </div>
             ))}
           </div>

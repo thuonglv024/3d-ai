@@ -29,6 +29,10 @@ from .torso_mask import MIN_FRAME_COVERAGE, clothing_looseness, frame_coverage, 
 MODEL_PATH = MODELS / "pose_landmarker_full.task"
 TEMPLATE_PATH = MODELS / "body-template.obj"
 ENGINE = "mediapipe-two-photo-fit-v7"
+# Rows past this fraction have no frontal hip silhouette in `upper_body`: their
+# width/depth are blended towards the template. The same fraction caps the waist
+# search so a template hip is never treated as photo evidence.
+TEMPLATE_BLEND_FROM = .78
 # report.py carries a legacy ENGINE constant for direct measurement_report calls;
 # keep it on the same version as the pipeline.
 _report.ENGINE = ENGINE
@@ -588,6 +592,13 @@ def refit_avatar(fitting: dict, measurements: dict, overrides: dict, height_cm: 
     profile["uncertainty_cm"] = None
     profile["scale_method"] = "refit_from_user_measurements"
     profile["measurement_method"] = "user_corrected_refit"
+    waist = fitting.get("waist") or {}
+    profile["waist_unavailable_reason"] = waist.get("unavailable_reason")
+    profile["waist_refusal_code"] = waist.get("refusal_code")
+    profile["waist_refusal_codes"] = list(waist.get("refusal_codes") or [])
+    profile["waist_source"] = waist.get("source")
+    profile["waist_uncertainty_cm"] = waist.get("uncertainty_cm")
+    profile["waist_depth_interpolated"] = bool(waist.get("interpolated"))
     from .report import measurement_report
     profile["measurement_details"] = _tag_measurement_details(measurement_report(mesh, measurements, profile, height_cm, overrides=overrides))
     _attach_provenance(profile, measurements)
@@ -693,47 +704,32 @@ def reconstruct(front: np.ndarray, side: np.ndarray, height_cm: float, destinati
     if capture_mode == "upper_body":
         # Hip silhouette is not observed. Restore template widths for those rows,
         # and mark the resulting hip as model-only rather than a photo estimate.
-        for i in np.flatnonzero(fractions > .78):
+        for i in np.flatnonzero(fractions > TEMPLATE_BLEND_FROM):
             level = float(shoulder_level - fractions[i] * (shoulder_level - hip_level))
             _, curve = closed_torso_section(template, level)
-            blend = min(1., (fractions[i]-.78)/.17)
+            blend = min(1., (fractions[i]-TEMPLATE_BLEND_FROM)/.17)
             widths[i] = widths[i]*(1-blend)+np.ptp(curve[:,0])*blend
             depths[i] = depths[i]*(1-blend)+np.ptp(curve[:,2])*blend
     report("Đang trích xuất thông số kích thước cơ thể…")
     waist_diagnostics: dict = {}
-    measurements, targets = estimate_from_profiles(fractions, widths, depths, height_cm, front_shoulders_ratio, True, shoulder_level, hip_level, diagnostics=waist_diagnostics)
+    hip_from_template = capture_mode == "upper_body"
+    measurements, targets = estimate_from_profiles(
+        fractions, widths, depths, height_cm, front_shoulders_ratio, True,
+        shoulder_level, hip_level, diagnostics=waist_diagnostics,
+        hip_from_template=hip_from_template,
+        photo_max_fraction=TEMPLATE_BLEND_FROM if hip_from_template else None,
+    )
     waist_selection = waist_diagnostics.get("waist_selection") or {}
     waist_gate_rejected = waist_selection.get("accepted") is False
-    # The side view is only useful when it shows the waist narrowing. With an arm
-    # hanging in front of the torso (or a 3/4 turn instead of 90°) the depth
-    # profile is flat and the waist circumference becomes fabric plus arm: on
-    # P01b that read 86.6 cm against a 60 cm tape waist. Report it as
-    # unavailable instead of wrong.
-    depth_by_key = {t["key"]: float(t["depth_cm"]) for t in targets if t.get("depth_cm")}
+    # The waist decision lives in measurements.select_waist_row/resolve_waist_depth:
+    # width locates the row, the hip is ignored when it is template-only, and a flat
+    # side profile may use a position-interpolated depth (photo_with_prior ±).
+    # Here we only publish the outcome and its refusal code.
     waist_unavailable_reason: str | None = waist_selection.get("reason") if waist_gate_rejected else None
-    if "waist_cm" in depth_by_key and not waist_gate_rejected:
-        waist_depth = depth_by_key["waist_cm"]
-        neighbours = [d for k, d in depth_by_key.items() if k in ("chest_cm", "hip_cm")]
-        spread = max(depth_by_key.values()) - min(depth_by_key.values())
-        # Chest, waist and hip depths cannot be near-identical on a real torso:
-        # a spread under 2 cm means the side silhouette is fabric or arm rather
-        # than the body profile (P01b measured 1.2 cm and its waist came out
-        # +26.6 cm). Refuse the waist instead of reporting that number.
-        contaminated = spread < 2.0
-        body_like = bool(neighbours) and waist_depth < min(neighbours) - 1.0
-        if contaminated:
-            waist_unavailable_reason = (
-                "Không đọc được vòng eo: bề dày thân gần như không đổi giữa các mốc "
-                f"({spread:.1f} cm) nên ảnh nghiêng bị tay hoặc nền che. Hãy chụp lại ảnh nghiêng "
-                "với tay đưa ra trước và xoay hẳn 90°."
-            )
-        elif not body_like:
-            waist_unavailable_reason = (
-                "Không đọc được vòng eo: ảnh nghiêng chưa lộ phần thon eo (tay che thân hoặc chưa xoay đủ 90°). "
-                "Hãy chụp lại ảnh nghiêng với tay đưa ra trước và xoay hẳn 90°."
-            )
-        if waist_unavailable_reason:
-            measurements["waist_cm"] = None
+    waist_refusal_code: str | None = waist_selection.get("code") if waist_gate_rejected else None
+    waist_refusal_codes: list[str] = list(waist_selection.get("codes") or []) if waist_gate_rejected else []
+    if waist_gate_rejected:
+        measurements["waist_cm"] = None
     # Arm/clothing diagnostics are measured on the cleaned frontal mask.
     f_shoulder, f_hip = aligned_torso_landmarks(frontal)
     shoulder_span_px = float(abs(frontal.points[11, 0] - frontal.points[12, 0]))
@@ -866,10 +862,31 @@ def reconstruct(front: np.ndarray, side: np.ndarray, height_cm: float, destinati
     profile["arm_measurements"] = arm_info
     profile["arm_unavailable_reason"] = None if arm_info.get("available") else arm_info.get("reason")
     profile["waist_unavailable_reason"] = waist_unavailable_reason
+    # Machine-readable reason (DEPTH_FLAT / NO_NARROWING / HIP_FROM_TEMPLATE /
+    # NO_TORSO) plus every condition that fired, so the UI can show a code and
+    # its guidance instead of one long sentence.
+    profile["waist_refusal_code"] = waist_refusal_code
+    profile["waist_refusal_codes"] = waist_refusal_codes
+    profile["waist_source"] = None if waist_gate_rejected else waist_selection.get("source")
+    profile["waist_uncertainty_cm"] = None if waist_gate_rejected else waist_selection.get("uncertainty_cm")
+    profile["waist_depth_interpolated"] = bool(
+        not waist_gate_rejected and waist_selection.get("source") == "photo_with_prior"
+    )
     profile["shoulder_unavailable_reason"] = shoulder_unavailable_reason
     if shoulder_unavailable_reason:
         measurements["shoulder_width_cm"] = None
     profile["waist_selection"] = waist_selection
+    # Persist the waist provenance with the fitting so a refit (user edits a
+    # measurement) does not re-label a prior-based waist as a direct photo
+    # estimate, nor lose the refusal code when the waist was unavailable.
+    profile["fitting"]["waist"] = {
+        "source": profile["waist_source"],
+        "uncertainty_cm": profile["waist_uncertainty_cm"],
+        "interpolated": profile["waist_depth_interpolated"],
+        "refusal_code": profile["waist_refusal_code"],
+        "refusal_codes": profile["waist_refusal_codes"],
+        "unavailable_reason": profile["waist_unavailable_reason"],
+    }
     profile["section_factors_calibrated"] = SECTION_FACTORS_CALIBRATED
     profile["scale_method"] = "height_per_image_upper_body" if capture_mode == "upper_body" else "height_and_per_image_silhouette"
     if capture_mode == "upper_body":

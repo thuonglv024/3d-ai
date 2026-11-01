@@ -47,11 +47,42 @@ ANATOMICAL_SECTION_FACTORS = {
 SECTION_FACTORS_CALIBRATED = False
 
 # Natural-waist rule: the narrowest row between the chest and the hip rows is the
-# waist only when it is visibly narrower than *both* neighbours. A straight torso
-# (no real taper) used to yield a "waist" from the window minimum anyway; on
-# P01b that produced 83.9 cm against a 60 cm tape waist. 1.5 cm per side is the
-# visibility floor, not a calibration constant.
+# waist only when it is visibly narrower than the neighbours the photo actually
+# shows. A straight torso (no real taper) used to yield a "waist" from the window
+# minimum anyway; on P01b that produced 83.9 cm against a 60 cm tape waist.
+#
+# 1.5 cm per side was KEPT after the 2026-11-01 diagnosis
+# (scripts/eval/waist_diag.py, output/measure-debug/waist_diag_P01b_front_both.json):
+# P01b's front silhouette only narrows 0.45 cm (29.0 -> 28.9 cm), inside the
+# 0.2-0.6 cm row-to-row noise of that profile, while cases with a real visible
+# waist (3 synthetic QA archetypes) narrow 7.95-10.68 cm. No sample lies in the
+# 0.45-7.95 cm gap, so lowering the threshold to accept P01b would be fitting a
+# constant to one unmeasurable photo (loose sweatshirt), not calibration.
 WAIST_MIN_TAPER_CM = 1.5
+# A measured waist depth must be the minimum of the photo-observed neighbours;
+# no cm margin is imposed because the frontal width, not the side view, locates
+# the row. On the female-slim QA render the side profile bottoms out 0.7 cm
+# below the hip, and a fixed 1 cm margin rejected a valid waist.
+DEPTH_FLAT_CM = 2.0
+
+WAIST_REFUSAL_GUIDANCE = {
+    "NO_TORSO": (
+        "Không đọc được vòng eo: ảnh không có hàng nào giữa mốc ngực và mốc hông. "
+        "Hãy đứng thẳng, chụp đủ thân và để camera ngang eo."
+    ),
+    "NO_NARROWING": (
+        "Không đọc được vòng eo: bề rộng mặt trước gần như thẳng, không thon hơn ngực/hông "
+        f"≥{WAIST_MIN_TAPER_CM:.1f} cm. Hãy mặc áo bó hơn, đứng thẳng và để tay rời thân rồi quét lại."
+    ),
+    "DEPTH_FLAT": (
+        "Không đọc được vòng eo: ảnh nghiêng không lộ phần thon eo (tay che thân hoặc chưa xoay đủ 90°). "
+        "Hãy đưa tay ra trước và chụp lại ảnh nghiêng."
+    ),
+    "HIP_FROM_TEMPLATE": (
+        "Không đọc được vòng eo: chỉ thấy phần thon so với hông của mô hình, còn ảnh không quan sát được hông "
+        "hoặc bề rộng eo không thon hơn ngực. Hãy chụp toàn thân (thấy hông) hoặc mặc áo bó hơn."
+    ),
+}
 
 
 def _row_index(fractions, circumferences, low, high, choice):
@@ -63,44 +94,152 @@ def _row_index(fractions, circumferences, low, high, choice):
     return int(candidates[np.argmax(local) if choice == "max" else np.argmin(local)])
 
 
-def select_waist_row(fractions, circumferences, chest_index, hip_index):
-    """Narrowest row between the chest and hip rows, accepted only with a real taper.
+def select_waist_row(
+    fractions,
+    widths_cm,
+    chest_index,
+    hip_index,
+    *,
+    hip_from_template: bool = False,
+    photo_max_fraction: float | None = None,
+):
+    """Narrowest *front-width* row between the chest and hip rows.
 
-    Returns ``(index, info)``. ``info["accepted"]`` is False when the narrowest
-    row is not at least ``WAIST_MIN_TAPER_CM`` below both the chest and the hip:
-    that profile has no visible waist, so the row still positions the avatar but
-    must not be reported as a body measurement.
+    Returns ``(index, info)``. The waist is located by the frontal silhouette
+    width, not by a fixed fraction window, and accepted only with a visible
+    taper. When the hip row comes from the template (``upper_body``), the search
+    is capped at the last photo row (``photo_max_fraction``) and the hip is not
+    used as evidence: a template hip cannot confirm or reject a waist.
     """
     low, high = sorted((float(fractions[chest_index]), float(fractions[hip_index])))
-    candidates = np.flatnonzero((fractions > low) & (fractions < high))
+    search_high = high
+    if hip_from_template and photo_max_fraction is not None:
+        search_high = min(high, float(photo_max_fraction))
+    candidates = np.flatnonzero((fractions > low) & (fractions < search_high))
     if not len(candidates):
         return None, {
             "accepted": False,
-            "reason": "Không đọc được vòng eo: không có hàng nào giữa mốc ngực và mốc hông để chọn.",
+            "code": "NO_TORSO",
+            "codes": ["NO_TORSO"],
+            "reason": WAIST_REFUSAL_GUIDANCE["NO_TORSO"],
+            "hip_from_template": bool(hip_from_template),
         }
-    index = int(candidates[int(np.argmin(circumferences[candidates]))])
-    waist = float(circumferences[index])
-    chest = float(circumferences[chest_index])
-    hip = float(circumferences[hip_index])
+    index = int(candidates[int(np.argmin(widths_cm[candidates]))])
+    waist = float(widths_cm[index])
+    chest = float(widths_cm[chest_index])
+    hip = float(widths_cm[hip_index])
     margin_chest = chest - waist
     margin_hip = hip - waist
-    accepted = margin_chest >= WAIST_MIN_TAPER_CM and margin_hip >= WAIST_MIN_TAPER_CM
+    hip_confirms = not hip_from_template
+    accepted = margin_chest >= WAIST_MIN_TAPER_CM and (
+        not hip_confirms or margin_hip >= WAIST_MIN_TAPER_CM
+    )
+    codes: list[str] = []
+    if margin_chest < WAIST_MIN_TAPER_CM:
+        codes.append("HIP_FROM_TEMPLATE" if hip_from_template else "NO_NARROWING")
+    if hip_confirms and margin_hip < WAIST_MIN_TAPER_CM and "NO_NARROWING" not in codes:
+        codes.append("NO_NARROWING")
     info = {
         "accepted": bool(accepted),
+        "hip_from_template": bool(hip_from_template),
+        "search_high_fraction": round(float(search_high), 4),
         "level_fraction": round(float(fractions[index]), 4),
-        "waist_ellipse_cm": round(waist, 2),
-        "chest_ellipse_cm": round(chest, 2),
-        "hip_ellipse_cm": round(hip, 2),
+        "waist_width_cm": round(waist, 2),
+        "chest_width_cm": round(chest, 2),
+        "hip_width_cm": round(hip, 2),
         "margin_chest_cm": round(margin_chest, 2),
         "margin_hip_cm": round(margin_hip, 2),
     }
     if not accepted:
-        info["reason"] = (
-            f"Không đọc được vòng eo: hàng hẹp nhất giữa ngực và hông ({waist:.1f} cm) chỉ nhỏ hơn "
-            f"ngực {chest:.1f} cm và hông {hip:.1f} cm; cần hẹp hơn mỗi bên ≥{WAIST_MIN_TAPER_CM:.1f} cm. "
-            "Ảnh chính diện chưa lộ phần thon eo — mặc đồ ôm hơn, đứng thẳng và để tay rời thân rồi quét lại."
+        code = codes[0] if codes else "NO_NARROWING"
+        detail = (
+            f"hàng hẹp nhất giữa ngực và hông ({waist:.1f} cm) chỉ nhỏ hơn ngực {margin_chest:.1f} cm"
+            + ("" if hip_confirms else " (ảnh không thấy hông để đối chiếu)")
+            + f" và hông {margin_hip:.1f} cm; cần hẹp hơn ngực ≥{WAIST_MIN_TAPER_CM:.1f} cm"
+            + ("" if hip_confirms else " và không dùng hông mô hình làm bằng chứng")
+            + "."
         )
+        info["code"] = code
+        info["codes"] = codes or ["NO_NARROWING"]
+        info["reason"] = f"{WAIST_REFUSAL_GUIDANCE[code]} ({detail})"
     return index, info
+
+
+def resolve_waist_depth(
+    fractions,
+    depths_cm,
+    chest_index,
+    waist_index,
+    hip_index,
+    *,
+    hip_from_template: bool = False,
+):
+    """Depth at the waist row, or a refusal reason when it cannot be trusted.
+
+    When the side profile is flat (``spread < DEPTH_FLAT_CM``) but the frontal
+    width shows a real waist, the depth is interpolated linearly between the
+    chest and hip rows by the waist row's position (``t`` computed from the
+    fractions, not fitted). The result is ``photo_with_prior`` with an
+    uncertainty of half the chest-to-hip depth difference. If the hip depth is
+    template-only, interpolation would need a template endpoint, so the waist
+    stays unavailable with ``HIP_FROM_TEMPLATE``.
+    """
+    chest = float(depths_cm[chest_index])
+    waist = float(depths_cm[waist_index])
+    hip = float(depths_cm[hip_index])
+    values = (chest, waist, hip)
+    spread = max(values) - min(values)
+    base = {"depth_spread_cm": round(spread, 2), "hip_from_template": bool(hip_from_template)}
+    if not np.isfinite(values).all() or min(values) <= 0:
+        return None, {
+            "accepted": False,
+            "code": "DEPTH_FLAT",
+            "codes": ["DEPTH_FLAT"],
+            "reason": WAIST_REFUSAL_GUIDANCE["DEPTH_FLAT"],
+            **base,
+        }
+    if spread >= DEPTH_FLAT_CM:
+        # A template hip is not an observed depth: compare the waist to the chest
+        # only, exactly like the width rule. Otherwise require a dip below both
+        # photo-observed neighbours.
+        if hip_from_template:
+            body_like = waist < chest
+            refusal_code = "HIP_FROM_TEMPLATE"
+        else:
+            body_like = waist < min(chest, hip)
+            refusal_code = "DEPTH_FLAT"
+        if not body_like:
+            return None, {
+                "accepted": False,
+                "code": refusal_code,
+                "codes": [refusal_code],
+                "reason": (
+                    "Không đọc được vòng eo: ảnh nghiêng có thay đổi bề dày nhưng không thon ở hàng eo "
+                    f"(eo {waist:.1f} cm, ngực {chest:.1f}, hông {hip:.1f}). Hãy đưa tay ra trước và chụp lại ảnh nghiêng."
+                ),
+                **base,
+            }
+        return waist, {"accepted": True, "source": None, **base}
+    if hip_from_template:
+        return None, {
+            "accepted": False,
+            "code": "HIP_FROM_TEMPLATE",
+            "codes": ["HIP_FROM_TEMPLATE"],
+            "reason": WAIST_REFUSAL_GUIDANCE["HIP_FROM_TEMPLATE"],
+            **base,
+        }
+    chest_frac = float(fractions[chest_index])
+    waist_frac = float(fractions[waist_index])
+    hip_frac = float(fractions[hip_index])
+    t = (waist_frac - chest_frac) / max(hip_frac - chest_frac, 1e-9)
+    prior = chest + t * (hip - chest)
+    return prior, {
+        "accepted": True,
+        "source": "photo_with_prior",
+        "prior_t": round(float(t), 4),
+        "uncertainty_cm": round(abs(hip - chest) / 2, 2),
+        **base,
+    }
 
 
 def ellipse_perimeter(width: float, depth: float) -> float:
@@ -119,15 +258,25 @@ def anatomical_perimeter(width: float, depth: float, key: str | None = None) -> 
     return base
 
 
-def estimate_from_profiles(fractions, widths, depths, height_cm, shoulder_ratio, apply_anatomical_calibration: bool = True, shoulder_level: float = .805, hip_level: float = .515, diagnostics: dict | None = None):
+def estimate_from_profiles(fractions, widths, depths, height_cm, shoulder_ratio, apply_anatomical_calibration: bool = True, shoulder_level: float = .805, hip_level: float = .515, diagnostics: dict | None = None, *, hip_from_template: bool = False, photo_max_fraction: float | None = None):
     """Corresponding shoulder-to-hip rows; circumference uses calibrated anatomical sections.
 
     ``shoulder_level``/``hip_level`` are the mesh's own skeletal landmarks in
     normalised height, so sections sit on real joints instead of fixed constants.
     ``diagnostics`` optionally receives ``waist_selection`` so the caller can
     report why a waist was not accepted.
+
+    ``hip_from_template``/``photo_max_fraction`` mark an ``upper_body`` capture:
+    rows past ``photo_max_fraction`` are reconstructed from the template, so the
+    waist search stops at the last photo row and the template hip is never used
+    to accept or reject the waist.
     """
-    base_circumferences = np.array([ellipse_perimeter(w, d) * height_cm for w, d in zip(widths, depths)])
+    height_cm = float(height_cm)
+    widths_cm = np.asarray(widths, dtype=float) * height_cm
+    depths_cm = np.asarray(depths, dtype=float) * height_cm
+    base_circumferences = np.array([
+        ellipse_perimeter(w, d) for w, d in zip(widths_cm, depths_cm)
+    ])
     # Hip: search 0.95–1.02 of the shoulder-hip span, not 1.12. With the
     # template landmarks (0.805/0.534) this is ~0.528–0.547 H, i.e. the pelvic
     # band around hip_level ±0.03 H; 1.12 slid down onto the upper thigh.
@@ -135,27 +284,75 @@ def estimate_from_profiles(fractions, widths, depths, height_cm, shoulder_ratio,
     values = {"height_cm": round(height_cm, 1), "shoulder_width_cm": round(shoulder_ratio * height_cm, 1), "inseam_cm": None}
     chest_index = _row_index(fractions, base_circumferences, .30, .44, "max")
     hip_index = _row_index(fractions, base_circumferences, .95, 1.02, "max")
-    waist_index, waist_info = select_waist_row(fractions, base_circumferences, chest_index, hip_index)
+    waist_index, waist_info = select_waist_row(
+        fractions,
+        widths_cm,
+        chest_index,
+        hip_index,
+        hip_from_template=hip_from_template,
+        photo_max_fraction=photo_max_fraction,
+    )
     if waist_index is None:
         # Degenerate profile: keep three sections for the avatar, report no waist.
         waist_index = _row_index(fractions, base_circumferences, .52, .78, "min")
+    waist_depth_cm = float(depths_cm[waist_index])
+    waist_source: str | None = None
+    waist_uncertainty_cm: float | None = None
+    if waist_info.get("accepted"):
+        resolved, depth_info = resolve_waist_depth(
+            fractions,
+            depths_cm,
+            chest_index,
+            waist_index,
+            hip_index,
+            hip_from_template=hip_from_template,
+        )
+        waist_info.update(depth_info)
+        if resolved is None:
+            waist_info["accepted"] = False
+        else:
+            waist_depth_cm = float(resolved)
+            waist_source = depth_info.get("source")
+            waist_uncertainty_cm = depth_info.get("uncertainty_cm")
+    waist_info["waist_depth_cm"] = round(waist_depth_cm, 2)
+    waist_info["source"] = waist_source
+    waist_info["uncertainty_cm"] = waist_uncertainty_cm
+    if not waist_info.get("accepted"):
+        # List every independent blocker, not just the first one that fired:
+        # P01b has both a flat front width and a flat side depth.
+        spread_all = max(depths_cm[[chest_index, waist_index, hip_index]]) - min(
+            depths_cm[[chest_index, waist_index, hip_index]]
+        )
+        codes = list(waist_info.get("codes") or [])
+        if spread_all < DEPTH_FLAT_CM and "DEPTH_FLAT" not in codes:
+            codes.append("DEPTH_FLAT")
+        waist_info["codes"] = codes
     selected = {"chest_cm": chest_index, "waist_cm": waist_index, "hip_cm": hip_index}
     targets = []
     for key, title, low, high, choice in definitions:
         i = selected[key]
         k_factor = ANATOMICAL_SECTION_FACTORS.get(key, 1.0) if apply_anatomical_calibration else 1.0
-        value = float(base_circumferences[i] * k_factor)
+        width_cm = float(widths_cm[i])
+        depth_cm = float(depths_cm[i])
+        ellipse_cm = float(base_circumferences[i])
+        if key == "waist_cm" and waist_info.get("accepted"):
+            # Depth may come from the interpolation prior; the perimeter formula
+            # itself is unchanged (still an ellipse of the same width/depth).
+            depth_cm = float(waist_depth_cm)
+            ellipse_cm = ellipse_perimeter(width_cm, depth_cm)
+        value = float(ellipse_cm * k_factor)
         accepted = key != "waist_cm" or waist_info.get("accepted", True)
         values[key] = round(value, 1) if accepted else None
         targets.append({
             "key": key,
             "label": title,
             "target_cm": value,
-            "ellipse_cm": float(base_circumferences[i]),
+            "ellipse_cm": ellipse_cm,
             "k_anatomy": round(float(k_factor), 5),
             "level": float(shoulder_level - fractions[i] * (shoulder_level - hip_level)),
-            "width_cm": float(widths[i] * height_cm),
-            "depth_cm": float(depths[i] * height_cm),
+            "width_cm": width_cm,
+            "depth_cm": depth_cm,
+            "depth_source": waist_source if key == "waist_cm" else None,
         })
     if diagnostics is not None:
         diagnostics["waist_selection"] = waist_info

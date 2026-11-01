@@ -6,6 +6,64 @@ Tài liệu này tổng hợp trạng thái hiện tại của dự án **MORPH 
 
 ## 0. Cập nhật 2026-10-31 — Pilot thật P01b, spec áo A03, lớp AI
 
+### 0.12. Eo — mã từ chối, bỏ hông template, nội suy depth có ± (2026-11-01)
+- **Chẩn đoán trước khi sửa** (`scripts/eval/waist_diag.py`, JSON `output/measure-debug/waist_diag_*.json`):
+  - **P01b `full_body`**: bề rộng mặt trước 29,01 → 28,87 cm tại hàng eo, tức **thon 0,14 cm** (nằm trong nhiễu
+    hàng 0,2–0,6 cm); depth chest/waist/hip **23,78 / 23,63 / 23,64 cm**, spread **0,1 cm**.
+    Cả điều kiện thon 1,5 cm và depth phẳng 2 cm đều chặn; lý do cũ là điều kiện thon.
+  - **P01b `upper_body`**: tay phải không tách được (`capsule cắt qua thân <73px`) làm rộng các hàng trên;
+    `reconstruct()` dừng ở cổng tay dính thân mốc ngực. Khi ép chạy: depth spread 0,8 cm, hông template.
+  - **`backend/data/pilot_male`**: `full_body` báo "cơ thể chạm mép ảnh", `upper_body` báo "đường viền chưa rõ"
+    → không dựng được mảng thân, không có số eo để chẩn đoán. Chỉ **1 người thật dùng được (P01b)**.
+  - **3 bộ QA synthetic × 2 mode**: `full_body` 3/3 nhận eo; `upper_body` trước sửa 2/3, ca `c_male_obese`
+    bị từ chối **chỉ vì so hông template** (hàng hẹp nhất rơi vào fraction 0,944, margin hông 1,03 cm) dù
+    hàng ảnh thật (≤0,78) thon hơn ngực **8,0 cm**. Đây là lỗi thuật toán duy nhất tìm được.
+  - Kết luận: P01b trượt vì **áo nỉ boxy + ảnh nghiêng bị tay che**, không phải vì ngưỡng. Nếu hạ ngưỡng
+    và nội suy depth, P01b sẽ ra **82,9 cm ±0,07** — vẫn **+22,9 cm so tape 60** vì bề rộng còn lớp áo.
+    Vì vậy **không hạ ngưỡng** (chọn phương án "None + mã lý do + sửa thuật toán").
+- **Ngưỡng 1,5 cm được giữ, có chứng minh**: P01b thon 0,45 cm (đo theo chu vi cũ) / 0,14 cm (theo bề rộng mới),
+  trong khi 3 ca QA có eo thật thon **7,95–10,68 cm**. Không mẫu nào nằm giữa 0,45 và 7,95 cm, nên hạ ngưỡng
+  xuống ≤0,45 chỉ để một ảnh không đo được "ra số" là fit hằng số, không phải hiệu chuẩn.
+- **Sửa 1 — định vị eo bằng bề rộng mặt trước** (`measurements.select_waist_row`):
+  chọn hàng hẹp nhất giữa hàng ngực và hàng hông theo `width_cm` (không dùng fraction cố định).
+  Với `upper_body`, dải tìm **dừng ở 0,78** — fraction cuối còn lấy từ ảnh — và **không so với hông template**;
+  chỉ nhận khi hẹp hơn ngực ≥1,5 cm. Đo lại QA: cả 6/6 lượt (3 người × 2 mode) nhận eo.
+- **Sửa 2 — mã từ chối** (`profile["waist_refusal_code"]`, `profile["waist_refusal_codes"]`):
+  `NO_TORSO` (không có hàng giữa ngực/hông), `NO_NARROWING` (bề rộng không thon), `DEPTH_FLAT` (depth phẳng
+  hoặc không phải cực tiểu khi hông là ảnh thật), `HIP_FROM_TEMPLATE` (chỉ có hông mô hình để đối chiếu).
+  `waist_refusal_code` là mã chặn đầu tiên; `waist_refusal_codes` liệt kê **mọi** điều kiện độc lập đã chặn
+  (P01b `full_body`: `NO_NARROWING + DEPTH_FLAT`). UI `ScanResult` hiện mã + câu hướng dẫn;
+  `measurement_details[].uncertainty_cm` được điền cho eo khi dùng prior.
+- **Sửa 3 — nội suy depth có điều kiện** (`measurements.resolve_waist_depth`):
+  nếu spread depth < 2 cm **và** bề rộng eo đã thon rõ: `depth_waist = depth_chest + t·(depth_hip − depth_chest)`
+  với `t` tính từ vị trí hàng eo (không fit tay), nguồn `photo_with_prior`, uncertainty **±|depth_hip − depth_chest|/2**.
+  Không dùng prior khi hông template (thiếu đầu mút quan sát) → `None` + `HIP_FROM_TEMPLATE`; khi depth phẳng
+  mà bề rộng không thon → `None` + `NO_NARROWING`.
+  - Ví dụ kiểm chứng (synthetic, `test_flat_depth_with_clear_waist_uses_position_interpolated_prior`):
+    spread depth **0,4 cm**, width thon **2,61 cm**, `t=0,4` → depth eo **24,44 cm**, **±0,2 cm**, nguồn
+    `photo_with_prior`, eo **85,9 cm** (ngực 90,0; hông 90,5).
+- **Bảng P01b trước/sau** (`tape_eval.py`, `full_body`):
+
+  | Mốc | Trước | Sau | Tape | Lệch sau |
+  | :--- | ---: | ---: | ---: | ---: |
+  | Ngực | 83,1 | 83,1 | 80 | +3,1 |
+  | Eo | — (thon 0,45 cm) | — (**NO_NARROWING + DEPTH_FLAT**, thon 0,14 cm) | 60 | — |
+  | Hông | 94,6 | 94,6 | 92 | +2,6 |
+  | Rộng vai | 38,4 | 38,4 | 40 | −1,6 |
+  | Dài tay | 45,3 | 45,3 | — | — |
+  | Bắp/cẳng tay | — | — | 23 / 20 | — |
+
+  **Eo P01b vẫn None** — đúng như lựa chọn đã chốt: ảnh không đủ bằng chứng (áo nỉ che eo, ảnh nghiêng tay che).
+  Cần ảnh mới (áo bó, tay rời thân, nghiêng 90°) hoặc bước C2 trừ hao trang phục; không báo 82,9 cm như số đo.
+- **Sửa 4 — refit giữ nguồn eo**: `profile["fitting"]["waist"]` lưu `source / uncertainty / interpolated / refusal_code(s) /
+  unavailable_reason`; `refit_avatar` đọc lại nên khi người dùng sửa số đo khác, eo vẫn giữ nhãn `photo_with_prior` + ±
+  (hoặc mã từ chối) thay vì bị đổi thành `photo_estimate`/mất lý do.
+- **QC**: `pytest backend/tests -q` → **277 passed** (thêm 7 test: prior depth, thiếu thon, hông template
+  không so, hông template không cấp prior, depth không so hông template, report ±, refit giữ nguồn eo);
+  `npm run typecheck` sạch; `tape_eval` P01b ở trên; `/scan` 200 (`127.0.0.1:3000`), `/api/health` 200.
+- **Giới hạn**: chỉ 1 người thật có mảng thân hợp lệ; 3 ca còn lại là QA synthetic nên không phải bằng chứng
+  độ chính xác người thật. `upper_body` vẫn có thể dừng ở cổng tay dính thân trước khi tới bước eo (P01b).
+
 ### 0.11. PHẦN 2–3 — try-on 3 cột, heatmap 3 mức, giải thích size (2026-11-01)
 - **Sản phẩm ORICANO**: thêm lại `ao-thun-oricano-nam` từ fixture thật (`verification/fixtures/garments/oricano-shirt.json`)
   vào seed backend và catalog frontend → **163 sản phẩm / 1.701 biến thể / 30 bảng size**. ½ ngực 41–49 (chu vi áo

@@ -97,16 +97,18 @@ def measurement_report(mesh, measurements, profile, height_cm, overrides=None):
     upper = profile["capture_mode"] == "upper_body"
     rows = []
 
-    def add(key, label, value, source, points=None, color="#39d5c2"):
+    def add(key, label, value, source, points=None, color="#39d5c2", uncertainty=None):
         if key in overrides:
             value = overrides[key]
             source = "user_input"
+            uncertainty = None
         if upper and key == "hip_cm" and key not in overrides:
             source = "template_model"
         # A missing number is not a photo estimate: say so instead of attaching
         # a source to a value that does not exist.
         if value is None and source != "user_input":
             source = "unavailable"
+            uncertainty = None
         val_cm = round(float(value), 1) if value is not None else None
         is_valid = bool(source in VALID_SIZING_SOURCES and val_cm is not None)
         observed_region = "user_reported" if key in overrides else _observed_region(key, upper)
@@ -118,6 +120,12 @@ def measurement_report(mesh, measurements, profile, height_cm, overrides=None):
             warnings = [_unavailable_reason(key, profile) or _quality_warnings(key, source, upper)[0]]
         else:
             warnings = _quality_warnings(key, source, upper)
+            if key == "waist_cm" and profile.get("waist_depth_interpolated") and uncertainty is not None:
+                warnings.insert(
+                    0,
+                    "Độ sâu eo được nội suy từ ngực và hông theo vị trí hàng eo vì ảnh nghiêng không lộ eo; "
+                    f"sai số ±{float(uncertainty):.1f} cm. Bề rộng eo vẫn lấy từ ảnh chính diện.",
+                )
         rows.append({
             "key": key,
             "label": label,
@@ -127,7 +135,7 @@ def measurement_report(mesh, measurements, profile, height_cm, overrides=None):
             "valid_for_sizing": is_valid,
             "valid_for_tracking": is_valid,
             "engine_version": ENGINE,
-            "uncertainty_cm": None,
+            "uncertainty_cm": round(float(uncertainty), 2) if uncertainty is not None else None,
             "quality_warnings": warnings,
             "color": color,
             "points_m": np.round(points, 5).tolist() if points is not None else [],
@@ -139,7 +147,12 @@ def measurement_report(mesh, measurements, profile, height_cm, overrides=None):
     add("height_cm", "Chiều cao", height_cm, "user_input")
     for section, color in zip(profile["sections"], ["#f17be0", "#5ce4dc", "#f0dd61"]):
         source = "template_model" if upper and section["key"] == "hip_cm" else "photo_with_prior" if upper else "photo_estimate"
-        add(section["key"], section["label"], section["model_cm"] if source == "template_model" else measurements[section["key"]], source, section["points_m"], color)
+        uncertainty = None
+        if section["key"] == "waist_cm":
+            if profile.get("waist_source"):
+                source = profile["waist_source"]
+            uncertainty = profile.get("waist_uncertainty_cm")
+        add(section["key"], section["label"], section["model_cm"] if source == "template_model" else measurements[section["key"]], source, section["points_m"], color, uncertainty=uncertainty)
     add("shoulder_width_cm", "Rộng vai", measurements.get("shoulder_width_cm"), "photo_with_prior" if upper else "photo_estimate")
     # Horizontal closed sections on the actual mesh. Anatomical levels are a
     # template prior, including for full-body uploads: never claim observation.

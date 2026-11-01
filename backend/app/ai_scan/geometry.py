@@ -95,6 +95,8 @@ def run_geometric_estimate(
             True,
             landmarks.get("shoulder", 0.805),
             landmarks.get("hip", 0.515),
+            hip_from_template=capture_mode == "upper_body",
+            photo_max_fraction=reconstruction.TEMPLATE_BLEND_FROM,
         )
         for key in GEOMETRY_METRICS:
             value = measurements.get(key)

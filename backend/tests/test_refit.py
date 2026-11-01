@@ -62,6 +62,52 @@ def chest_level(profile):
     return float(np.mean(np.asarray(chest["points_m"])[:, 1]))
 
 
+def test_refit_preserves_waist_prior_and_refusal_metadata(tmp_path):
+    """Refit không được đổi nhãn prior thành photo_estimate, cũng không mất mã từ chối."""
+    measurements, fitting = _fitting()
+    measurements = dict(measurements)
+
+    prior_fitting = {
+        **fitting,
+        "waist": {
+            "source": "photo_with_prior",
+            "uncertainty_cm": 0.4,
+            "interpolated": True,
+            "refusal_code": None,
+            "refusal_codes": [],
+            "unavailable_reason": None,
+        },
+    }
+    profile = refit_avatar(prior_fitting, measurements, {}, 170.0, tmp_path / "prior.glb")
+    details = {row["key"]: row for row in profile["measurement_details"]}
+    assert profile["waist_source"] == "photo_with_prior"
+    assert details["waist_cm"]["source"] == "photo_with_prior"
+    assert details["waist_cm"]["uncertainty_cm"] == pytest.approx(0.4)
+    assert "±0.4 cm" in details["waist_cm"]["quality_warnings"][0]
+
+    refused_fitting = {
+        **fitting,
+        "waist": {
+            "source": None,
+            "uncertainty_cm": None,
+            "interpolated": False,
+            "refusal_code": "NO_NARROWING",
+            "refusal_codes": ["NO_NARROWING", "DEPTH_FLAT"],
+            "unavailable_reason": "bề rộng mặt trước gần như thẳng",
+        },
+    }
+    refused_measurements = {**measurements, "waist_cm": None}
+    refused_profile = refit_avatar(
+        refused_fitting, refused_measurements, {}, 170.0, tmp_path / "refused.glb"
+    )
+    refused_details = {row["key"]: row for row in refused_profile["measurement_details"]}
+    assert refused_profile["waist_refusal_code"] == "NO_NARROWING"
+    assert refused_profile["waist_refusal_codes"] == ["NO_NARROWING", "DEPTH_FLAT"]
+    assert refused_details["waist_cm"]["source"] == "unavailable"
+    assert refused_details["waist_cm"]["value_cm"] is None
+    assert "gần như thẳng" in refused_details["waist_cm"]["quality_warnings"][0]
+
+
 def test_refit_height_changes_model_height(tmp_path):
     measurements, fitting = _fitting()
     measurements = dict(measurements)

@@ -64,8 +64,16 @@ export interface Job {
       kind: "circumference" | "breadth" | "length";
       source: "user_input" | "photo_estimate" | "photo_with_prior" | "template_model" | "unavailable";
       value_cm: number | null;
+      uncertainty_cm?: number | null; // hiện chỉ có ở waist_cm khi dùng depth nội suy
       points_m: number[][];
     }>;
+    // Chỉ có khi waist_cm không đo được: mã máy đọc + mọi điều kiện đã chặn.
+    waist_refusal_code?: "DEPTH_FLAT" | "NO_NARROWING" | "HIP_FROM_TEMPLATE" | "NO_TORSO" | null;
+    waist_refusal_codes?: string[];
+    // "photo_with_prior" khi depth eo được nội suy từ ngực/hông; null khi đo trực tiếp.
+    waist_source?: "photo_estimate" | "photo_with_prior" | null;
+    waist_uncertainty_cm?: number | null; // ± (chênh lệch depth ngực-hông)/2
+    waist_depth_interpolated?: boolean;
     proportional_rings?: Array<{   // vòng phụ ăn theo ngực/hông
       key: string;
       label: string;

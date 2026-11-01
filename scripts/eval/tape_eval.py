@@ -92,7 +92,8 @@ def main() -> int:
             note = "chưa đo trong pipeline"
         elif value is None:
             if key == "waist_cm":
-                note = profile.get("waist_unavailable_reason")
+                code = profile.get("waist_refusal_code")
+                note = f"{code}: {profile.get('waist_unavailable_reason')}" if code else profile.get("waist_unavailable_reason")
             elif key in ("bicep_cm", "forearm_cm"):
                 note = (profile.get("arm_measurements") or {}).get("reason") or "không tách được tay, hoặc bán kính ngoài 2–8 cm"
             else:
@@ -121,6 +122,10 @@ def main() -> int:
             ],
             "shoulder_source": profile.get("shoulder_width_source"),
             "waist_unavailable_reason": profile.get("waist_unavailable_reason"),
+            "waist_refusal_code": profile.get("waist_refusal_code"),
+            "waist_refusal_codes": profile.get("waist_refusal_codes"),
+            "waist_source": profile.get("waist_source"),
+            "waist_uncertainty_cm": profile.get("waist_uncertainty_cm"),
         }
         args.json.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
         print(f"JSON: {args.json}")

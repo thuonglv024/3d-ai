@@ -188,6 +188,34 @@ def test_upper_body_scale_agreement_rejects_beyond_tolerance(r_torso):
         _observe_upper_with_torso_ratio(r_torso)
 
 
+def test_waist_prior_is_reported_with_source_and_uncertainty():
+    """Eo dùng depth nội suy: report ghi photo_with_prior + ±, không đội lốt photo_estimate."""
+    mesh = read_template()
+    mesh.vertices *= 1.75
+    sections = [
+        {"key": "chest_cm", "label": "Ngực", "target_cm": 92.0, "model_cm": 92.0, "fit_error_cm": 0.0, "points_m": []},
+        {"key": "waist_cm", "label": "Eo", "target_cm": 74.0, "model_cm": 74.0, "fit_error_cm": 0.0, "points_m": []},
+        {"key": "hip_cm", "label": "Mông", "target_cm": 96.0, "model_cm": 96.0, "fit_error_cm": 0.0, "points_m": []},
+    ]
+    rows = measurement_report(
+        mesh,
+        {"chest_cm": 92.0, "waist_cm": 74.0, "hip_cm": 96.0, "shoulder_width_cm": 39.0, "arm_length_cm": 55.0},
+        {
+            "capture_mode": "full_body",
+            "sections": sections,
+            "waist_source": "photo_with_prior",
+            "waist_uncertainty_cm": 0.8,
+            "waist_depth_interpolated": True,
+        },
+        175,
+    )
+    waist = next(row for row in rows if row["key"] == "waist_cm")
+    assert waist["source"] == "photo_with_prior"
+    assert waist["valid_for_sizing"] is True
+    assert waist["uncertainty_cm"] == 0.8
+    assert "±0.8 cm" in waist["quality_warnings"][0]
+
+
 def test_missing_numbers_are_unavailable_with_their_reason():
     mesh = read_template()
     mesh.vertices *= 1.75

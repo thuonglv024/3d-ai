@@ -270,6 +270,160 @@ def test_waist_selection_reports_a_reason_when_there_is_no_taper():
     assert "Không đọc được vòng eo" in selection["reason"]
 
 
+def test_flat_depth_with_clear_waist_uses_position_interpolated_prior():
+    """Depth phẳng nhưng bề rộng eo rõ: nội suy depth, ghi photo_with_prior kèm ±."""
+    fractions = np.linspace(0.12, 1.12, 35)
+    dip = 0.08 * np.exp(-((fractions - 0.65) / 0.09) ** 2)
+    widths = 0.19 * (1.0 - dip)
+    # Spread only 0.7 cm at 172 cm: the side silhouette is fabric/arm.
+    depths = 0.14 + 0.004 * (fractions - 0.12)
+    diagnostics = {}
+    values, targets = estimate_from_profiles(
+        fractions, widths, depths, 172.0, 0.22, diagnostics=diagnostics
+    )
+    selection = diagnostics["waist_selection"]
+    by_key = {t["key"]: t for t in targets}
+
+    assert selection["accepted"] is True
+    assert selection["source"] == "photo_with_prior"
+    shoulder_level, hip_level = 0.805, 0.515
+
+    def fraction_of(target):
+        return (shoulder_level - target["level"]) / (shoulder_level - hip_level)
+
+    expected_t = (fraction_of(by_key["waist_cm"]) - fraction_of(by_key["chest_cm"])) / (
+        fraction_of(by_key["hip_cm"]) - fraction_of(by_key["chest_cm"])
+    )
+    assert selection["prior_t"] == pytest.approx(expected_t, abs=1e-3)
+    assert values["waist_cm"] is not None
+    t = selection["prior_t"]
+    expected_depth = by_key["chest_cm"]["depth_cm"] + t * (
+        by_key["hip_cm"]["depth_cm"] - by_key["chest_cm"]["depth_cm"]
+    )
+    assert by_key["waist_cm"]["depth_cm"] == pytest.approx(expected_depth, abs=0.01)
+    assert values["waist_cm"] == pytest.approx(
+        ellipse_perimeter(by_key["waist_cm"]["width_cm"], expected_depth), abs=0.05
+    )
+    assert selection["uncertainty_cm"] == pytest.approx(
+        abs(by_key["hip_cm"]["depth_cm"] - by_key["chest_cm"]["depth_cm"]) / 2, abs=0.01
+    )
+
+
+def test_flat_depth_without_width_taper_stays_unavailable_with_code():
+    """Depth phẳng và bề rộng không thon: None + mã NO_NARROWING, không nội suy."""
+    fractions = np.linspace(0.12, 1.12, 35)
+    diagnostics = {}
+    values, _ = estimate_from_profiles(
+        fractions,
+        np.full(35, 0.19),
+        np.full(35, 0.14),
+        172.0,
+        0.22,
+        diagnostics=diagnostics,
+    )
+    selection = diagnostics["waist_selection"]
+    assert values["waist_cm"] is None
+    assert selection["accepted"] is False
+    assert selection["code"] == "NO_NARROWING"
+    assert "NO_NARROWING" in selection["codes"]
+    assert "bề rộng" in selection["reason"]
+
+
+def test_template_hip_is_not_compared_and_caps_the_waist_search():
+    """upper_body: không so hông template, và không tìm eo trong vùng >0,78."""
+    fractions = np.linspace(0.12, 1.12, 35)
+    dip = 0.08 * np.exp(-((fractions - 0.65) / 0.09) ** 2)
+    widths = 0.19 * (1.0 - dip)
+    waist_width = float(widths[int(np.argmin(np.abs(fractions - 0.65)))])
+    widths[fractions >= 0.90] = waist_width + 0.003  # template hip only 0.5 cm wider
+    depths = 0.145 - 0.02 * np.exp(-((fractions - 0.65) / 0.09) ** 2)
+
+    template_diagnostics = {}
+    template_values, _ = estimate_from_profiles(
+        fractions,
+        widths,
+        depths,
+        172.0,
+        0.22,
+        diagnostics=template_diagnostics,
+        hip_from_template=True,
+        photo_max_fraction=0.78,
+    )
+    selection = template_diagnostics["waist_selection"]
+    assert template_values["waist_cm"] is not None
+    assert selection["accepted"] is True
+    assert selection["margin_chest_cm"] >= 1.5
+    assert selection["margin_hip_cm"] < 1.5  # the template hip is not evidence
+    assert selection["search_high_fraction"] <= 0.78
+    assert selection["level_fraction"] < 0.78
+
+    photo_hip_diagnostics = {}
+    photo_hip_values, _ = estimate_from_profiles(
+        fractions, widths, depths, 172.0, 0.22, diagnostics=photo_hip_diagnostics
+    )
+    assert photo_hip_values["waist_cm"] is None
+    assert photo_hip_diagnostics["waist_selection"]["code"] == "NO_NARROWING"
+
+
+def test_template_hip_cannot_supply_the_depth_prior():
+    """Depth phẳng + eo rõ nhưng hông template: None + HIP_FROM_TEMPLATE, không nội suy."""
+    fractions = np.linspace(0.12, 1.12, 35)
+    dip = 0.08 * np.exp(-((fractions - 0.65) / 0.09) ** 2)
+    widths = 0.19 * (1.0 - dip)
+    diagnostics = {}
+    values, _ = estimate_from_profiles(
+        fractions,
+        widths,
+        np.full(35, 0.14),
+        172.0,
+        0.22,
+        diagnostics=diagnostics,
+        hip_from_template=True,
+        photo_max_fraction=0.78,
+    )
+    selection = diagnostics["waist_selection"]
+    assert selection["margin_chest_cm"] >= 1.5
+    assert values["waist_cm"] is None
+    assert selection["accepted"] is False
+    assert selection["code"] == "HIP_FROM_TEMPLATE"
+    assert selection["source"] is None
+
+
+def test_template_hip_depth_is_not_a_comparison_anchor():
+    """upper_body: depth eo chỉ so với ngực, không so hông template."""
+    fractions = np.linspace(0.12, 1.12, 35)
+    dip = 0.08 * np.exp(-((fractions - 0.65) / 0.09) ** 2)
+    widths = 0.19 * (1.0 - dip)
+    # Depth falls towards the hip, so the waist is above the (template) hip but
+    # still clearly below the chest.
+    depths = 0.20 - 0.06 * (fractions - 0.12)
+
+    template_diagnostics = {}
+    template_values, targets = estimate_from_profiles(
+        fractions,
+        widths,
+        depths,
+        172.0,
+        0.22,
+        diagnostics=template_diagnostics,
+        hip_from_template=True,
+        photo_max_fraction=0.78,
+    )
+    selection = template_diagnostics["waist_selection"]
+    by_key = {t["key"]: t for t in targets}
+    assert by_key["waist_cm"]["depth_cm"] < by_key["chest_cm"]["depth_cm"] - 1.0
+    assert by_key["waist_cm"]["depth_cm"] > by_key["hip_cm"]["depth_cm"]
+    assert selection["accepted"] is True
+    assert template_values["waist_cm"] is not None
+
+    photo_hip_diagnostics = {}
+    photo_hip_values, _ = estimate_from_profiles(
+        fractions, widths, depths, 172.0, 0.22, diagnostics=photo_hip_diagnostics
+    )
+    assert photo_hip_values["waist_cm"] is None
+    assert photo_hip_diagnostics["waist_selection"]["code"] == "DEPTH_FLAT"
+
+
 def test_validate_glb_mesh_verifies_metre_scale_and_rejects_corrupted_geometry():
     from app.measurements import validate_glb_mesh
 

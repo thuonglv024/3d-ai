@@ -117,6 +117,10 @@ def test_reconstruct_end_to_end_upper_body_provenance_and_glb_validation(monkeyp
     # bị từ chối kèm lý do, không trả một con số sai.
     assert measurements["waist_cm"] is None
     assert profile["waist_unavailable_reason"]
+    assert profile["waist_refusal_code"] in {"NO_NARROWING", "HIP_FROM_TEMPLATE", "DEPTH_FLAT", "NO_TORSO"}
+    assert profile["waist_refusal_code"] in profile["waist_refusal_codes"]
+    assert profile["waist_source"] is None
+    assert profile["waist_uncertainty_cm"] is None
 
     # Profile diagnostics & mesh validation
     assert profile["engine_version"] == ENGINE
